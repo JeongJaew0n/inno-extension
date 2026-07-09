@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Inno GW 출퇴근 헤더 버튼",
+  "version": "0.1.0",
+  "description": "gw.innogrid.com 출/퇴근 버튼을 헤더 상단에 고정 배치해 스크롤 없이 누를 수 있게 합니다.",
+  "content_scripts": [
+    {
+      "matches": ["https://gw.innogrid.com/*"],
+      "js": ["src/content/index.ts"],
+      "run_at": "document_idle"
+    }
+  ]
+}
