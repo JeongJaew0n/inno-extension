@@ -5,7 +5,7 @@
  * 안 보이면, 실제 페이지의 DOM 을 다시 확인하고 여기 상수만 고치면 된다.
  *
  * 확인 시점(2026-07-09)의 실제 구조:
- *   헤더 앵커: <div class="user-info "> (클래스명 끝 공백 → CSS 선택자에는 무관)
+ *   헤더 앵커: <div class="noti-details"> ... </div>
  *   출퇴근 원본:
  *     <div class="worktime"><div id="container"><ul class="btns">
  *       <li class="active">출근</li>
@@ -15,8 +15,8 @@
  *   반드시 원본 li.click() 으로 위임한다.
  */
 
-/** 헤더에서 주입 버튼을 붙일 기준 요소(이 요소 왼쪽에 삽입). */
-export const USER_INFO = '.user-info';
+/** 헤더에서 주입 버튼을 붙일 기준 요소(이 요소 아래에 삽입). */
+export const NOTI_DETAILS = '.noti-details';
 
 /** 원본 출퇴근 버튼 컨테이너(<ul class="btns">). */
 export const WORKTIME_BTNS = '.worktime ul.btns';

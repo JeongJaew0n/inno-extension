@@ -1,4 +1,4 @@
-import { USER_INFO, INJECTED_ID, KIND, type Kind } from '../shared/selectors';
+import { NOTI_DETAILS, INJECTED_ID, KIND, type Kind } from '../shared/selectors';
 import { ensureStyles } from './styles';
 import { delegateClick, syncActiveState } from './delegate';
 
@@ -50,13 +50,13 @@ function buildContainer(): HTMLDivElement {
 }
 
 /**
- * user-info 요소 왼쪽에 출근/퇴근 버튼을 주입한다.
+ * noti-details 요소 바로 아래에 출근/퇴근 버튼을 주입한다.
  * 이미 주입돼 있고 DOM 에 연결돼 있으면 아무것도 하지 않는다(idempotent).
  *
  * @returns 이번 호출로 새로 주입했으면 true.
  */
 export function injectButtons(): boolean {
-  const anchor = document.querySelector<HTMLElement>(USER_INFO);
+  const anchor = document.querySelector<HTMLElement>(NOTI_DETAILS);
   if (!anchor) return false;
 
   const existing = document.getElementById(INJECTED_ID);
@@ -65,7 +65,7 @@ export function injectButtons(): boolean {
   ensureStyles();
 
   const container = buildContainer();
-  anchor.parentElement?.insertBefore(container, anchor);
+  anchor.appendChild(container);
 
   refreshActiveState();
   return true;

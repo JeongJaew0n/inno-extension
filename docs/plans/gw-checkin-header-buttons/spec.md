@@ -2,13 +2,13 @@
 
 ## 목표
 gw.innogrid.com(더존 그룹웨어)의 출근/퇴근 버튼을 스크롤 없이 항상 볼 수 있도록,
-화면 상단 헤더의 `user-info` 요소 왼쪽에 고정 배치하는 크롬 확장(extension)을 만든다.
+화면 상단 헤더의 `noti-details` 요소 아래에 고정 배치하는 크롬 확장(extension)을 만든다.
 헤더 버튼을 누르면 원본 출퇴근 버튼이 대신 클릭되어 실제 출퇴근 처리가 이루어진다.
 
 ## 범위
 - 포함:
   - content script로 gw.innogrid.com 페이지에 출근/퇴근 버튼을 주입
-  - 주입 위치: 헤더의 `user-info` 요소 왼쪽
+  - 주입 위치: 헤더의 `noti-details` 요소 아래
   - 주입 버튼 클릭 시 원본 `.worktime ul.btns li` 요소를 클릭 위임
   - 원본 버튼의 현재 상태(`active` 클래스)를 헤더 버튼에도 반영
   - 더존 SPA(hash 라우팅) 리렌더로 헤더/버튼이 사라지면 재주입 (MutationObserver)
@@ -19,7 +19,7 @@ gw.innogrid.com(더존 그룹웨어)의 출근/퇴근 버튼을 스크롤 없이
   - popup UI, side panel, 시스템 알림 — 하지 않음
 
 ## 완료 조건 (Definition of Done)
-- [ ] gw.innogrid.com 접속 시 헤더 `user-info` 왼쪽에 출근/퇴근 버튼이 나타난다
+- [ ] gw.innogrid.com 접속 시 헤더 `noti-details` 아래에 출근/퇴근 버튼이 나타난다
 - [ ] 스크롤하지 않아도 항상 보인다 (헤더에 고정)
 - [ ] 헤더의 "출근" 클릭 → 원본 출근 버튼이 클릭되어 실제 처리됨
 - [ ] 헤더의 "퇴근" 클릭 → 원본 퇴근 버튼이 클릭되어 실제 처리됨
@@ -30,7 +30,7 @@ gw.innogrid.com(더존 그룹웨어)의 출근/퇴근 버튼을 스크롤 없이
 ## 인터페이스 / 데이터 형식
 확인된 대상 DOM(2026-07-09 기준):
 
-- 헤더 앵커: `div.user-info` (클래스명 끝에 공백 있음 → `[class*="user-info"]` 로 매칭 권장)
+- 헤더 앵커: `div.noti-details`
   - 헤더 우상단 위치, 스크롤과 무관하게 항상 보임
 - 원본 출퇴근 버튼:
   ```html

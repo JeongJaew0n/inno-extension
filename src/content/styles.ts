@@ -6,18 +6,14 @@ import { INJECTED_ID } from '../shared/selectors';
  */
 export const STYLE_TEXT = `
 #${INJECTED_ID} {
-  /*
-   * 헤더의 .user-info 가 float:left 라서, 시각적으로 그 "왼쪽" 에 오려면
-   * 이 컨테이너도 float:left 로 두고 DOM 상 user-info 앞에 삽입해야 한다.
-   * (float 요소끼리는 DOM 순서대로 왼쪽부터 쌓인다.)
-   */
-  float: left;
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
   gap: 6px;
-  height: 32px;
-  margin-right: 12px;
-  vertical-align: middle;
+  margin-top: 8px;
+  clear: both;
+  box-sizing: border-box;
 }
 #${INJECTED_ID} .inno-gw-btn {
   appearance: none;
