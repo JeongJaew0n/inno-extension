@@ -1,12 +1,15 @@
 {
   "name": "inno-extension",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "gw.innogrid.com 출/퇴근 버튼을 헤더에 고정 배치하는 크롬 확장",
+  "description": "아마란스와 Jira를 위한 사내 업무 편의 Chrome Extension",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run check && vite build",
+    "check": "npm run typecheck && npm test",
+    "package": "npm run build && node scripts/package-extension.mjs",
+    "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
