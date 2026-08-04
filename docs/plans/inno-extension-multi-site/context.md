@@ -85,3 +85,4 @@ effectiveEnabled = site.enabled && feature.enabled
 ## 변경 이력
 
 - 2026-08-04: 실제 통합 작업 착수와 함께 plan memory 정본을 `/Users/jjw/my/Dev/inno-extension/docs/plans/inno-extension-multi-site/`로 이관했다. 최초 작성본은 Jira 원본 저장소에 보존한다.
+- 2026-08-04: 사용자가 사이트 카드의 문자 아이콘 대신 각 사이트의 실제 favicon을 내려받아 사용하도록 요청했다. 로그인된 실제 페이지가 사용하는 32×32 PNG 원본을 추출해 Popup 로컬 asset으로 포함하기로 했다.

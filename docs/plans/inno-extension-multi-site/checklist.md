@@ -67,6 +67,9 @@
 
 ## 6. Popup UI
 
+- [x] 아마란스와 Jira 원본 favicon PNG를 로컬 asset으로 저장
+- [x] 사이트 카드의 문자 placeholder를 favicon 이미지로 교체
+- [x] favicon 파일 형식·크기와 production bundle 포함 여부 검증
 - [x] 공통 디자인 token과 Popup 기본 layout 구현
 - [x] Popup hash router 구현
 - [x] `편의기능 / 설정` 상단 탭 구현
@@ -112,7 +115,7 @@
 
 ## 현재 상태
 
-- 완료: 통합 기반, 설정 플랫폼, site runtime, 아마란스/Jira 기능 이관, Popup UI/상태 검증, 단위 테스트 8개, ZIP 패키징
+- 완료: 통합 기반, 설정 플랫폼, site runtime, 아마란스/Jira 기능 이관, 실제 사이트 favicon 적용, Popup UI/상태 검증, 단위 테스트 9개, ZIP 패키징
 - 다음 작업: diff 최종 검토와 Chrome 확장 재로드 후 실제 두 사이트 E2E
 - 실제 이관 코드 변경: `/Users/jjw/my/Dev/inno-extension`의 `codex/multi-site-extension` 브랜치에서 진행 중
 - 검증 제약: Chrome 내부 `chrome://extensions` 탭은 자동 제어할 수 없어 통합 dist 재로드 및 실제 사이트 E2E는 수동 재로드 이후 확인 필요
