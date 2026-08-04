@@ -38,6 +38,18 @@ test('Manifest origin과 catalog origin이 일치한다', async () => {
   assert.deepEqual(manifestOrigins, catalogMatches);
 });
 
+test('사이트 favicon asset은 32x32 PNG 원본이다', async () => {
+  for (const assetPath of [
+    'src/popup/assets/amaranth-favicon.png',
+    'src/popup/assets/jira-favicon.png',
+  ]) {
+    const image = await readFile(assetPath);
+    assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    assert.equal(image.readUInt32BE(16), 32);
+    assert.equal(image.readUInt32BE(20), 32);
+  }
+});
+
 test('사이트 마스터 토글은 하위 기능 값을 보존하면서 실행 여부만 차단한다', () => {
   const settings = createDefaultSettings();
   settings.sites.jira.enabled = false;

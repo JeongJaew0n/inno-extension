@@ -20,6 +20,5 @@ export interface SiteDescriptor {
   origin: string;
   contentMatches: readonly string[];
   color: string;
-  iconText: string;
   features: readonly FeatureDescriptor[];
 }

@@ -97,10 +97,9 @@ button { color: inherit; }
   flex: 0 0 auto;
   border-radius: 10px;
   background: #fff;
-  color: var(--site-color);
-  font-weight: 800;
   box-shadow: 0 1px 4px rgba(30, 30, 50, 0.08);
 }
+.site-icon-image { display: block; width: 32px; height: 32px; object-fit: contain; }
 
 .card-copy { display: grid; min-width: 0; gap: 5px; }
 .card-copy strong { font-size: 14px; }

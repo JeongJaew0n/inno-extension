@@ -19,6 +19,11 @@ const app: HTMLElement = appElement;
 
 let settings: ExtensionSettingsV1 = createDefaultSettings();
 
+const SITE_ICON_URLS: Record<SiteId, string> = {
+  amaranth: new URL('./assets/amaranth-favicon.png', import.meta.url).href,
+  jira: new URL('./assets/jira-favicon.png', import.meta.url).href,
+};
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -69,7 +74,9 @@ function renderSiteList(): string {
     return `
       <article class="site-card ${siteSettings.enabled ? '' : 'is-disabled'}" style="--site-color:${site.color}">
         <button type="button" class="card-body" data-route="${siteRoute(site.id)}">
-          <span class="site-icon" aria-hidden="true">${site.iconText}</span>
+          <span class="site-icon" aria-hidden="true">
+            <img class="site-icon-image" src="${SITE_ICON_URLS[site.id]}" alt="" width="32" height="32" />
+          </span>
           <span class="card-copy">
             <strong>${escapeHtml(site.name)}</strong>
             <span class="host-row">

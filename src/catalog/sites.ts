@@ -8,7 +8,6 @@ export const SITES = [
     origin: 'https://gw.innogrid.com',
     contentMatches: ['https://gw.innogrid.com/*'],
     color: '#00b978',
-    iconText: 'A',
     features: [
       {
         id: 'attendanceHeader',
@@ -27,7 +26,6 @@ export const SITES = [
     origin: 'https://pms-innogrid.atlassian.net',
     contentMatches: ['https://pms-innogrid.atlassian.net/jira/*'],
     color: '#6554c0',
-    iconText: 'J',
     features: [
       {
         id: 'issueLinkCopy',
