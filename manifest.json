@@ -1,12 +1,26 @@
 {
   "manifest_version": 3,
-  "name": "Inno GW 출퇴근 헤더 버튼",
-  "version": "0.1.0",
-  "description": "gw.innogrid.com 출/퇴근 버튼을 헤더 상단에 고정 배치해 스크롤 없이 누를 수 있게 합니다.",
+  "name": "Inno Extension",
+  "version": "0.2.0",
+  "description": "아마란스와 Jira의 사내 업무 편의 기능을 하나의 확장 프로그램으로 제공합니다.",
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Inno Extension",
+    "default_popup": "src/popup/index.html"
+  },
   "content_scripts": [
     {
       "matches": ["https://gw.innogrid.com/*"],
-      "js": ["src/content/index.ts"],
+      "js": ["src/sites/amaranth/content.ts"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://pms-innogrid.atlassian.net/jira/*"],
+      "js": ["src/sites/jira/content.ts"],
       "run_at": "document_idle"
     }
   ]

@@ -1,10 +1,6 @@
-import { INJECTED_ID } from '../shared/selectors';
+import { INJECTED_ID, STYLE_ID } from '../../selectors';
 
-/**
- * 주입 버튼 스타일. content_scripts CSS 파일 대신 JS 로 <style> 을 넣는다.
- * SPA 리렌더/CSP 영향 없이 확실하게 적용되고, 번들 구성이 단순해진다.
- */
-export const STYLE_TEXT = `
+const STYLE_TEXT = `
 #${INJECTED_ID} {
   display: flex;
   align-items: center;
@@ -15,7 +11,7 @@ export const STYLE_TEXT = `
   clear: both;
   box-sizing: border-box;
 }
-#${INJECTED_ID} .inno-gw-btn {
+#${INJECTED_ID} .inno-amaranth-attendance-button {
   appearance: none;
   border: 1px solid #c8ccd4;
   background: #ffffff;
@@ -29,28 +25,25 @@ export const STYLE_TEXT = `
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   white-space: nowrap;
 }
-#${INJECTED_ID} .inno-gw-btn:hover {
+#${INJECTED_ID} .inno-amaranth-attendance-button:hover {
   border-color: #4a7dff;
   color: #4a7dff;
 }
-#${INJECTED_ID} .inno-gw-btn.is-active {
+#${INJECTED_ID} .inno-amaranth-attendance-button.is-active {
   background: #4a7dff;
   border-color: #4a7dff;
   color: #ffffff;
 }
-#${INJECTED_ID} .inno-gw-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 `;
 
-const STYLE_ID = `${INJECTED_ID}-style`;
-
-/** <head> 에 스타일을 1회만 주입한다. */
-export function ensureStyles(): void {
+export function ensureAttendanceStyles(document: Document): void {
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = STYLE_TEXT;
   document.head.appendChild(style);
+}
+
+export function removeAttendanceStyles(document: Document): void {
+  document.getElementById(STYLE_ID)?.remove();
 }
