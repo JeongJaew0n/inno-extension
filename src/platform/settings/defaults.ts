@@ -11,6 +11,12 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
             enabled: true,
             options: {},
           },
+          titleAutofill: {
+            enabled: true,
+            options: {
+              titleText: '',
+            },
+          },
         },
       },
       jira: {

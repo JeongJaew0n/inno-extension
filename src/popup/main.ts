@@ -11,6 +11,10 @@ import {
   setSiteEnabled,
 } from '../platform/settings/repository';
 import type { ExtensionSettingsV1 } from '../platform/settings/types';
+import {
+  normalizeTitleAutofillText,
+  TITLE_AUTOFILL_MAX_LENGTH,
+} from '../sites/amaranth/features/titleAutofill/contracts';
 import { featureRoute, parsePopupRoute, siteRoute, type PopupRoute } from './router';
 
 const appElement = document.querySelector<HTMLElement>('#app');
@@ -18,6 +22,16 @@ if (!appElement) throw new Error('Popup root를 찾을 수 없습니다.');
 const app: HTMLElement = appElement;
 
 let settings: ExtensionSettingsV1 = createDefaultSettings();
+
+type SaveFeedbackStatus = 'saving' | 'saved' | 'error';
+
+interface SaveFeedback {
+  key: string;
+  status: SaveFeedbackStatus;
+}
+
+let saveFeedback: SaveFeedback | null = null;
+let saveFeedbackTimer: number | null = null;
 
 const SITE_ICON_URLS: Record<SiteId, string> = {
   amaranth: new URL('./assets/amaranth-favicon.png', import.meta.url).href,
@@ -154,6 +168,45 @@ function renderSiteDetail(siteId: SiteId): string {
 }
 
 function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
+  if (siteId === 'amaranth' && featureId === 'titleAutofill') {
+    const titleText = normalizeTitleAutofillText(
+      settings.sites.amaranth.features.titleAutofill?.options.titleText,
+    );
+    const feedback = saveFeedback?.key === `${siteId}.${featureId}`
+      ? saveFeedback.status
+      : null;
+    const saveLabel = feedback === 'saving'
+      ? '저장 중…'
+      : feedback === 'saved'
+        ? '✓ 저장됨'
+        : feedback === 'error'
+          ? '저장 실패 · 다시 시도'
+          : '저장';
+    return `
+      <div class="option-fields" data-options-form data-site-id="amaranth" data-feature-id="titleAutofill">
+        <label>
+          <span>자동채움 내용</span>
+          <input
+            type="text"
+            data-option="titleText"
+            data-option-kind="string"
+            value="${escapeHtml(titleText)}"
+            maxlength="${TITLE_AUTOFILL_MAX_LENGTH}"
+            placeholder="예: 연차휴가 신청"
+          />
+          <small>근태신청서에서 자동채움 버튼을 누르면 현재 제목을 이 문구로 교체합니다.</small>
+        </label>
+        <button
+          type="button"
+          class="secondary-button option-save-button ${feedback ? `is-${feedback}` : ''}"
+          data-save-feature-options
+          aria-live="polite"
+          ${feedback === 'saving' || feedback === 'saved' ? 'disabled' : ''}
+        >${saveLabel}</button>
+      </div>
+    `;
+  }
+
   if (siteId !== 'jira' || featureId !== 'boardInspector') {
     return '<p class="empty-options">이 기능에는 별도의 추가 옵션이 없습니다.</p>';
   }
@@ -253,9 +306,62 @@ function parseList(value: string): string[] {
   return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
 }
 
+function collectFeatureOptions(form: HTMLElement): Record<string, unknown> {
+  const optionInputs = form.querySelectorAll<HTMLInputElement>('[data-option]');
+  const options: Record<string, unknown> = {};
+  for (const optionInput of optionInputs) {
+    if (!optionInput.dataset.option) continue;
+    options[optionInput.dataset.option] = optionInput.dataset.optionKind === 'string'
+      ? normalizeTitleAutofillText(optionInput.value)
+      : parseList(optionInput.value);
+  }
+  return options;
+}
+
+async function saveFeatureOptions(form: HTMLElement): Promise<void> {
+  if (!isSiteId(form.dataset.siteId) || !isFeatureId(form.dataset.featureId)) return;
+  await setFeatureOptions(
+    form.dataset.siteId,
+    form.dataset.featureId,
+    collectFeatureOptions(form),
+  );
+}
+
+async function saveFeatureOptionsWithFeedback(form: HTMLElement): Promise<void> {
+  if (!isSiteId(form.dataset.siteId) || !isFeatureId(form.dataset.featureId)) return;
+
+  const siteId = form.dataset.siteId;
+  const featureId = form.dataset.featureId;
+  const key = `${siteId}.${featureId}`;
+  const options = collectFeatureOptions(form);
+
+  if (saveFeedbackTimer !== null) window.clearTimeout(saveFeedbackTimer);
+  saveFeedback = { key, status: 'saving' };
+  await render();
+
+  try {
+    await setFeatureOptions(siteId, featureId, options);
+    saveFeedback = { key, status: 'saved' };
+  } catch (error) {
+    console.error(`[Inno Extension] ${key} 설정 저장 실패`, error);
+    saveFeedback = { key, status: 'error' };
+  }
+  await render();
+
+  if (saveFeedback.status === 'saved') {
+    saveFeedbackTimer = window.setTimeout(() => {
+      if (saveFeedback?.key === key) {
+        saveFeedback = null;
+        void render();
+      }
+      saveFeedbackTimer = null;
+    }, 1600);
+  }
+}
+
 app.addEventListener('click', async (event) => {
   const target = event.target instanceof Element
-    ? event.target.closest<HTMLElement>('[data-route], [data-open-origin], [data-reset-feature], [data-reset-all]')
+    ? event.target.closest<HTMLElement>('[data-route], [data-open-origin], [data-save-feature-options], [data-reset-feature], [data-reset-all]')
     : null;
   if (!target) return;
 
@@ -272,6 +378,12 @@ app.addEventListener('click', async (event) => {
   if (target.hasAttribute('data-reset-all')) {
     await resetAllSettings();
     await render();
+    return;
+  }
+
+  if (target.hasAttribute('data-save-feature-options')) {
+    const form = target.closest<HTMLElement>('[data-options-form]');
+    if (form) await saveFeatureOptionsWithFeedback(form);
     return;
   }
 
@@ -300,14 +412,9 @@ app.addEventListener('change', async (event) => {
     return;
   }
 
+  if (target.dataset.optionKind === 'string') return;
   const form = target.closest<HTMLElement>('[data-options-form]');
-  if (!form || !isSiteId(form.dataset.siteId) || !isFeatureId(form.dataset.featureId)) return;
-  const optionInputs = form.querySelectorAll<HTMLInputElement>('[data-option]');
-  const options: Record<string, unknown> = {};
-  for (const optionInput of optionInputs) {
-    if (optionInput.dataset.option) options[optionInput.dataset.option] = parseList(optionInput.value);
-  }
-  await setFeatureOptions(form.dataset.siteId, form.dataset.featureId, options);
+  if (form) await saveFeatureOptions(form);
 });
 
 window.addEventListener('hashchange', () => void render());

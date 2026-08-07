@@ -5,5 +5,7 @@ export const ISSUE_DIALOG =
   '[role="dialog"][data-testid="issue.views.issue-details.issue-modal.modal-dialog"]';
 export const CURRENT_ISSUE_LINK =
   '[data-testid="issue.views.issue-base.foundation.breadcrumbs.current-issue.item"][href^="/browse/"]';
+export const CURRENT_ISSUE_TITLE =
+  '[data-testid="issue.views.issue-base.foundation.summary.heading"]';
 export const BOARD_CARD = '[data-testid="platform-board-kit.ui.card.ripple.div"]';
 export const BOARD_CARD_KEY = '[data-testid="platform-card.common.ui.key.key"]';

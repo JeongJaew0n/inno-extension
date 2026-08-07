@@ -1,7 +1,12 @@
 export const SITE_IDS = ['amaranth', 'jira'] as const;
 export type SiteId = (typeof SITE_IDS)[number];
 
-export const FEATURE_IDS = ['attendanceHeader', 'issueLinkCopy', 'boardInspector'] as const;
+export const FEATURE_IDS = [
+  'attendanceHeader',
+  'titleAutofill',
+  'issueLinkCopy',
+  'boardInspector',
+] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 
 export interface FeatureDescriptor {

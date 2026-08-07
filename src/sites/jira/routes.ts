@@ -68,9 +68,6 @@ function compareIssueKeys(left: string, right: string): number {
   return projectComparison || leftNumber - rightNumber;
 }
 
-export function isSupportedNptBoardRoute(route: JiraBoardRoute | null): route is JiraBoardRoute {
-  return route !== null
-    && route.projectKey === 'NPT'
-    && route.boardId === '2146'
-    && route.viewPath === '';
+export function isJiraBoardRoute(route: JiraBoardRoute | null): route is JiraBoardRoute {
+  return route !== null && route.viewPath === '';
 }
