@@ -144,6 +144,29 @@ code { padding: 2px 5px; border-radius: 4px; background: #eceff5; color: #5542ce
 .option-fields small { color: #8d9198; font-weight: 400; }
 .secondary-button { width: 100%; padding: 9px 12px; border: 1px solid #d8dbe1; border-radius: 8px; background: #fff; cursor: pointer; font-size: 11px; font-weight: 700; }
 .secondary-button:hover { border-color: #654cf2; color: #5542ce; }
+.option-save-button {
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.option-save-button.is-saving { color: #6f737a; cursor: wait; }
+.option-save-button.is-saved {
+  border-color: #41a878;
+  background: #eaf8f1;
+  color: #167249;
+  animation: save-confirmation 0.28s ease-out;
+}
+.option-save-button.is-error {
+  border-color: #d85a5a;
+  background: #fff1f1;
+  color: #a12f2f;
+}
+@keyframes save-confirmation {
+  0% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .option-save-button { transition: none; }
+  .option-save-button.is-saved { animation: none; }
+}
 .card-body:focus-visible,
 .feature-body:focus-visible,
 .icon-button:focus-visible,

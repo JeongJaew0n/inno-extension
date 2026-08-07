@@ -3,6 +3,12 @@
   "name": "Inno Extension",
   "version": "0.2.0",
   "description": "아마란스와 Jira의 사내 업무 편의 기능을 하나의 확장 프로그램으로 제공합니다.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "permissions": ["storage"],
   "background": {
     "service_worker": "src/background/index.ts",
@@ -10,6 +16,12 @@
   },
   "action": {
     "default_title": "Inno Extension",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    },
     "default_popup": "src/popup/index.html"
   },
   "content_scripts": [

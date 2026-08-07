@@ -19,3 +19,7 @@ export interface BoardInspectorOptions extends Record<string, unknown> {
   supportedProjectKeys: string[];
   supportedBoardIds: string[];
 }
+
+export interface AmaranthTitleAutofillOptions extends Record<string, unknown> {
+  titleText: string;
+}

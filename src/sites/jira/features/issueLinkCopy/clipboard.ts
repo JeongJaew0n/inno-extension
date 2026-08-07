@@ -6,14 +6,35 @@ export interface IssueClipboardContent {
   issueUrl: string;
 }
 
-export function buildIssueClipboardContent(issueKey: string): IssueClipboardContent | null {
+function normalizeIssueTitle(issueTitle: string | undefined): string | null {
+  if (typeof issueTitle !== 'string') return null;
+  const normalized = issueTitle.trim().replace(/\s+/g, ' ');
+  return normalized || null;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export function buildIssueClipboardContent(
+  issueKey: string,
+  issueTitle?: string,
+): IssueClipboardContent | null {
   const normalizedIssueKey = normalizeIssueKey(issueKey);
   if (!normalizedIssueKey) return null;
 
   const issueUrl = `${JIRA_ORIGIN}/browse/${normalizedIssueKey}`;
+  const normalizedIssueTitle = normalizeIssueTitle(issueTitle);
+  const titleSuffix = normalizedIssueTitle ? ` ${normalizedIssueTitle}` : '';
+  const htmlTitleSuffix = normalizedIssueTitle ? ` ${escapeHtml(normalizedIssueTitle)}` : '';
   return {
-    plainText: normalizedIssueKey,
-    htmlText: `<a href="${issueUrl}">${normalizedIssueKey}</a>`,
+    plainText: `${normalizedIssueKey}${titleSuffix}`,
+    htmlText: `<a href="${issueUrl}">${normalizedIssueKey}</a>${htmlTitleSuffix}`,
     issueUrl,
   };
 }

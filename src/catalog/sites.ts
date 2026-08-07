@@ -17,6 +17,14 @@ export const SITES = [
         defaultEnabled: true,
         hasDetails: true,
       },
+      {
+        id: 'titleAutofill',
+        name: '신청서 제목 자동채움',
+        description: '근태신청서의 제목을 미리 저장한 문구로 한 번에 입력합니다.',
+        routeSummary: '아마란스 근태신청서 작성 화면',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
     ],
   },
   {
@@ -29,9 +37,9 @@ export const SITES = [
     features: [
       {
         id: 'issueLinkCopy',
-        name: '이슈 링크 복사',
-        description: '선택한 Jira 이슈 번호를 브라우저 링크 형식으로 복사합니다.',
-        routeSummary: 'NPT 보드 2146의 선택 이슈',
+        name: '업무 링크 복사',
+        description: '선택한 Jira 업무 링크를 제목 포함 여부에 따라 복사합니다.',
+        routeSummary: '모든 Jira 보드의 선택 이슈',
         defaultEnabled: true,
         hasDetails: true,
       },
