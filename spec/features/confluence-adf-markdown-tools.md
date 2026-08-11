@@ -19,7 +19,7 @@ ADF 도구는 Confluence의 문서 모델을 직접 읽고 쓰는 선택 기능�
 | 기능 | 기본값 | 역할 |
 | --- | --- | --- |
 | 본문 Markdown 고정밀 내보내기 | OFF | 현재 문서 ADF를 Markdown 일반 텍스트로 복사 |
-| Markdown 본문 추가 | OFF | 입력한 Markdown을 ADF로 바꿔 현재 문서 맨 아래에 추가 |
+| Markdown -> ADF 변환 | OFF | 입력한 Markdown을 ADF로 바꿔 현재 문서 맨 아래에 추가 |
 
 두 기능은 Confluence 서비스 전체 기능이 ON이고 해당 기능도 ON일 때 Popup 기능 상세에서 사용할 수 있다.
 
@@ -70,7 +70,7 @@ ADF 도구는 Confluence의 문서 모델을 직접 읽고 쓰는 선택 기능�
 
 업로드 이미지 bytes는 텍스트 복사에 포함하지 않는다. 이미지 참조가 있으면 Markdown 경로와 함께 별도 다운로드 기능이 필요하다는 경고를 표시한다.
 
-## Markdown 본문 추가 행동 계약
+## Markdown -> ADF 변환 행동 계약
 
 사용자는 Popup에서 Markdown을 붙여넣거나 `.md` 파일을 선택한다. 실행 전에 다음 정보를 확인할 수 있어야 한다.
 

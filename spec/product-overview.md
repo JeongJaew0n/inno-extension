@@ -40,7 +40,7 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 | Jira | NPT 보드 정보 패널 | OFF | 설정된 프로젝트·보드의 현재 화면 정보를 보조 패널로 표시 |
 | Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
 | Confluence | 본문 Markdown 고정밀 내보내기 | OFF | ADF API로 현재 문서 본문을 읽어 Markdown으로 복사 |
-| Confluence | Markdown 본문 추가 | OFF | 사용자가 입력한 Markdown을 현재 문서 맨 아래에 명시적으로 추가 |
+| Confluence | Markdown -> ADF 변환 | OFF | 사용자가 입력한 Markdown을 ADF로 변환해 현재 문서 맨 아래에 명시적으로 추가 |
 
 기능별 상세 계약은 `spec/features/` 문서에서 관리한다.
 

@@ -83,7 +83,7 @@ export const SITES = [
       },
       {
         id: 'pageMarkdownAppend',
-        name: 'Markdown 본문 추가',
+        name: 'Markdown -> ADF 변환',
         description: '입력한 Markdown을 현재 Confluence 문서의 맨 아래에 추가합니다.',
         routeSummary: 'Confluence 문서 조회·편집·초안 화면',
         defaultEnabled: false,

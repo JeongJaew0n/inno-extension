@@ -6,7 +6,7 @@
 }
 
 * { box-sizing: border-box; }
-body { width: 380px; min-height: 500px; margin: 0; background: #fff; }
+body { width: 520px; min-height: 600px; max-height: 600px; margin: 0; overflow-y: auto; background: #fff; }
 button, input, textarea { font: inherit; }
 button { color: inherit; }
 
@@ -60,7 +60,7 @@ button { color: inherit; }
 }
 
 .tab.is-active { background: #fff; color: #5a45e8; box-shadow: 0 1px 4px rgba(20, 20, 40, 0.15); font-weight: 700; }
-.page-content { padding: 16px 8px; }
+.page-content { padding: 18px 14px; }
 .site-list, .feature-list { display: grid; gap: 10px; }
 
 .site-card,
@@ -141,7 +141,7 @@ code { padding: 2px 5px; border-radius: 4px; background: #eceff5; color: #5542ce
 .option-fields { display: grid; gap: 12px; }
 .option-fields label { display: grid; gap: 5px; color: #4f5359; font-size: 11px; font-weight: 700; }
 .option-fields input { width: 100%; padding: 8px 10px; border: 1px solid #d5d8de; border-radius: 7px; background: #fff; color: #25272b; font-size: 12px; }
-.option-fields textarea { width: 100%; resize: vertical; padding: 8px 10px; border: 1px solid #d5d8de; border-radius: 7px; background: #fff; color: #25272b; font: 12px/18px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.option-fields textarea { width: 100%; min-height: 240px; resize: vertical; padding: 10px 12px; border: 1px solid #d5d8de; border-radius: 7px; background: #fff; color: #25272b; font: 12px/18px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .option-fields small { color: #8d9198; font-weight: 400; }
 .secondary-button { width: 100%; padding: 9px 12px; border: 1px solid #d8dbe1; border-radius: 8px; background: #fff; cursor: pointer; font-size: 11px; font-weight: 700; }
 .secondary-button:hover { border-color: #654cf2; color: #5542ce; }
