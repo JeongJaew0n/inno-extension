@@ -19,7 +19,6 @@ import {
   handleConfluencePopupAction,
   handleConfluencePopupFile,
   handleConfluencePopupInput,
-  prepareConfluencePopupState,
   renderConfluenceFeatureOptions,
 } from './confluenceActions';
 import { featureRoute, parsePopupRoute, siteRoute, type PopupRoute } from './router';
@@ -176,11 +175,9 @@ function renderSiteDetail(siteId: SiteId): string {
 }
 
 function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
-  if (siteId === 'confluence'
-    && (featureId === 'pageMarkdownExport' || featureId === 'pageMarkdownAppend')) {
+  if (siteId === 'confluence' && featureId === 'pageMarkdownAppend') {
     const siteSettings = settings.sites.confluence;
     return renderConfluenceFeatureOptions(
-      featureId,
       siteSettings.enabled && siteSettings.features[featureId]?.enabled === true,
     );
   }
@@ -317,11 +314,6 @@ function renderRoute(route: PopupRoute): string {
 async function render(): Promise<void> {
   settings = await getSettings();
   const route = parsePopupRoute(window.location.hash);
-  if (route.page === 'feature'
-    && route.siteId === 'confluence'
-    && (route.featureId === 'pageMarkdownExport' || route.featureId === 'pageMarkdownAppend')) {
-    await prepareConfluencePopupState();
-  }
   app.innerHTML = renderRoute(route);
 }
 

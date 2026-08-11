@@ -1,4 +1,4 @@
-# Confluence ADF Markdown 도구
+# Confluence Markdown -> ADF 변환기
 
 - 상태: Active
 - 최종 갱신일: 2026-08-11
@@ -6,90 +6,51 @@
 
 ## 한 줄 요약
 
-사용자가 명시적으로 설정한 Atlassian API 인증으로 현재 Confluence 문서의 ADF 본문을 Markdown으로 내보내거나, 입력한 Markdown을 문서 맨 아래에 추가한다.
+사용자가 Extension Popup에 입력한 Markdown을 네트워크 요청 없이 ADF JSON 문서로 변환해 화면에 보여준다.
 
 ## 배경과 사용자 문제
 
-렌더링된 DOM을 읽는 기존 `본문 Markdown 복사`는 설정 없이 빠르게 동작하지만 Confluence의 펼치기, 작업 목록, 업로드 이미지처럼 화면 표현만으로 원래 문서 구조를 정확히 복원하기 어려운 요소가 있다. 반대로 Markdown 문서를 Confluence에 옮길 때는 표, 목록, 코드 블록을 수동으로 다시 작성해야 한다.
+Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, 표, 코드 블록 같은 구조를 다시 작성해야 한다. 초기 통합안은 Atlassian API로 현재 문서를 읽고 쓰는 기능까지 포함했지만, 인증 정보 관리와 원격 문서 변경 위험이 단순 변환 요구에 비해 컸다.
 
-ADF 도구는 Confluence의 문서 모델을 직접 읽고 쓰는 선택 기능으로 이 문제를 줄인다. 기존 한 번 클릭 DOM 복사를 대체하지 않는다.
-
-## 기능 구성과 기본값
-
-| 기능 | 기본값 | 역할 |
-| --- | --- | --- |
-| 본문 Markdown 고정밀 내보내기 | OFF | 현재 문서 ADF를 Markdown 일반 텍스트로 복사 |
-| Markdown -> ADF 변환 | OFF | 입력한 Markdown을 ADF로 바꿔 현재 문서 맨 아래에 추가 |
-
-두 기능은 Confluence 서비스 전체 기능이 ON이고 해당 기능도 ON일 때 Popup 기능 상세에서 사용할 수 있다.
+현재 범위는 변환 결과 자체를 확인하는 로컬 도구로 축소한다. 기존 `본문 Markdown 복사` 기능과 독립적이며 Confluence 페이지를 열어 둘 필요가 없다.
 
 ## 목표
 
-- 기존 DOM 복사보다 문서 구조에 가까운 Markdown 결과를 제공한다.
-- Markdown의 제목, 문단, 목록, 작업 목록, 표, 코드와 기본 인라인 서식을 Confluence 본문으로 옮긴다.
-- 원격 문서 변경 전 대상과 변경 방향을 사용자가 알 수 있게 한다.
-- 인증 정보와 네트워크 권한을 필요한 origin과 extension context로 제한한다.
-- 변환할 수 없는 요소를 숨기지 않고 경고한다.
+- Markdown의 주요 블록·인라인 구조를 ADF document JSON으로 변환한다.
+- 변환 결과와 최상위 block 수를 Popup에서 확인할 수 있게 한다.
+- 손실되거나 축약된 요소를 경고로 드러낸다.
+- 입력과 결과를 브라우저 안에서만 처리한다.
 
 ## 비목표
 
-- 기존 DOM 기반 `본문 Markdown 복사`를 제거하거나 자동으로 대체하지 않는다.
-- 새 Confluence 페이지를 생성하지 않는다.
-- 현재 문서의 기존 본문을 교체하지 않는다.
-- 모든 Confluence 매크로와 서드파티 앱을 손실 없이 변환하지 않는다.
-- 이미지 upload/download와 특정 Mermaid Forge 앱 삽입을 첫 텍스트 통합 범위에 포함하지 않는다.
-- storage XML·ADF JSON 원문을 일반 사용자용 디버그 화면으로 제공하지 않는다.
+- Confluence 문서를 API로 조회, 생성, 수정하거나 기존 본문에 추가하지 않는다.
+- ADF를 Markdown으로 역변환하지 않는다.
+- 결과 복사, 파일 다운로드, 자동 업로드 기능을 제공하지 않는다.
+- Atlassian 이메일, API 토큰 또는 현재 탭 정보를 요구하지 않는다.
+- 로컬 이미지 업로드와 특정 Mermaid Forge 앱 매크로 생성을 지원하지 않는다.
+- 모든 Confluence node와 서드파티 매크로를 손실 없이 생성하지 않는다.
 
-## 대상 사이트와 페이지
+## 사용자 경험과 행동 계약
 
-- 서비스: `Confluence`
-- 허용 origin: `https://pms-innogrid.atlassian.net`
-- 대상: page ID를 식별할 수 있는 문서 조회, 편집, 초안 URL
-- 다른 Atlassian tenant와 임의 origin은 지원하지 않는다.
+사용자는 Confluence 서비스의 `Markdown -> ADF 변환` 기능 상세에서 Markdown을 직접 붙여넣거나 `.md`·`.markdown` 파일을 불러온다.
 
-## 인증 설정 계약
+- 입력이 비어 있으면 변환 버튼을 사용할 수 없다.
+- `ADF로 변환`을 누르면 읽기 전용 JSON 결과를 같은 화면에 표시한다.
+- 결과 상단에는 최상위 block 수, Mermaid block 수, 경고 수를 표시한다.
+- 입력을 바꾸면 이전 결과와 성공 안내를 현재 입력에 맞지 않는 결과로 간주해 숨긴다.
+- 변환 가능한 내용이 없으면 결과 대신 오류를 표시한다.
+- 기능 또는 Confluence 서비스가 OFF이면 입력값은 보존하되 변환 버튼을 사용할 수 없다.
+- Popup을 닫으면 입력과 결과를 영구 저장하지 않는다.
 
-사용자는 Popup의 Confluence 기능 상세에서 Atlassian 계정 이메일과 API 토큰을 직접 저장한다.
+## 입력과 출력
 
-- API 토큰은 `chrome.storage.local`에만 저장하고 sync하지 않는다.
-- 로컬 저장소는 암호화된 비밀 저장소가 아니라는 안내를 표시한다.
-- 저장 여부는 보여주되 저장된 토큰 문자열을 다시 UI로 반환하지 않는다.
-- 사용자는 저장된 인증 정보를 삭제할 수 있다.
-- token은 content script, 로그, 오류 메시지, spec, 테스트 fixture에 포함하지 않는다.
-- REST 요청은 사내 Atlassian origin으로만 전송한다.
+- 입력: UTF-8 Markdown 문자열 또는 사용자가 선택한 Markdown 텍스트 파일
+- 출력: `type: "doc"`, `version: 1`, `content` 배열을 갖는 ADF JSON
+- 처리 위치: Extension Popup의 로컬 JavaScript 실행 환경
+- 네트워크: 사용하지 않음
+- 외부 상태 변경: 없음
 
-## 고정밀 내보내기 행동 계약
-
-사용자가 `Markdown으로 복사`를 누르면 다음을 수행한다.
-
-1. 현재 활성 탭에서 Confluence page ID를 식별한다.
-2. 저장된 인증으로 현재 또는 draft 페이지의 ADF 본문을 조회한다.
-3. 지원하는 ADF node를 Markdown으로 변환한다.
-4. Markdown 일반 텍스트를 클립보드에 기록한다.
-5. 성공, 실패, 손실 가능성을 기능 상세에 표시한다.
-
-업로드 이미지 bytes는 텍스트 복사에 포함하지 않는다. 이미지 참조가 있으면 Markdown 경로와 함께 별도 다운로드 기능이 필요하다는 경고를 표시한다.
-
-## Markdown -> ADF 변환 행동 계약
-
-사용자는 Popup에서 Markdown을 붙여넣거나 `.md` 파일을 선택한다. 실행 전에 다음 정보를 확인할 수 있어야 한다.
-
-- 대상 문서 제목과 page ID
-- 문서 상태(current/draft)
-- 추가될 최상위 block 수
-- 변환 중 발생한 경고
-- 기존 본문을 교체하지 않고 맨 아래에 추가한다는 사실
-
-사용자가 명시적으로 실행하면 현재 ADF document의 `content` 끝에 변환된 node를 추가하고 같은 문서 상태로 저장한다.
-
-- current 페이지는 현재 version 다음 번호로 쓴다.
-- draft 페이지는 draft 상태와 허용되는 version 규칙을 보존한다.
-- 조회 이후 문서가 바뀌어 version conflict가 발생하면 덮어쓰거나 자동 재시도하지 않고 중단한다.
-- 성공 후 사용자가 대상 탭을 새로고침해 결과를 확인할 수 있게 한다.
-
-## 변환 계약
-
-### 공통 지원 요소
+## 변환 지원 범위
 
 - 제목과 문단
 - 줄바꿈과 구분선
@@ -99,60 +60,63 @@ ADF 도구는 Confluence의 문서 모델을 직접 읽고 쓰는 선택 기능�
 - fenced code block과 inline code
 - 굵게, 기울임, 취소선
 - 링크
-- 펼치기 영역
+- Markdown `<details><summary>` 형태의 펼치기 영역
 - 외부 HTTP 이미지 참조
-- Mermaid source fenced code block 보존
+- Mermaid fenced code block의 source 보존
 
-### 손실과 경고
+Mermaid fenced code block은 Mermaid 앱 매크로가 아니라 `expand` 안의 `codeBlock(language: mermaid)`로 변환한다. 따라서 ADF JSON을 다른 경로로 Confluence에 입력하더라도 서드파티 Mermaid 앱 렌더링을 보장하지 않는다.
 
-- 알 수 없는 ADF node는 가능한 경우 자식 텍스트를 보존하되 고유한 동작은 손실될 수 있다.
-- Markdown raw HTML은 안전하게 그대로 옮길 수 없으므로 생략하고 경고한다.
-- 문단 중간 이미지와 선택하지 않은 로컬 이미지는 link 또는 자리표시자로 축약될 수 있다.
-- 서드파티 extension node는 해당 기능의 원본 source가 별도로 보존된 경우를 제외하고 생략될 수 있다.
+## 손실과 경고
 
-## 권한과 네트워크 경계
+- Markdown raw HTML은 안전한 ADF 대응을 보장할 수 없어 생략하고 경고한다.
+- 문단 중간 이미지는 링크 텍스트로 축약하고 경고한다.
+- 로컬·상대 경로 이미지는 업로드하지 않고 자리표시자 텍스트로 바꾸며 경고한다.
+- 외부 HTTP 이미지는 external media 참조로 표현하지만 실제 Confluence 수용 여부는 이 기능이 보장하지 않는다.
 
-- `storage`: 일반 설정과 로컬 인증 정보 저장
-- 정확한 사내 Atlassian host permission: Confluence REST API 호출
-- `scripting`: 사용하지 않음
-- `downloads`: 텍스트 1차 범위에서는 사용하지 않음
+## 설정과 호환성
 
-API 요청은 background 경계에서 수행한다. Popup은 필요한 action과 page ID, 변환 결과를 typed message로 전달하고 background는 sender, origin, 입력 형식과 문서 상태를 검증한다.
+- 기능 기본값은 OFF다.
+- 서비스 gate와 기능 enabled 값이 모두 ON일 때만 변환할 수 있다.
+- 기존 사용자 설정을 잃지 않기 위해 내부 기능 ID `pageMarkdownAppend`는 유지한다. 사용자에게 보이는 계약에는 문서 추가 동작이 없다.
+- 일반 enabled 설정 외 인증 정보나 변환 결과는 저장하지 않는다.
 
-## 실패와 복구
+## 보안과 권한
 
-- 인증 정보가 없으면 저장 위치를 안내하고 요청하지 않는다.
-- page ID를 식별하지 못하면 지원되는 Confluence 문서를 열도록 안내한다.
-- 401/403은 인증 확인, 404는 문서 또는 접근 권한 확인, version conflict는 새로고침 후 재검토를 안내한다.
-- ADF 응답이 유효한 문서가 아니면 복사·쓰기를 중단한다.
-- 변환 결과가 비어 있으면 문서를 수정하지 않는다.
-- API 기능 실패는 기존 DOM 기반 복사와 원본 Confluence UI에 영향을 주지 않는다.
+- 변환 기능은 `storage` 외 추가 Chrome 권한을 요구하지 않는다.
+- Atlassian API, 현재 탭 URL, 로그인 쿠키, 인증 토큰에 접근하지 않는다.
+- Markdown 입력과 ADF 결과를 외부 서버로 전송하지 않는다.
+- 결과 JSON 안에는 사용자가 입력한 본문이 포함되므로 화면 공유나 수동 반출 시 사용자가 민감정보를 확인해야 한다.
+
+## 결정과 트레이드오프
+
+원격 문서 추가까지 자동화하면 작업 단계는 줄지만 API 토큰 보관, host permission, version conflict, 잘못된 문서 변경 복구가 필요하다. 사용자의 현재 요구는 변환 결과만이므로 이 책임을 제거하고 로컬 변환기로 범위를 제한했다.
+
+결과 복사와 다운로드도 편리하지만 변환 이외의 전달 경로와 사용자 행동을 제품 계약에 추가한다. 현재는 결과 확인만 제공하고 필요성이 확인될 때 별도 기능으로 검토한다.
 
 ## 수용 기준
 
-- 기능을 켜지 않은 기존 사용자의 동작과 권한 외 사용자 흐름이 바뀌지 않는다.
-- 저장된 API 토큰이 sync storage와 content script로 전달되지 않는다.
-- published 문서와 draft 문서의 ADF를 읽을 수 있다.
-- 지원 요소가 포함된 ADF를 식별 가능한 Markdown으로 복사할 수 있다.
-- Markdown을 현재 문서 맨 아래에 추가하고 기존 본문을 보존한다.
-- version conflict에서 기존 문서를 덮어쓰지 않는다.
-- 미지원 요소와 이미지 제한을 사용자에게 경고한다.
+- Markdown 입력과 파일 입력이 동일한 변환 경로를 사용한다.
+- 지원 요소가 유효한 ADF document 구조로 변환된다.
+- 경고, 최상위 block 수와 Mermaid 수가 결과와 함께 표시된다.
+- 변환 과정에서 네트워크 요청, 클립보드 쓰기, 다운로드, Confluence 문서 변경이 발생하지 않는다.
+- manifest에 API용 host permission과 background service worker가 없다.
+- API 인증·조회·쓰기 코드가 배포 산출물에 포함되지 않는다.
 - typecheck, unit test, production build가 성공한다.
 
-## 알려진 리스크
+## 알려진 리스크와 열린 질문
 
-- Atlassian API와 ADF schema 변경으로 조회·변환이 중단될 수 있다.
-- `storage.local`은 운영체제 비밀 저장소가 아니므로 로컬 Chrome profile 접근 시 token이 노출될 수 있다.
-- ADF는 지원 node보다 훨씬 넓어 매크로 semantics가 축약될 수 있다.
-- 편집 화면의 저장 전 변경과 API write가 동시에 일어나면 충돌할 수 있다.
-- Popup 크기 안에서 긴 Markdown과 경고를 다루는 사용성이 부족할 수 있다.
+- ADF schema는 지원 node보다 넓어 변환 결과가 모든 Confluence 입력 경로에서 동일하게 수용된다고 보장할 수 없다.
+- Popup 안에서 긴 입력과 JSON 결과를 함께 다루는 사용성은 제한적이다.
+- 결과를 실제 Confluence에 전달하는 방식은 현재 범위 밖이며 확정하지 않았다.
 
 ## 변경 이력
 
-- 2026-08-11: 별도 Jira·Confluence 도구의 ADF 양방향 변환을 Inno Extension 구조로 통합하기로 결정했다. 기존 DOM 복사를 유지하고 인증·원격 write가 필요한 두 기능은 기본 OFF로 분리했다.
+- 2026-08-11: 별도 Jira·Confluence 도구의 ADF 양방향 변환과 API 기반 문서 추가를 기본 OFF 기능으로 통합했다.
+- 2026-08-11: 사용자 요구를 변환 자체로 재확정해 ADF -> Markdown, 인증, API 조회·쓰기, 현재 문서 추가, 복사·다운로드를 제거하고 로컬 Markdown -> ADF JSON 변환기만 유지했다.
 
 ## 관련 문서
 
 - [제품 개요](../product-overview.md)
 - [Confluence 문서 본문 Markdown 복사](./confluence-page-markdown-copy.md)
+- [Confluence Mermaid 동작 분석](../../docs/confluence-mermaid-runtime-analysis.md)
 - [용어사전](../glossary.md)
