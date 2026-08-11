@@ -23,8 +23,3 @@ export interface MarkdownToAdfResult {
   warnings: string[];
   mermaidCount: number;
 }
-
-export interface AdfToMarkdownResult {
-  markdown: string;
-  warnings: string[];
-}

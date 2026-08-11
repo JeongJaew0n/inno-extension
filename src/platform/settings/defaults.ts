@@ -42,10 +42,6 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
             enabled: true,
             options: {},
           },
-          pageMarkdownExport: {
-            enabled: false,
-            options: {},
-          },
           pageMarkdownAppend: {
             enabled: false,
             options: {},

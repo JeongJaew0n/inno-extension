@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  confluenceAdfToMarkdown,
   markdownToConfluenceAdf,
-  type AdfDocument,
 } from '../src/sites/confluence/adf';
 
 test('markdown를 Confluence ADF로 변환한다', () => {
@@ -54,7 +52,7 @@ test('markdown를 Confluence ADF로 변환한다', () => {
   });
 });
 
-test('mermaid fence는 expand/codeBlock으로 보존하고 다시 mermaid fence로 복원한다', () => {
+test('mermaid fence는 expand/codeBlock으로 보존한다', () => {
   const markdown = '```mermaid\ngraph TD;\nA-->B;\n```';
   const adf = markdownToConfluenceAdf(markdown);
 
@@ -69,9 +67,6 @@ test('mermaid fence는 expand/codeBlock으로 보존하고 다시 mermaid fence�
     }],
   });
 
-  const roundTrip = confluenceAdfToMarkdown(adf.doc);
-  assert.equal(roundTrip.markdown, '```mermaid\ngraph TD;\nA-->B;\n```\n');
-  assert.deepEqual(roundTrip.warnings, []);
 });
 
 test('지원하지 않는 HTML과 이미지 변환 제외는 warnings에 남긴다', () => {
@@ -90,63 +85,8 @@ test('지원하지 않는 HTML과 이미지 변환 제외는 warnings에 남긴�
   ]);
 });
 
-test('ADF 확장/미디어 노드는 warnings와 함께 생략한다', () => {
-  const doc: AdfDocument = {
-    type: 'doc',
-    version: 1,
-    content: [
-      {
-        type: 'paragraph',
-        content: [{ type: 'text', text: '앞 문단' }],
-      },
-      {
-        type: 'extension',
-        attrs: { extensionKey: 'sample' },
-      },
-      {
-        type: 'mediaSingle',
-        content: [{
-          type: 'media',
-          attrs: { type: 'file', id: '1', collection: 'c' },
-        }],
-      },
-    ],
-  };
-
-  const result = confluenceAdfToMarkdown(doc);
-  assert.equal(result.markdown, '앞 문단\n');
-  assert.deepEqual(result.warnings, [
-    'ADF extension 노드는 Markdown으로 안전하게 변환할 수 없어 생략했습니다.',
-    '업로드된 ADF media는 파일을 포함할 수 없어 Markdown에서 생략했습니다.',
-  ]);
-});
-
-test('외부 HTTP 이미지는 ADF와 Markdown 사이에서 참조를 보존한다', () => {
+test('외부 HTTP 이미지는 ADF external media로 보존한다', () => {
   const converted = markdownToConfluenceAdf('![구성도](https://example.com/diagram.png)');
   assert.deepEqual(converted.warnings, []);
   assert.equal(converted.doc.content[0]?.type, 'mediaSingle');
-
-  const roundTrip = confluenceAdfToMarkdown(converted.doc);
-  assert.equal(roundTrip.markdown, '![구성도](https://example.com/diagram.png)\n');
-  assert.deepEqual(roundTrip.warnings, []);
-});
-
-test('알 수 없는 ADF node는 내부 텍스트와 손실 경고를 함께 남긴다', () => {
-  const doc: AdfDocument = {
-    type: 'doc',
-    version: 1,
-    content: [{
-      type: 'customPanel',
-      content: [{
-        type: 'paragraph',
-        content: [{ type: 'text', text: '보존할 내용' }],
-      }],
-    }],
-  };
-
-  const result = confluenceAdfToMarkdown(doc);
-  assert.equal(result.markdown, '보존할 내용\n');
-  assert.deepEqual(result.warnings, [
-    '지원하지 않는 ADF node(customPanel)는 내부 텍스트만 보존했습니다.',
-  ]);
 });
