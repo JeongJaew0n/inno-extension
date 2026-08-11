@@ -18,6 +18,7 @@ import {
   parseConfluencePageUrl,
 } from '../src/sites/confluence/routes';
 import { adfDocumentToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/adf-to-editor-html';
+import { codeBlockTextToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/code-block';
 import { buildIssueClipboardContent } from '../src/sites/jira/features/issueLinkCopy/clipboard';
 import {
   extractIssueKeyFromHref,
@@ -273,6 +274,14 @@ test('ADF를 Confluence 편집기 paste용 안전한 HTML로 직렬화한다', (
     }),
     '<h2>배포 &lt;계획&gt;</h2><p><strong>강조</strong><a href="https://example.com"> 링크</a> 차단</p><ul><li><p>항목</p></li></ul>',
   );
+});
+
+test('Confluence 코드블럭 원문을 서식 없는 편집기 문단 HTML로 바꾼다', () => {
+  assert.equal(
+    codeBlockTextToEditorHtml('flowchart LR\n  A --> B\n\n<script>alert(1)</script>'),
+    '<p>flowchart LR<br>  A --&gt; B</p><p>&lt;script&gt;alert(1)&lt;/script&gt;</p>',
+  );
+  assert.equal(codeBlockTextToEditorHtml(''), '<p><br></p>');
 });
 
 test('Confluence 본문의 Markdown 제어 문자를 이스케이프한다', () => {

@@ -39,7 +39,7 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 | Jira | 업무 링크 복사 | ON | Jira 보드 선택 업무와 직접 업무 조회 화면에서 링크 또는 링크+제목 복사 |
 | Jira | NPT 보드 정보 패널 | OFF | 설정된 프로젝트·보드의 현재 화면 정보를 보조 패널로 표시 |
 | Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
-| Confluence | Markdown -> ADF 변환 | OFF | Popup에서 ADF JSON을 확인하거나 `edit-v2` 본문의 Markdown 원문을 편집 콘텐츠로 변환 |
+| Confluence | Markdown -> ADF 변환 | OFF | Popup 변환, `edit-v2` 본문 변환, 코드블럭 서식 제거 |
 
 기능별 상세 계약은 `spec/features/` 문서에서 관리한다.
 
@@ -116,6 +116,8 @@ effectiveEnabled = site.enabled && feature.enabled
 
 Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서는 ADF JSON만 보여주고, Confluence `edit-v2`에서는 사용자의 클릭으로 현재 편집 본문을 변환한다. 편집기 적용은 Confluence가 제공하는 paste 처리 경계를 사용하므로 페이지 저장 API와 version conflict 책임을 피하고 실행 취소 흐름을 유지한다. 대신 외부 editor DOM과 paste 동작 변경에 영향을 받는다.
 
+같은 편집기 도구에서 코드블럭 벗기기는 기존 ADF 전체를 재해석하지 않고 코드 블록만 일반 문단으로 바꾼다. Mermaid 자동 매크로 생성은 특정 Forge 앱의 extension 계약과 cross-origin 설정 UI에 의존하므로 무API·DOM 우선 범위에는 포함하지 않는다.
+
 ### Vanilla TypeScript Popup
 
 현재 규모에서는 별도 UI 프레임워크 없이 구현한다. 기능 수와 상호작용 복잡도가 크게 늘어날 때만 프레임워크 도입을 재검토한다.
@@ -151,6 +153,7 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - 2026-08-11: DOM 기반 복사를 유지하면서 ADF API 기반 고정밀 Markdown 내보내기와 명시적 본문 추가 기능을 기본 OFF로 분리하기로 결정했다.
 - 2026-08-11: ADF 도구의 범위를 로컬 Markdown -> ADF JSON 변환으로 축소하고 API 인증, 고정밀 내보내기, 원격 문서 추가, 결과 복사·다운로드를 제거했다.
 - 2026-08-11: Confluence `edit-v2` toolbar에서 일반 문단 형태의 Markdown 본문 전체를 편집 콘텐츠로 변환하는 버튼을 추가했다. API 저장 대신 편집기의 실행 취소·사용자 업데이트 흐름을 따르도록 했다.
+- 2026-08-11: Confluence 편집 본문의 코드블럭 서식을 일괄 제거하는 버튼을 추가하고, 기존 ADF의 Mermaid 자동 매크로 변환은 Forge 앱 계약이 공개·검증되기 전까지 지원하지 않기로 했다.
 
 ## 관련 문서
 
