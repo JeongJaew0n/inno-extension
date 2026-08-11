@@ -35,6 +35,15 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
           },
         },
       },
+      confluence: {
+        enabled: true,
+        features: {
+          pageMarkdownCopy: {
+            enabled: true,
+            options: {},
+          },
+        },
+      },
     },
   };
 }

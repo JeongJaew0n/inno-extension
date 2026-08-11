@@ -9,6 +9,11 @@ import {
   normalizeTitleAutofillText,
   TITLE_AUTOFILL_MAX_LENGTH,
 } from '../src/sites/amaranth/features/titleAutofill/contracts';
+import {
+  escapeMarkdownText,
+  isRedundantHeaderOnlyTable,
+} from '../src/sites/confluence/features/pageMarkdownCopy/markdown';
+import { parseConfluencePageUrl } from '../src/sites/confluence/routes';
 import { buildIssueClipboardContent } from '../src/sites/jira/features/issueLinkCopy/clipboard';
 import {
   extractIssueKeyFromHref,
@@ -48,6 +53,7 @@ test('서비스 아이콘 asset은 정사각형 PNG이며 표시 크기 이상�
   for (const [assetPath, minimumSize] of [
     ['src/popup/assets/amaranth-favicon.png', 256],
     ['src/popup/assets/jira-favicon.png', 32],
+    ['src/popup/assets/confluence-favicon.png', 128],
   ] as const) {
     const image = await readFile(assetPath);
     const width = image.readUInt32BE(16);
@@ -90,6 +96,7 @@ test('부분 설정을 기본값과 병합하고 알 수 없는 값을 무시한
     supportedBoardIds: ['2146'],
   });
   assert.equal(settings.sites.amaranth.features.attendanceHeader?.enabled, true);
+  assert.equal(settings.sites.confluence.features.pageMarkdownCopy?.enabled, true);
 });
 
 test('과거 overlayEnabled 설정을 boardInspector로 이관한다', () => {
@@ -161,4 +168,54 @@ test('Jira 업무 링크 복사는 제목 포함 여부에 따라 브라우저 �
     issueUrl: 'https://pms-innogrid.atlassian.net/browse/NPT-4',
   });
   assert.equal(buildIssueClipboardContent('invalid'), null);
+});
+
+test('Confluence 문서 조회 URL만 Markdown 복사 대상으로 판별한다', () => {
+  assert.deepEqual(
+    parseConfluencePageUrl(new URL(
+      'https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/pages/2166423922/20260806+-+example',
+    )),
+    { spaceKey: 'PAAS', pageId: '2166423922' },
+  );
+  assert.equal(
+    parseConfluencePageUrl(new URL('https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/overview')),
+    null,
+  );
+  assert.equal(
+    parseConfluencePageUrl(new URL(
+      'https://example.com/wiki/spaces/PAAS/pages/2166423922/example',
+    )),
+    null,
+  );
+});
+
+test('Confluence 본문의 Markdown 제어 문자를 이스케이프한다', () => {
+  assert.equal(
+    escapeMarkdownText('배포 *상태*와 [링크], `코드`, file_name'),
+    '배포 \\*상태\\*와 \\[링크\\], \\`코드\\`, file\\_name',
+  );
+});
+
+test('Confluence 고정 헤더용 단일행 표만 실제 표 앞에서 중복으로 판별한다', () => {
+  assert.equal(
+    isRedundantHeaderOnlyTable(
+      [[' 프로파일 ', '핵심 특징']],
+      [['프로파일', '핵심 특징'], ['공통', '기본 설정'], ['local', '로컬 설정']],
+    ),
+    true,
+  );
+  assert.equal(
+    isRedundantHeaderOnlyTable(
+      [['프로파일', '핵심 특징']],
+      [['환경', '설명'], ['local', '로컬 설정']],
+    ),
+    false,
+  );
+  assert.equal(
+    isRedundantHeaderOnlyTable(
+      [['프로파일', '핵심 특징']],
+      [['프로파일', '핵심 특징']],
+    ),
+    false,
+  );
 });

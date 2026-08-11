@@ -1,7 +1,7 @@
 # Inno Extension 제품 개요
 
 - 상태: Active
-- 최종 갱신일: 2026-08-04
+- 최종 갱신일: 2026-08-07
 - 대상 버전: 0.2.x
 
 ## 한 줄 요약
@@ -38,12 +38,13 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 | 아마란스 | 신청서 제목 자동채움 | ON | 근태신청서의 제목을 Popup에 저장한 문구로 입력 |
 | Jira | 업무 링크 복사 | ON | Jira 보드에서 선택한 업무의 링크 또는 링크+제목 복사 |
 | Jira | NPT 보드 정보 패널 | OFF | 설정된 프로젝트·보드의 현재 화면 정보를 보조 패널로 표시 |
+| Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
 
 기능별 상세 계약은 `spec/features/` 문서에서 관리한다.
 
 ## 공통 사용자 경험
 
-Popup의 최상위 단위는 서비스다. 아마란스와 Jira는 각각 하나의 서비스다. 사용자는 서비스 카드를 통해 대상 사이트와 활성 기능 수를 확인하고, 서비스 전체 기능을 한 번에 끄거나 상세 화면으로 이동한다. 서비스 상세에서는 기능별 토글과 적용 범위를 확인한다.
+Popup의 최상위 단위는 서비스다. 아마란스, Jira, Confluence는 각각 하나의 서비스다. 사용자는 서비스 카드를 통해 대상 사이트와 활성 기능 수를 확인하고, 서비스 전체 기능을 한 번에 끄거나 상세 화면으로 이동한다. 서비스 상세에서는 기능별 토글과 적용 범위를 확인한다.
 
 실제 실행 여부는 다음 규칙을 따른다.
 
@@ -76,7 +77,7 @@ effectiveEnabled = site.enabled && feature.enabled
 - TypeScript strict 설정과 Vite, CRXJS 빌드 체계를 사용한다.
 - 사이트별 content script entry를 분리해 origin 간 runtime 의존을 막는다.
 - 사이트마다 하나의 조정 runtime을 두고 활성 기능의 lifecycle을 관리한다.
-- Jira와 아마란스 모두 SPA이므로 URL 이벤트만이 아니라 DOM 변경에도 대응해야 한다.
+- Jira, Confluence와 아마란스 모두 SPA이므로 URL 이벤트만이 아니라 DOM 변경에도 대응해야 한다.
 - DOM selector는 외부 사이트 UI 변경에 취약하므로 사이트별 중앙 계약으로 관리한다.
 - 현재 권한은 설정 저장에 필요한 `storage` 중심이며, 기능상 꼭 필요하지 않은 광범위한 권한은 추가하지 않는다.
 
@@ -142,11 +143,13 @@ effectiveEnabled = site.enabled && feature.enabled
 - 2026-08-04: 아마란스와 Jira 같은 최상위 기능 분류의 사용자 용어를 `서비스`로 확정했다.
 - 2026-08-04: 아마란스 서비스 아이콘을 투명 배경의 256px 전용 자산으로 교체해 고밀도 화면에서의 선명도를 개선했다.
 - 2026-08-04: 아마란스 근태신청서에 사용자 설정 문구를 입력하는 제목 자동채움 기능을 추가했다.
+- 2026-08-07: Confluence를 독립 서비스로 추가하고 문서 조회 화면의 본문을 Markdown으로 복사하는 기능을 도입했다.
 
 ## 관련 문서
 
 - [Jira 업무 링크 복사](./features/jira-work-link-copy.md)
 - [아마란스 신청서 제목 자동채움](./features/amaranth-title-autofill.md)
+- [Confluence 문서 본문 Markdown 복사](./features/confluence-page-markdown-copy.md)
 - [용어사전](./glossary.md)
 - [멀티 사이트 통합 계획](../docs/plans/inno-extension-multi-site/spec.md)
 - [아마란스 출퇴근 기능 계획](../docs/plans/gw-checkin-header-buttons/spec.md)
