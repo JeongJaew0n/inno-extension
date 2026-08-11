@@ -20,6 +20,7 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 - 변환 결과와 최상위 block 수를 Popup에서 확인할 수 있게 한다.
 - Confluence 편집 화면에서 본문 전체의 Markdown 원문을 편집 가능한 문서 구조로 바꾼다.
 - Confluence 편집 본문의 코드 블록을 일반 문단으로 되돌려 원문을 다시 편집하거나 변환할 수 있게 한다.
+- Mermaid 선언이 들어 있는 기존 코드 블록만 찾아 사내 Confluence의 Mermaid ADF 매크로와 연결한다.
 - 손실되거나 축약된 요소를 경고로 드러낸다.
 - 입력과 결과를 브라우저 안에서만 처리한다.
 
@@ -30,7 +31,8 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 - ADF를 Markdown으로 역변환하지 않는다.
 - 결과 복사, 파일 다운로드, 자동 업로드 기능을 제공하지 않는다.
 - Atlassian 이메일이나 API 토큰을 요구하지 않는다.
-- 로컬 이미지 업로드와 특정 Mermaid Forge 앱 매크로 생성을 지원하지 않는다.
+- 로컬 이미지 업로드를 지원하지 않는다.
+- 사내 Confluence에 설치된 Mermaid 앱 외 다른 서드파티 매크로를 생성하지 않는다.
 - 모든 Confluence node와 서드파티 매크로를 손실 없이 생성하지 않는다.
 
 ## 사용자 경험과 행동 계약
@@ -49,7 +51,7 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 
 ### Confluence 편집기 변환
 
-기능이 활성화되면 Confluence `edit-v2` 편집기 toolbar에 `Markdown -> ADF 변환`과 `코드블럭 벗기기` 버튼을 표시한다.
+기능이 활성화되면 Confluence `edit-v2` 편집기 toolbar에 `Markdown -> ADF 변환`, `코드블럭 벗기기`, `Mermaid -> ADF` 버튼을 표시한다.
 
 - 사용자는 편집 본문에 Markdown 원문을 넣고 버튼을 누른다.
 - 제목 입력란은 변환 대상에서 제외하고 본문 전체만 변환한다.
@@ -68,6 +70,16 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 - 실제 코드와 Markdown 원문을 자동으로 구분하지 않는다. 사용자가 버튼을 누르면 본문의 모든 코드 블록이 대상이 된다.
 - 처리 개수와 실패 여부를 버튼 상태로 안내한다.
 - 확장은 `업데이트` 버튼을 누르지 않으며, 사용자는 저장 전 결과를 검토하고 Confluence 실행 취소로 되돌릴 수 있다.
+
+`Mermaid -> ADF`는 현재 본문의 코드 블록 중 첫 유효 선언이 Mermaid diagram type인 블록만 대상으로 한다.
+
+- 빈 줄과 `%%` 주석·초기화 지시문을 건너뛴 첫 줄이 `flowchart LR`, `sequenceDiagram`, `stateDiagram-v2` 등 지원 Mermaid 선언과 일치해야 한다.
+- 일반 JavaScript, shell, JSON 같은 코드 블록은 변경하지 않는다.
+- 원본 코드 블록을 제거하거나 수정하지 않고, 바로 뒤에 사내 Confluence의 `Mermaid diagram` ADF `extension`을 삽입한다.
+- 매크로의 `guestParams.index`에는 변환 직전 본문 전체 코드 블록에서 해당 원본이 차지하는 0부터 시작하는 순번을 넣는다.
+- 바로 다음 편집 node가 동일한 Mermaid extension이면 이미 변환된 것으로 보고 중복 삽입하지 않는다.
+- 여러 후보는 뒤에서부터 처리해 앞쪽 삽입이 기존 코드 블록 순번에 영향을 주지 않게 한다.
+- 처리 개수와 실패 여부를 버튼 상태로 안내하며, 확장은 페이지를 저장하지 않는다.
 
 ## 입력과 출력
 
@@ -92,9 +104,9 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 - 외부 HTTP 이미지 참조
 - Mermaid fenced code block의 source 보존
 
-Mermaid fenced code block은 Mermaid 앱 매크로가 아니라 `expand` 안의 `codeBlock(language: mermaid)`로 변환한다. 따라서 ADF JSON을 다른 경로로 Confluence에 입력하더라도 서드파티 Mermaid 앱 렌더링을 보장하지 않는다.
+Popup의 Markdown 변환 결과에서 Mermaid fenced code block은 Mermaid 앱 매크로가 아니라 `expand` 안의 `codeBlock(language: mermaid)`로 보존한다. Popup 변환기는 tenant나 페이지 문맥을 모르기 때문에 서드파티 Mermaid 앱 렌더링을 보장하지 않는다.
 
-이미 ADF인 본문의 Mermaid 자동 변환은 현재 범위에 포함하지 않는다. 조사된 Mermaid 기능은 Confluence 기본 node가 아니라 특정 Forge 앱의 `extension` node이며, 별도 코드 블록을 문서 내 순번으로 참조한다. API 없이 content script가 편집기 DOM만 조작하는 현재 구조에서는 외부 앱의 cross-origin 설정 iframe에 접근할 수 없고, 공개된 paste 계약으로 해당 `extension`을 안정적으로 생성할 수도 없다. Mermaid 문법 후보를 찾는 것까지는 가능하지만, 매크로 자동 생성은 공개 API 또는 검증된 editor extension 계약이 확보될 때 다시 검토한다.
+편집 화면의 `Mermaid -> ADF`는 이미 코드 블록으로 구성된 본문을 별도로 처리한다. 조사된 Mermaid 기능은 Confluence 기본 node가 아니라 특정 Forge 앱의 `extension` node이며, 별도 코드 블록을 문서 내 순번으로 참조한다. 설정 iframe을 조작하지 않고 Atlassian ADF schema의 `data-node-type="extension"` HTML paste 계약을 사용해 `extensionType`, `extensionKey`, `guestParams.index`를 전달한다.
 
 ## 손실과 경고
 
@@ -129,7 +141,7 @@ ADF JSON을 편집기 내부 상태에 직접 주입하는 방식은 Confluence�
 
 코드 블록 벗기기는 전체 문서를 Markdown으로 재해석하지 않고 명시적인 코드 블록 node만 일반 문단으로 바꾼다. 이 때문에 기존 ADF 구조를 유지할 수 있지만, 실제 소스 코드 블록도 함께 벗겨진다. 자동 추측 대신 사용자 클릭과 저장 전 검토를 안전 경계로 둔다.
 
-Mermaid 매크로 자동 생성은 현재의 로컬·무API 원칙과 양립하지 않는다. Forge 앱 식별자와 순번 parameter를 하드코딩하거나 비공개 ProseMirror 상태를 주입하면 구현은 가능할 수 있지만, 앱 업데이트와 문서 재배치에 취약하고 외부 매크로 설정 iframe을 완료할 수 없다. 따라서 지금은 source 보존만 지원한다.
+Mermaid 매크로는 API 호출이나 비공개 ProseMirror state 주입 대신 ADF schema가 정의한 paste DOM을 사용한다. 이로써 로컬·무API 원칙과 실행 취소 흐름은 유지하지만, extension key와 parameter 계약은 현재 사내 tenant에 설치된 Forge 앱에 종속된다. 따라서 일반 코드로의 자동 폴백을 위해 원본 코드 블록을 반드시 보존하고, 페이지 저장은 사용자에게 맡긴다.
 
 결과 복사와 다운로드도 편리하지만 변환 이외의 전달 경로와 사용자 행동을 제품 계약에 추가한다. 현재는 결과 확인만 제공하고 필요성이 확인될 때 별도 기능으로 검토한다.
 
@@ -140,6 +152,8 @@ Mermaid 매크로 자동 생성은 현재의 로컬·무API 원칙과 양립하�
 - 경고, 최상위 block 수와 Mermaid 수가 결과와 함께 표시된다.
 - `edit-v2` 화면의 편집기 toolbar에 기능 버튼이 한 번만 표시된다.
 - 같은 toolbar에서 `코드블럭 벗기기`를 실행하면 모든 코드 블록의 원문과 줄바꿈이 일반 문단으로 남고 다른 기존 서식은 유지된다.
+- 같은 toolbar에서 `Mermaid -> ADF`를 실행하면 Mermaid 선언 코드 블록만 원본을 유지한 채 해당 순번을 참조하는 `Mermaid diagram` extension과 연결된다.
+- 일반 코드 블록은 Mermaid 변환으로 변경되지 않고, 바로 뒤에 동일 extension이 있는 Mermaid 코드 블록은 중복 변환되지 않는다.
 - 일반 문단 형태의 Markdown 본문은 제목·목록·표·코드 등 식별 가능한 편집 구조로 교체된다.
 - 이미 서식이 적용된 본문에서는 변환을 중단하고 이유를 안내한다.
 - 편집기 변환 후 실행 취소가 가능하며 확장이 페이지 저장을 실행하지 않는다.
@@ -153,7 +167,8 @@ Mermaid 매크로 자동 생성은 현재의 로컬·무API 원칙과 양립하�
 - ADF schema는 지원 node보다 넓어 변환 결과가 모든 Confluence 입력 경로에서 동일하게 수용된다고 보장할 수 없다.
 - Popup 안에서 긴 입력과 JSON 결과를 함께 다루는 사용성은 제한적이다.
 - Confluence editor toolbar, ProseMirror DOM 또는 paste 처리 방식이 바뀌면 버튼 표시나 본문 적용이 중단될 수 있다.
-- Mermaid source는 일반 코드 표현으로 보존되며 Mermaid Forge 앱 매크로로 자동 변환되지 않는다.
+- Mermaid extension key와 `guestParams.index` 계약이 앱 업데이트로 바뀌면 새 매크로가 렌더링되지 않을 수 있다.
+- 코드 블록을 삽입·삭제·재정렬한 뒤 Forge 앱이 저장된 index를 자동 보정하는지는 추가 검증이 필요하다.
 - 코드블럭 벗기기는 실제 코드와 Markdown 원문을 구분하지 않고 모든 코드 블록에 적용되므로 저장 전 검토가 필요하다.
 - 편집기 적용 결과는 실제 `업데이트` 전 사용자가 검토해야 한다.
 
@@ -163,6 +178,7 @@ Mermaid 매크로 자동 생성은 현재의 로컬·무API 원칙과 양립하�
 - 2026-08-11: 사용자 요구를 변환 자체로 재확정해 ADF -> Markdown, 인증, API 조회·쓰기, 현재 문서 추가, 복사·다운로드를 제거하고 로컬 Markdown -> ADF JSON 변환기만 유지했다.
 - 2026-08-11: Confluence `edit-v2` toolbar에서 현재 본문의 Markdown 원문을 편집 콘텐츠로 변환하는 동작을 추가했다. API 저장 대신 편집기의 paste·실행 취소·사용자 업데이트 흐름을 사용하고, 이미 서식화된 본문은 손실 방지를 위해 거부한다.
 - 2026-08-11: 편집 본문의 모든 코드 블록을 일반 문단으로 되돌리는 `코드블럭 벗기기`를 추가했다. 이미 ADF인 Mermaid source의 자동 매크로 변환은 Forge 앱의 비공개 extension 계약과 cross-origin 설정 UI 때문에 현재 무API 범위에서 제외하기로 했다.
+- 2026-08-11: Atlassian ADF schema의 extension paste 계약을 확인해 기존 결정을 갱신했다. `Mermaid -> ADF`가 Mermaid 선언 코드 블록만 탐지하고 원본 뒤에 현재 tenant의 `Mermaid diagram` extension을 생성하도록 추가했다.
 
 ## 관련 문서
 

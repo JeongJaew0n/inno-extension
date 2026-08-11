@@ -19,6 +19,11 @@ import {
 } from '../src/sites/confluence/routes';
 import { adfDocumentToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/adf-to-editor-html';
 import { codeBlockTextToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/code-block';
+import {
+  buildConfluenceMermaidExtensionHtml,
+  CONFLUENCE_MERMAID_EXTENSION_KEY,
+  isMermaidCodeBlockSource,
+} from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
 import { buildIssueClipboardContent } from '../src/sites/jira/features/issueLinkCopy/clipboard';
 import {
   extractIssueKeyFromHref,
@@ -282,6 +287,27 @@ test('Confluence 코드블럭 원문을 서식 없는 편집기 문단 HTML로 �
     '<p>flowchart LR<br>  A --&gt; B</p><p>&lt;script&gt;alert(1)&lt;/script&gt;</p>',
   );
   assert.equal(codeBlockTextToEditorHtml(''), '<p><br></p>');
+});
+
+test('Mermaid 선언으로 시작하는 코드블럭만 변환 대상으로 판별한다', () => {
+  assert.equal(isMermaidCodeBlockSource('flowchart LR\n  A --> B'), true);
+  assert.equal(isMermaidCodeBlockSource('\n%% 초기화\n%%{init: {"theme": "dark"}}%%\nsequenceDiagram\nA->>B: ping'), true);
+  assert.equal(isMermaidCodeBlockSource('stateDiagram-v2\n  [*] --> Ready'), true);
+  assert.equal(isMermaidCodeBlockSource('const flowchart = "LR";'), false);
+  assert.equal(isMermaidCodeBlockSource('graph data without direction'), false);
+  assert.equal(isMermaidCodeBlockSource(''), false);
+});
+
+test('Mermaid 코드블럭 순번을 참조하는 Confluence extension paste HTML을 만든다', () => {
+  const html = buildConfluenceMermaidExtensionHtml(8, 'local-id-&-1');
+
+  assert.match(html, /data-node-type="extension"/);
+  assert.match(html, new RegExp(`data-extension-key="${CONFLUENCE_MERMAID_EXTENSION_KEY}"`));
+  assert.match(html, /data-extension-type="com\.atlassian\.ecosystem"/);
+  assert.match(html, /data-local-id="local-id-&amp;-1"/);
+  assert.match(html, /&quot;guestParams&quot;:\{&quot;index&quot;:8\}/);
+  assert.match(html, /&quot;forgeEnvironment&quot;:&quot;PRODUCTION&quot;/);
+  assert.throws(() => buildConfluenceMermaidExtensionHtml(-1, 'invalid'));
 });
 
 test('Confluence 본문의 Markdown 제어 문자를 이스케이프한다', () => {

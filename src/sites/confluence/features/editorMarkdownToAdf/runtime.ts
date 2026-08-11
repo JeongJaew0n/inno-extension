@@ -13,6 +13,12 @@ import {
   codeBlockTextToEditorHtml,
   readConfluenceCodeBlockText,
 } from './code-block';
+import {
+  buildConfluenceMermaidExtensionHtml,
+  CONFLUENCE_MERMAID_EXTENSION_KEY,
+  CONFLUENCE_MERMAID_TITLE,
+  isMermaidCodeBlockSource,
+} from './mermaid';
 
 interface MarkdownEditorSource {
   markdown: string;
@@ -92,11 +98,24 @@ function selectEditorNode(editor: HTMLElement, node: HTMLElement): void {
   editor.focus();
 }
 
+function placeCaretAfterEditorNode(editor: HTMLElement, node: HTMLElement): void {
+  const selection = editor.ownerDocument.getSelection();
+  if (!selection) throw new Error('편집기 선택 영역을 만들 수 없습니다.');
+
+  const range = editor.ownerDocument.createRange();
+  range.setStartAfter(node);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  editor.focus();
+}
+
 function pasteOverSelection(
   editor: HTMLElement,
   html: string,
   plainText: string,
   didChange: () => boolean,
+  allowInsertHtmlFallback = true,
 ): void {
   const clipboardData = new DataTransfer();
   clipboardData.setData('text/html', html);
@@ -110,6 +129,10 @@ function pasteOverSelection(
   }));
 
   if (didChange()) return;
+
+  if (!allowInsertHtmlFallback) {
+    throw new Error('Confluence 편집기가 ADF extension 붙여넣기를 수용하지 않았습니다.');
+  }
 
   const inserted = editor.ownerDocument.execCommand('insertHTML', false, html);
   if (!inserted || !didChange()) {
@@ -128,6 +151,43 @@ function unwrapCodeBlock(editor: HTMLElement, codeBlock: HTMLElement): void {
   const html = codeBlockTextToEditorHtml(plainText);
   selectEditorNode(editor, codeBlock);
   pasteOverSelection(editor, html, plainText, () => !codeBlock.isConnected);
+}
+
+function isMermaidExtension(node: Element): boolean {
+  const extensionKey = node.getAttribute('extensionkey')
+    ?? node.getAttribute('data-extension-key');
+  return node.getAttribute('data-prosemirror-node-name') === 'extension'
+    && extensionKey === CONFLUENCE_MERMAID_EXTENSION_KEY;
+}
+
+function hasFollowingMermaidExtension(editor: HTMLElement, codeBlock: HTMLElement): boolean {
+  const editorNodes = Array.from(editor.querySelectorAll<HTMLElement>(
+    `${EDITOR_CODE_BLOCK}, [data-prosemirror-node-name="extension"]`,
+  ));
+  const codeBlockPosition = editorNodes.indexOf(codeBlock);
+  if (codeBlockPosition < 0) return false;
+
+  const followingNode = editorNodes[codeBlockPosition + 1];
+  return followingNode ? isMermaidExtension(followingNode) : false;
+}
+
+function insertMermaidExtension(
+  editor: HTMLElement,
+  codeBlock: HTMLElement,
+  codeBlockIndex: number,
+): void {
+  const beforeCount = editor.querySelectorAll('[data-prosemirror-node-name="extension"]').length;
+  const localId = crypto.randomUUID();
+  const html = buildConfluenceMermaidExtensionHtml(codeBlockIndex, localId);
+
+  placeCaretAfterEditorNode(editor, codeBlock);
+  pasteOverSelection(
+    editor,
+    html,
+    CONFLUENCE_MERMAID_TITLE,
+    () => editor.querySelectorAll('[data-prosemirror-node-name="extension"]').length > beforeCount,
+    false,
+  );
 }
 
 export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
@@ -186,15 +246,26 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         </svg>
         <span data-unwrap-label>코드블럭 벗기기</span>
       </button>
+      <span class="divider" aria-hidden="true"></span>
+      <button type="button" data-action="mermaid" aria-label="Mermaid -> ADF 변환">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7 4v4"></path><path d="M17 4v4"></path><path d="M5 8h14"></path>
+          <path d="M6 12h4l2 3 2-3h4"></path><path d="M12 15v5"></path>
+        </svg>
+        <span data-mermaid-label>Mermaid -&gt; ADF</span>
+      </button>
     `;
 
     const convertButton = shadow.querySelector<HTMLButtonElement>('[data-action="convert"]');
     const convertLabel = shadow.querySelector<HTMLElement>('[data-convert-label]');
     const unwrapButton = shadow.querySelector<HTMLButtonElement>('[data-action="unwrap"]');
     const unwrapLabel = shadow.querySelector<HTMLElement>('[data-unwrap-label]');
-    if (!convertButton || !convertLabel || !unwrapButton || !unwrapLabel) return null;
+    const mermaidButton = shadow.querySelector<HTMLButtonElement>('[data-action="mermaid"]');
+    const mermaidLabel = shadow.querySelector<HTMLElement>('[data-mermaid-label]');
+    if (!convertButton || !convertLabel || !unwrapButton || !unwrapLabel
+      || !mermaidButton || !mermaidLabel) return null;
 
-    const buttons = [convertButton, unwrapButton];
+    const buttons = [convertButton, unwrapButton, mermaidButton];
     const setBusy = (busy: boolean): void => {
       buttons.forEach((button) => { button.disabled = busy; });
     };
@@ -280,6 +351,48 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
       }
 
       resetLater(unwrapButton, unwrapLabel, '코드블럭 벗기기');
+    });
+
+    mermaidButton.addEventListener('click', () => {
+      setBusy(true);
+      mermaidLabel.textContent = '변환 중';
+      mermaidButton.removeAttribute('title');
+      let convertedCount = 0;
+
+      try {
+        const currentEditor = context.document.querySelector<HTMLElement>(EDITOR_BODY);
+        if (!currentEditor) throw new Error('Confluence 편집 본문을 찾을 수 없습니다.');
+
+        const allCodeBlocks = Array.from(
+          currentEditor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK),
+        );
+        const candidates = allCodeBlocks
+          .map((codeBlock, index) => ({ codeBlock, index }))
+          .filter(({ codeBlock }) => (
+            isMermaidCodeBlockSource(readConfluenceCodeBlockText(codeBlock))
+            && !hasFollowingMermaidExtension(currentEditor, codeBlock)
+          ));
+
+        if (candidates.length === 0) {
+          throw new Error('변환할 Mermaid 코드블럭이 없습니다.');
+        }
+
+        for (const { codeBlock, index } of candidates.reverse()) {
+          insertMermaidExtension(currentEditor, codeBlock, index);
+          convertedCount += 1;
+        }
+
+        mermaidLabel.textContent = `${convertedCount}개 변환`;
+      } catch (error) {
+        console.error('[Inno Extension] Confluence Mermaid -> ADF 변환 실패', error);
+        const message = error instanceof Error ? error.message : 'Mermaid를 변환하지 못했습니다.';
+        mermaidLabel.textContent = convertedCount > 0
+          ? `${convertedCount}개 변환 · 일부 실패`
+          : message.startsWith('변환할 Mermaid') ? '변환 대상 없음' : '변환 실패';
+        mermaidButton.title = message;
+      }
+
+      resetLater(mermaidButton, mermaidLabel, 'Mermaid -> ADF');
     });
 
     toolbar.append(nextHost);
