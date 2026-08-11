@@ -39,7 +39,7 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 | Jira | 업무 링크 복사 | ON | Jira 보드 선택 업무와 직접 업무 조회 화면에서 링크 또는 링크+제목 복사 |
 | Jira | NPT 보드 정보 패널 | OFF | 설정된 프로젝트·보드의 현재 화면 정보를 보조 패널로 표시 |
 | Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
-| Confluence | Markdown -> ADF 변환 | OFF | 사용자가 입력한 Markdown을 로컬에서 ADF JSON으로 변환해 화면에 표시 |
+| Confluence | Markdown -> ADF 변환 | OFF | Popup에서 ADF JSON을 확인하거나 `edit-v2` 본문의 Markdown 원문을 편집 콘텐츠로 변환 |
 
 기능별 상세 계약은 `spec/features/` 문서에서 관리한다.
 
@@ -88,7 +88,7 @@ effectiveEnabled = site.enabled && feature.enabled
 
 - 일반 DOM 기능의 인증, SSO, CSRF, 세션 쿠키는 원본 사이트가 처리하며 확장은 이를 읽거나 재현하지 않는다.
 - 문서 본문은 기능 수행에 필요한 순간 현재 DOM에서만 읽고 별도 서버로 전송하지 않는다.
-- Markdown -> ADF 입력과 결과는 Popup 메모리에서만 처리하고 영구 저장하거나 네트워크로 전송하지 않는다.
+- Markdown -> ADF 입력과 결과는 Popup 메모리 또는 현재 Confluence 편집 DOM에서만 처리하고 별도 서버로 전송하지 않는다.
 - 클립보드 쓰기는 사용자의 직접 클릭 안에서만 수행한다.
 - 원격 코드를 로드하지 않고 배포 산출물에 포함된 코드만 실행한다.
 - 사이트 권한은 실제 지원 origin으로 제한한다.
@@ -114,7 +114,7 @@ effectiveEnabled = site.enabled && feature.enabled
 
 기존 로그인 세션과 원본 UI 동작을 활용한다. 별도 인증과 API 권한을 피할 수 있지만 외부 사이트의 DOM 변경에 영향을 받는다. selector 중앙화와 실제 사이트 확인을 운영 비용으로 수용한다.
 
-Markdown -> ADF 변환은 DOM 기능과 분리된 로컬 도구다. 현재 탭이나 Confluence API에 의존하지 않고 입력을 ADF JSON으로 바꾸는 책임만 가진다. 결과 전달과 원격 문서 변경을 포함하지 않아 사용 단계는 늘지만 인증·권한·충돌·복구 책임을 피한다.
+Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서는 ADF JSON만 보여주고, Confluence `edit-v2`에서는 사용자의 클릭으로 현재 편집 본문을 변환한다. 편집기 적용은 Confluence가 제공하는 paste 처리 경계를 사용하므로 페이지 저장 API와 version conflict 책임을 피하고 실행 취소 흐름을 유지한다. 대신 외부 editor DOM과 paste 동작 변경에 영향을 받는다.
 
 ### Vanilla TypeScript Popup
 
@@ -150,6 +150,7 @@ Markdown -> ADF 변환은 DOM 기능과 분리된 로컬 도구다. 현재 탭�
 - 2026-08-07: Confluence를 독립 서비스로 추가하고 문서 조회 화면의 본문을 Markdown으로 복사하는 기능을 도입했다.
 - 2026-08-11: DOM 기반 복사를 유지하면서 ADF API 기반 고정밀 Markdown 내보내기와 명시적 본문 추가 기능을 기본 OFF로 분리하기로 결정했다.
 - 2026-08-11: ADF 도구의 범위를 로컬 Markdown -> ADF JSON 변환으로 축소하고 API 인증, 고정밀 내보내기, 원격 문서 추가, 결과 복사·다운로드를 제거했다.
+- 2026-08-11: Confluence `edit-v2` toolbar에서 일반 문단 형태의 Markdown 본문 전체를 편집 콘텐츠로 변환하는 버튼을 추가했다. API 저장 대신 편집기의 실행 취소·사용자 업데이트 흐름을 따르도록 했다.
 
 ## 관련 문서
 

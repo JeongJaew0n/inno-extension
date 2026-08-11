@@ -76,8 +76,8 @@ export const SITES = [
       {
         id: 'pageMarkdownAppend',
         name: 'Markdown -> ADF 변환',
-        description: '입력한 Markdown을 로컬에서 ADF JSON으로 변환합니다.',
-        routeSummary: 'Extension Popup 내부 변환기',
+        description: 'Markdown을 ADF JSON으로 변환하거나 Confluence 편집 본문에 적용합니다.',
+        routeSummary: 'Extension Popup 및 Confluence 문서 편집 화면',
         defaultEnabled: false,
         hasDetails: true,
       },
