@@ -234,8 +234,18 @@ index가 범위를 벗어나거나 대상 codeBlock이 Mermaid 문법이 아니�
 Inno Extension의 안정적인 1차 정책은 다음과 같다.
 
 1. Markdown import 시 Mermaid 원문을 코드 블록으로 보존한다.
-2. Confluence Mermaid macro 자동 생성은 별도 옵션으로 둔다.
-3. 자동 생성 시 현재 페이지 전체 codeBlock 순번을 다시 계산한다.
-4. export 시 extension과 참조 codeBlock을 한 쌍으로 해석한다.
-5. 앱 식별자나 parameter가 달라지면 경고와 함께 일반 코드 블록으로 폴백한다.
+2. 현재의 무API content script에서는 Confluence Mermaid macro를 자동 생성하지 않는다.
+3. Mermaid 문법 후보 탐지는 가능하지만, Forge 앱의 cross-origin 설정 iframe을 완료하거나 공개 paste 계약으로 extension node를 생성할 수 없으므로 탐지 결과만으로 자동 변환 완료를 보장할 수 없다.
+4. 향후 공개 API나 검증된 editor extension 계약을 채택한다면 현재 페이지 전체 codeBlock 순번을 다시 계산하고, 앱 식별자나 parameter가 달라질 때 일반 코드 블록으로 폴백해야 한다.
 
+### 9.1 2026-08-11 편집 화면 재검토
+
+로그인된 `edit-v2` 화면에서 현재 본문을 다시 확인한 결과, 편집기에는 13개의 `codeBlock` node가 있었고 그중 `flowchart LR`로 시작하는 Mermaid source 후보가 2개 있었다. 후보 탐지는 코드 블록 원문의 첫 유효 줄로 안정적으로 수행할 수 있다.
+
+하지만 편집 DOM에는 이 두 source와 연결된 Mermaid `extension` node가 없었고, 페이지의 Forge iframe은 외부 앱 origin에서 실행됐다. Chrome extension content script는 동일 출처 정책 때문에 그 iframe 내부의 코드 블록 선택과 `Submit`을 직접 조작할 수 없다. Confluence slash menu로 매크로를 띄우는 데 성공하더라도 자동 설정 완료 단계가 남는다.
+
+따라서 이미 ADF인 본문에 대해 가능한 범위는 다음처럼 구분한다.
+
+- 가능: Mermaid 선언으로 시작하는 코드 블록 후보 탐지, 개수·위치 안내, source 보존
+- 조건부 가능: 사용자가 Forge 설정 화면을 마무리하는 보조 삽입 흐름
+- 현재 불가: API나 비공개 editor state 주입 없이 모든 후보를 Mermaid 매크로로 완전 자동 변환

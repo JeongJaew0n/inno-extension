@@ -4,7 +4,7 @@ export function adfDocumentToEditorHtml(doc: AdfDocument): string {
   return doc.content.map(renderNode).join('');
 }
 
-function escapeHtml(value: string): string {
+export function escapeEditorHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -19,7 +19,7 @@ function safeLinkHref(value: unknown): string | null {
 }
 
 function renderMarkedText(text: string, marks: AdfMark[] | undefined): string {
-  let html = escapeHtml(text);
+  let html = escapeEditorHtml(text);
 
   for (const mark of marks ?? []) {
     switch (mark.type) {
@@ -37,7 +37,7 @@ function renderMarkedText(text: string, marks: AdfMark[] | undefined): string {
         break;
       case 'link': {
         const href = safeLinkHref(mark.attrs?.href);
-        if (href) html = `<a href="${escapeHtml(href)}">${html}</a>`;
+        if (href) html = `<a href="${escapeEditorHtml(href)}">${html}</a>`;
         break;
       }
       default:
@@ -80,7 +80,7 @@ function renderNode(node: AdfNode): string {
     case 'blockquote':
       return `<blockquote>${renderChildren(node)}</blockquote>`;
     case 'codeBlock':
-      return `<pre><code>${escapeHtml(node.content?.map((child) => child.text ?? '').join('') ?? '')}</code></pre>`;
+      return `<pre><code>${escapeEditorHtml(node.content?.map((child) => child.text ?? '').join('') ?? '')}</code></pre>`;
     case 'bulletList':
       return `<ul>${(node.content ?? []).map(renderListItem).join('')}</ul>`;
     case 'orderedList': {
@@ -105,14 +105,14 @@ function renderNode(node: AdfNode): string {
     case 'rule':
       return '<hr>';
     case 'expand':
-      return `<details><summary>${escapeHtml(String(node.attrs?.title ?? '상세 내용'))}</summary>${renderChildren(node)}</details>`;
+      return `<details><summary>${escapeEditorHtml(String(node.attrs?.title ?? '상세 내용'))}</summary>${renderChildren(node)}</details>`;
     case 'mediaSingle':
       return renderChildren(node);
     case 'media': {
       const url = safeLinkHref(node.attrs?.url);
       if (!url || node.attrs?.type !== 'external') return '';
       const alt = typeof node.attrs.alt === 'string' ? node.attrs.alt : '';
-      return `<img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}">`;
+      return `<img src="${escapeEditorHtml(url)}" alt="${escapeEditorHtml(alt)}">`;
     }
     default:
       return renderChildren(node);

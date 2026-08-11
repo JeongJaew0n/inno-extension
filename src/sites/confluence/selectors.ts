@@ -4,6 +4,7 @@ export const PAGE_HEADER = '[data-testid="page-content-header"]';
 export const PAGE_TITLE_WRAPPER = '[data-testid="title-wrapper"]';
 export const EDITOR_PRIMARY_TOOLBAR = '[data-testid="editor-primary-toolbar"]';
 export const EDITOR_BODY = '[data-testid="editor-wrapper"] .ProseMirror[contenteditable="true"][role="textbox"]';
+export const EDITOR_CODE_BLOCK = '[data-prosemirror-node-name="codeBlock"]';
 export const EDITOR_MARKDOWN_TO_ADF_ROOT = 'confluence-editor-markdown-to-adf';
 
 export const MARKDOWN_IGNORED_ELEMENTS = [
