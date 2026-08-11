@@ -10,6 +10,7 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["storage"],
+  "host_permissions": ["https://pms-innogrid.atlassian.net/*"],
   "background": {
     "service_worker": "src/background/index.ts",
     "type": "module"
@@ -31,7 +32,11 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://pms-innogrid.atlassian.net/jira/*"],
+      "matches": [
+        "https://pms-innogrid.atlassian.net/jira/*",
+        "https://pms-innogrid.atlassian.net/browse/*",
+        "https://pms-innogrid.atlassian.net/issues/*"
+      ],
       "js": ["src/sites/jira/content.ts"],
       "run_at": "document_idle"
     },

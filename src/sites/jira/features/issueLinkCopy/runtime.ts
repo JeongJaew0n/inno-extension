@@ -10,32 +10,109 @@ import {
   extractIssueKeyFromHref,
   isJiraBoardRoute,
   parseJiraBoardUrl,
+  parseJiraIssueUrl,
 } from '../../routes';
 import { buildIssueClipboardContent, writeIssueClipboardContent } from './clipboard';
 
-function findCurrentIssueLink(context: PageContext, issueKey: string): HTMLAnchorElement | null {
-  const dialog = context.document.querySelector(ISSUE_DIALOG)
-    ?? context.document.querySelector('[role="dialog"]');
-  if (!dialog) return null;
+interface IssueViewTarget {
+  issueKey: string;
+  issueTitle: string | null;
+  mountKind: 'board-dialog-link' | 'direct-link' | 'direct-title';
+  mountHost(host: HTMLSpanElement): void;
+}
 
-  const preferred = dialog.querySelector<HTMLAnchorElement>(CURRENT_ISSUE_LINK);
+function normalizeText(text: string | null | undefined): string | null {
+  const normalized = text?.trim().replace(/\s+/g, ' ');
+  return normalized || null;
+}
+
+function findIssueLink(scope: ParentNode, issueKey: string): HTMLAnchorElement | null {
+  const preferred = scope.querySelector<HTMLAnchorElement>(CURRENT_ISSUE_LINK);
   if (preferred && extractIssueKeyFromHref(preferred.getAttribute('href')) === issueKey) {
     return preferred;
   }
 
-  for (const link of dialog.querySelectorAll<HTMLAnchorElement>('a[href^="/browse/"]')) {
+  for (const link of scope.querySelectorAll<HTMLAnchorElement>('a[href]')) {
     if (extractIssueKeyFromHref(link.getAttribute('href')) === issueKey) return link;
   }
   return null;
 }
 
-function findCurrentIssueTitle(context: PageContext): string | null {
-  const dialog = context.document.querySelector(ISSUE_DIALOG)
-    ?? context.document.querySelector('[role="dialog"]');
-  const title = dialog?.querySelector<HTMLElement>(CURRENT_ISSUE_TITLE)?.textContent
-    ?.trim()
-    .replace(/\s+/g, ' ');
-  return title || null;
+function readIssueTitle(element: HTMLElement | null): string | null {
+  if (!element) return null;
+  const clone = element.cloneNode(true) as HTMLElement;
+  clone.querySelector(`[${FEATURE_ROOT_ATTRIBUTE}="${ISSUE_LINK_COPY_ROOT}"]`)?.remove();
+  return normalizeText(clone.textContent);
+}
+
+function isVisibleContentHeading(element: HTMLElement): boolean {
+  return element.getClientRects().length > 0
+    && !element.closest('header, nav, [role="banner"], [role="navigation"]');
+}
+
+function findFallbackIssueHeading(context: PageContext): HTMLElement | null {
+  const main = context.document.querySelector('main, [role="main"]') ?? context.document.body;
+  const headings = Array.from(main.querySelectorAll<HTMLElement>('h1')).filter((heading) => {
+    if (!isVisibleContentHeading(heading)) return false;
+    return readIssueTitle(heading) !== null;
+  });
+
+  if (headings.length === 0) return null;
+  return headings.reduce((best, candidate) => {
+    const bestLength = readIssueTitle(best)?.length ?? 0;
+    const candidateLength = readIssueTitle(candidate)?.length ?? 0;
+    return candidateLength > bestLength ? candidate : best;
+  });
+}
+
+function resolveIssueViewTarget(context: PageContext): IssueViewTarget | null {
+  const boardRoute = parseJiraBoardUrl(context.url.href);
+  if (isJiraBoardRoute(boardRoute) && boardRoute.selectedIssueKey) {
+    const dialog = context.document.querySelector(ISSUE_DIALOG)
+      ?? context.document.querySelector('[role="dialog"]');
+    if (!dialog) return null;
+
+    const issueLink = findIssueLink(dialog, boardRoute.selectedIssueKey);
+    if (!issueLink) return null;
+    const titleElement = dialog.querySelector<HTMLElement>(CURRENT_ISSUE_TITLE);
+    return {
+      issueKey: boardRoute.selectedIssueKey,
+      issueTitle: readIssueTitle(titleElement),
+      mountKind: 'board-dialog-link',
+      mountHost(host) {
+        issueLink.insertAdjacentElement('afterend', host);
+      },
+    };
+  }
+
+  const issueKey = parseJiraIssueUrl(context.url.href)?.issueKey ?? null;
+  if (!issueKey) return null;
+
+  const issueLink = findIssueLink(context.document, issueKey);
+  const titleElement = context.document.querySelector<HTMLElement>(CURRENT_ISSUE_TITLE)
+    ?? findFallbackIssueHeading(context);
+  const issueTitle = readIssueTitle(titleElement);
+
+  if (issueLink) {
+    return {
+      issueKey,
+      issueTitle,
+      mountKind: 'direct-link',
+      mountHost(host) {
+        issueLink.insertAdjacentElement('afterend', host);
+      },
+    };
+  }
+
+  if (!titleElement) return null;
+  return {
+    issueKey,
+    issueTitle,
+    mountKind: 'direct-title',
+    mountHost(host) {
+      titleElement.appendChild(host);
+    },
+  };
 }
 
 export function createIssueLinkCopyRuntime(): FeatureRuntime {
@@ -48,15 +125,15 @@ export function createIssueLinkCopyRuntime(): FeatureRuntime {
 
   function createButtonHost(
     context: PageContext,
-    issueKey: string,
-    issueLink: HTMLAnchorElement,
+    target: IssueViewTarget,
   ): HTMLSpanElement | null {
-    const linkClipboardContent = buildIssueClipboardContent(issueKey);
+    const linkClipboardContent = buildIssueClipboardContent(target.issueKey);
     if (!linkClipboardContent) return null;
 
     const nextHost = context.document.createElement('span');
     nextHost.setAttribute(FEATURE_ROOT_ATTRIBUTE, ISSUE_LINK_COPY_ROOT);
-    nextHost.dataset.issueKey = issueKey;
+    nextHost.dataset.issueKey = target.issueKey;
+    nextHost.dataset.mountKind = target.mountKind;
     nextHost.style.all = 'initial';
     nextHost.style.display = 'inline-flex';
     nextHost.style.gap = '2px';
@@ -76,10 +153,10 @@ export function createIssueLinkCopyRuntime(): FeatureRuntime {
         button:focus-visible { outline: 2px solid #0c66e4; outline-offset: 1px; }
         button:disabled { cursor: default; opacity: 0.72; }
       </style>
-      <button type="button" data-copy-mode="link" aria-label="${issueKey} 업무 링크 복사" title="${linkClipboardContent.issueUrl}">
+      <button type="button" data-copy-mode="link" aria-label="${target.issueKey} 업무 링크 복사" title="${linkClipboardContent.issueUrl}">
         업무 링크 복사
       </button>
-      <button type="button" data-copy-mode="title" aria-label="${issueKey} 업무 링크 복사 제목포함" title="${linkClipboardContent.issueUrl}">
+      <button type="button" data-copy-mode="title" aria-label="${target.issueKey} 업무 링크 복사 제목포함" title="${linkClipboardContent.issueUrl}">
         업무 링크 복사(제목포함)
       </button>
     `;
@@ -115,11 +192,11 @@ export function createIssueLinkCopyRuntime(): FeatureRuntime {
 
     attachCopyBehavior(linkButton, '업무 링크 복사', () => linkClipboardContent);
     attachCopyBehavior(titleButton, '업무 링크 복사(제목포함)', () => {
-      const issueTitle = findCurrentIssueTitle(context);
-      return issueTitle ? buildIssueClipboardContent(issueKey, issueTitle) : null;
+      const issueTitle = resolveIssueViewTarget(context)?.issueTitle ?? target.issueTitle;
+      return issueTitle ? buildIssueClipboardContent(target.issueKey, issueTitle) : null;
     });
 
-    issueLink.insertAdjacentElement('afterend', nextHost);
+    target.mountHost(nextHost);
     return nextHost;
   }
 
@@ -127,16 +204,17 @@ export function createIssueLinkCopyRuntime(): FeatureRuntime {
     id: 'issueLinkCopy',
 
     reconcile(context: PageContext): void {
-      const route = parseJiraBoardUrl(context.url.href);
-      if (!isJiraBoardRoute(route) || !route.selectedIssueKey) {
+      const target = resolveIssueViewTarget(context);
+      if (!target) {
         dispose();
         return;
       }
 
-      if (host?.isConnected && host.dataset.issueKey === route.selectedIssueKey) return;
+      if (host?.isConnected
+        && host.dataset.issueKey === target.issueKey
+        && host.dataset.mountKind === target.mountKind) return;
       dispose();
-      const issueLink = findCurrentIssueLink(context, route.selectedIssueKey);
-      if (issueLink) host = createButtonHost(context, route.selectedIssueKey, issueLink);
+      host = createButtonHost(context, target);
     },
 
     dispose,

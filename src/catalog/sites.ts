@@ -32,7 +32,11 @@ export const SITES = [
     name: 'Jira',
     hostLabel: 'pms-innogrid.atlassian.net',
     origin: 'https://pms-innogrid.atlassian.net',
-    contentMatches: ['https://pms-innogrid.atlassian.net/jira/*'],
+    contentMatches: [
+      'https://pms-innogrid.atlassian.net/jira/*',
+      'https://pms-innogrid.atlassian.net/browse/*',
+      'https://pms-innogrid.atlassian.net/issues/*',
+    ],
     color: '#6554c0',
     features: [
       {
@@ -67,6 +71,22 @@ export const SITES = [
         description: '현재 Confluence 문서의 본문을 Markdown 형식으로 복사합니다.',
         routeSummary: 'Confluence 문서 조회 화면',
         defaultEnabled: true,
+        hasDetails: true,
+      },
+      {
+        id: 'pageMarkdownExport',
+        name: '본문 Markdown 고정밀 내보내기',
+        description: 'Confluence 원본 문서 형식(ADF)을 읽어 Markdown으로 복사합니다.',
+        routeSummary: 'Confluence 문서 조회·편집·초안 화면',
+        defaultEnabled: false,
+        hasDetails: true,
+      },
+      {
+        id: 'pageMarkdownAppend',
+        name: 'Markdown 본문 추가',
+        description: '입력한 Markdown을 현재 Confluence 문서의 맨 아래에 추가합니다.',
+        routeSummary: 'Confluence 문서 조회·편집·초안 화면',
+        defaultEnabled: false,
         hasDetails: true,
       },
     ],

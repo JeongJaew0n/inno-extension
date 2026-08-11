@@ -1,7 +1,7 @@
 # Inno Extension 제품 개요
 
 - 상태: Active
-- 최종 갱신일: 2026-08-07
+- 최종 갱신일: 2026-08-11
 - 대상 버전: 0.2.x
 
 ## 한 줄 요약
@@ -20,12 +20,12 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 - 여러 서비스의 편의 기능을 하나의 확장 프로그램에서 발견하고 켜고 끌 수 있게 한다.
 - 서비스 전체 활성화와 개별 기능 활성화를 분리해 사용자의 설정 조합을 보존한다.
 - 각 기능이 독립적으로 시작·갱신·정리되어 SPA 변경과 기능 토글에 안전하게 대응한다.
-- 최소 권한과 DOM 기반 상호작용을 우선해 인증 정보나 사내 API를 직접 다루지 않는다.
+- 최소 권한과 DOM 기반 상호작용을 기본으로 하되, 사용자가 명시적으로 켠 고정밀 변환 기능은 제한된 Atlassian API를 사용한다.
 
 ## 비목표
 
 - 사용자의 명시적 행동 없이 출퇴근이나 Jira 업무를 자동 처리하지 않는다.
-- 사내 API, 인증 토큰, 세션 구조를 역분석해 직접 호출하지 않는다.
+- 승인되지 않은 사내 API나 세션 구조를 일반 기능에서 임의로 호출하지 않는다.
 - 조직 전체 배포 정책이나 Chrome Web Store 운영을 현재 제품 범위로 보지 않는다.
 - 모든 사내 사이트를 범용적으로 자동 지원하지 않는다. 새 사이트는 명시적인 catalog와 독립 runtime을 통해 추가한다.
 - Popup을 복잡한 업무 애플리케이션으로 확장하지 않는다. 기능 탐색과 설정 관리에 집중한다.
@@ -36,9 +36,11 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 | --- | --- | --- | --- |
 | 아마란스 | 헤더 출퇴근 버튼 | ON | `gw.innogrid.com`에서 원본 출퇴근 버튼을 헤더 가까이에 제공 |
 | 아마란스 | 신청서 제목 자동채움 | ON | 근태신청서의 제목을 Popup에 저장한 문구로 입력 |
-| Jira | 업무 링크 복사 | ON | Jira 보드에서 선택한 업무의 링크 또는 링크+제목 복사 |
+| Jira | 업무 링크 복사 | ON | Jira 보드 선택 업무와 직접 업무 조회 화면에서 링크 또는 링크+제목 복사 |
 | Jira | NPT 보드 정보 패널 | OFF | 설정된 프로젝트·보드의 현재 화면 정보를 보조 패널로 표시 |
 | Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
+| Confluence | 본문 Markdown 고정밀 내보내기 | OFF | ADF API로 현재 문서 본문을 읽어 Markdown으로 복사 |
+| Confluence | Markdown 본문 추가 | OFF | 사용자가 입력한 Markdown을 현재 문서 맨 아래에 명시적으로 추가 |
 
 기능별 상세 계약은 `spec/features/` 문서에서 관리한다.
 
@@ -65,7 +67,8 @@ effectiveEnabled = site.enabled && feature.enabled
 
 ## 설정과 호환성
 
-- 설정은 `chrome.storage.sync`에 버전이 있는 스키마로 저장한다.
+- 일반 설정은 `chrome.storage.sync`에 버전이 있는 스키마로 저장한다.
+- API 토큰처럼 동기화하면 안 되는 인증 정보는 이름이 분리된 `chrome.storage.local` 저장소에만 보관한다.
 - 사이트 마스터 값과 기능별 활성 값을 분리한다.
 - 새 기능이나 옵션이 추가되면 기존 저장값에 기본값을 보충한다.
 - 내부 식별자는 저장소 호환성을 위해 표시 이름과 분리한다. 사용자 명칭이 바뀌어도 기존 기능 ID를 임의로 변경하지 않는다.
@@ -85,8 +88,10 @@ effectiveEnabled = site.enabled && feature.enabled
 
 ## 보안과 개인정보
 
-- 인증, SSO, CSRF, 세션 쿠키는 원본 사이트가 처리하며 확장은 이를 읽거나 재현하지 않는다.
-- 업무 내용은 필요한 순간 현재 DOM에서만 읽고 별도 서버로 전송하지 않는다.
+- 일반 DOM 기능의 인증, SSO, CSRF, 세션 쿠키는 원본 사이트가 처리하며 확장은 이를 읽거나 재현하지 않는다.
+- API 기능은 사용자가 직접 저장한 Atlassian 이메일/API 토큰만 사내 Atlassian origin 요청에 사용한다.
+- API 토큰은 동기화하지 않고 content script에 전달하지 않으며 로그와 문서에 기록하지 않는다.
+- 문서 본문은 기능 수행에 필요한 순간 현재 DOM 또는 Atlassian API에서만 읽고 별도 서버로 전송하지 않는다.
 - 클립보드 쓰기는 사용자의 직접 클릭 안에서만 수행한다.
 - 원격 코드를 로드하지 않고 배포 산출물에 포함된 코드만 실행한다.
 - 사이트 권한은 실제 지원 origin으로 제한한다.
@@ -111,6 +116,8 @@ effectiveEnabled = site.enabled && feature.enabled
 ### DOM 우선
 
 기존 로그인 세션과 원본 UI 동작을 활용한다. 별도 인증과 API 권한을 피할 수 있지만 외부 사이트의 DOM 변경에 영향을 받는다. selector 중앙화와 실제 사이트 확인을 운영 비용으로 수용한다.
+
+Confluence 고정밀 내보내기와 본문 추가는 DOM 표현만으로 보존하기 어려운 문서 구조를 다루기 위한 명시적 예외다. 기존 DOM 복사를 대체하지 않고 기본 OFF 별도 기능으로 제공하며, 사내 Atlassian origin과 공식 ADF REST API 범위로 제한한다.
 
 ### Vanilla TypeScript Popup
 
@@ -144,12 +151,14 @@ effectiveEnabled = site.enabled && feature.enabled
 - 2026-08-04: 아마란스 서비스 아이콘을 투명 배경의 256px 전용 자산으로 교체해 고밀도 화면에서의 선명도를 개선했다.
 - 2026-08-04: 아마란스 근태신청서에 사용자 설정 문구를 입력하는 제목 자동채움 기능을 추가했다.
 - 2026-08-07: Confluence를 독립 서비스로 추가하고 문서 조회 화면의 본문을 Markdown으로 복사하는 기능을 도입했다.
+- 2026-08-11: DOM 기반 복사를 유지하면서 ADF API 기반 고정밀 Markdown 내보내기와 명시적 본문 추가 기능을 기본 OFF로 분리하기로 결정했다.
 
 ## 관련 문서
 
 - [Jira 업무 링크 복사](./features/jira-work-link-copy.md)
 - [아마란스 신청서 제목 자동채움](./features/amaranth-title-autofill.md)
 - [Confluence 문서 본문 Markdown 복사](./features/confluence-page-markdown-copy.md)
+- [Confluence ADF Markdown 도구](./features/confluence-adf-markdown-tools.md)
 - [용어사전](./glossary.md)
 - [멀티 사이트 통합 계획](../docs/plans/inno-extension-multi-site/spec.md)
 - [아마란스 출퇴근 기능 계획](../docs/plans/gw-checkin-header-buttons/spec.md)

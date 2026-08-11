@@ -19,7 +19,7 @@
 
 - 대상: `https://pms-innogrid.atlassian.net/*`
 - 업무 링크 복사
-  - 모든 Jira 보드에서 선택한 업무 번호 옆에 링크 복사 버튼 두 개를 표시한다.
+  - 모든 Jira 보드에서 선택한 업무와 `/browse/ISSUE-n`, `/issues/ISSUE-n` 직접 업무 화면에 링크 복사 버튼 두 개를 표시한다.
   - 기본 버튼은 `ISSUE-n`, 제목 포함 버튼은 `ISSUE-n 현재 업무 제목` 형태로 복사한다.
   - 업무 번호는 HTML 클립보드에서 해당 Jira 업무로 연결되는 링크를 유지한다.
 - NPT 보드 정보 패널
@@ -33,6 +33,13 @@
   - 문서 조회 화면의 `링크 복사` 버튼 옆에 `본문 Markdown 복사` 버튼을 표시한다.
   - 제목, 작성자, 댓글을 제외하고 현재 문서 본문만 Markdown으로 복사한다.
   - 제목 계층, 목록, 표, 코드 블록, 링크와 기본 텍스트 서식을 Markdown으로 변환한다.
+- 본문 Markdown 고정밀 내보내기 (기본 OFF)
+  - 저장한 Atlassian API 인증으로 현재 문서의 ADF 원문을 읽어 Markdown으로 복사한다.
+  - 기존 DOM 기반 복사는 그대로 유지되며, 고정밀 내보내기는 별도 기능이다.
+- Markdown 본문 추가 (기본 OFF)
+  - 붙여넣거나 `.md` 파일에서 읽은 Markdown을 검토한 뒤 현재 문서 맨 아래에 추가한다.
+  - 대상 문서, 상태, 추가 block 수와 변환 경고를 확인해야 실제 문서를 변경할 수 있다.
+  - 첫 통합 범위에서는 로컬 이미지 upload/download와 Mermaid 앱 삽입을 지원하지 않는다.
 
 ## Popup 설정
 
@@ -41,6 +48,16 @@
 - 사이트를 꺼도 하위 기능의 enabled 값은 보존된다.
 - 사이트 상세에서 기능별 토글을 독립적으로 변경한다.
 - 기능 상세에서 적용 범위와 세부 옵션을 확인하거나 초기화한다.
+- Confluence API 기능 상세에서 Atlassian 이메일/API 토큰을 저장하거나 삭제한다.
+
+API 토큰은 `chrome.storage.local`에만 저장되어 Chrome 동기화 대상이 아니지만, 운영체제 비밀 저장소처럼 암호화되는 것은 아니다. 토큰 문자열은 저장 후 UI로 다시 반환하지 않으며 content script와 일반 설정 저장소에 전달하지 않는다.
+
+## 권한
+
+- `storage`: 서비스·기능 설정과 로컬 API 인증 저장
+- `https://pms-innogrid.atlassian.net/*`: 사내 Jira/Confluence content script와 Confluence ADF REST 요청
+
+`scripting`, `downloads`, 전체 Atlassian tenant wildcard 권한은 사용하지 않는다.
 
 실제 기능 실행 여부는 다음 규칙을 따른다.
 
@@ -76,6 +93,8 @@ src/
 ├── background/       설치 시 설정 초기화·migration
 ├── catalog/          사이트와 기능 metadata
 ├── platform/
+│   ├── credentials/  동기화하지 않는 API 인증 저장소
+│   ├── messages/     Popup과 background 사이의 typed message
 │   ├── runtime/      site runtime과 feature lifecycle
 │   └── settings/     버전화된 storage schema와 repository
 ├── popup/            사이트 목록, 사이트 상세, 기능 상세, 일반 설정
@@ -83,6 +102,8 @@ src/
     ├── amaranth/     아마란스 content entry와 기능
     ├── jira/         Jira content entry와 기능
     └── confluence/   Confluence content entry와 기능
+        ├── adf/      ADF와 Markdown 양방향 변환
+        └── api/      background에서 사용하는 Confluence REST client
 ```
 
 사이트 runtime은 사이트당 하나의 MutationObserver를 사용하며 활성 기능의 `reconcile()`을 호출한다. 기능이 꺼지면 `dispose()`로 자신이 만든 DOM, style, timer, listener를 정리한다.
@@ -100,4 +121,5 @@ src/
 
 - 제품·기능 기준 문서: [`spec/`](./spec/README.md)
 - 통합 설계와 작업 체크리스트: `docs/plans/inno-extension-multi-site/`
+- Jira/Confluence 기능 통합 계획: [`docs/plans/jira-conf-integration/`](./docs/plans/jira-conf-integration/계획서.md)
 - 기존 아마란스 기능 맥락: `docs/plans/gw-checkin-header-buttons/`

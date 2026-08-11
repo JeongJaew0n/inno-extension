@@ -1,13 +1,19 @@
 export const JIRA_ORIGIN = 'https://pms-innogrid.atlassian.net';
 
 const BOARD_PATH_PATTERN = /^\/jira\/software\/c\/projects\/([^/]+)\/boards\/(\d+)(\/.*)?$/;
-const ISSUE_PATH_PATTERN = /^\/browse\/([A-Z][A-Z0-9_]*-\d+)$/;
+const ISSUE_KEY_PATTERN = '[A-Z][A-Z0-9_]*-\\d+';
+const ISSUE_PATH_PATTERN = new RegExp(`^/(?:browse|issues)/(${ISSUE_KEY_PATTERN})/?$`);
 
 export interface JiraBoardRoute {
   boardId: string;
   projectKey: string;
   selectedIssueKey: string | null;
   viewPath: string;
+  url: string;
+}
+
+export interface JiraIssueRoute {
+  issueKey: string;
   url: string;
 }
 
@@ -34,6 +40,24 @@ export function parseJiraBoardUrl(input: string): JiraBoardRoute | null {
     projectKey: match[1],
     selectedIssueKey: normalizeIssueKey(url.searchParams.get('selectedIssue')),
     viewPath: match[3] || '',
+    url: url.href,
+  };
+}
+
+export function parseJiraIssueUrl(input: string): JiraIssueRoute | null {
+  let url: URL;
+  try {
+    url = new URL(input, JIRA_ORIGIN);
+  } catch {
+    return null;
+  }
+
+  if (url.origin !== JIRA_ORIGIN) return null;
+  const issueKey = url.pathname.match(ISSUE_PATH_PATTERN)?.[1] ?? null;
+  if (!issueKey) return null;
+
+  return {
+    issueKey,
     url: url.href,
   };
 }

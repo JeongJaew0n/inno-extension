@@ -15,6 +15,13 @@ import {
   normalizeTitleAutofillText,
   TITLE_AUTOFILL_MAX_LENGTH,
 } from '../sites/amaranth/features/titleAutofill/contracts';
+import {
+  handleConfluencePopupAction,
+  handleConfluencePopupFile,
+  handleConfluencePopupInput,
+  prepareConfluencePopupState,
+  renderConfluenceFeatureOptions,
+} from './confluenceActions';
 import { featureRoute, parsePopupRoute, siteRoute, type PopupRoute } from './router';
 
 const appElement = document.querySelector<HTMLElement>('#app');
@@ -169,6 +176,15 @@ function renderSiteDetail(siteId: SiteId): string {
 }
 
 function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
+  if (siteId === 'confluence'
+    && (featureId === 'pageMarkdownExport' || featureId === 'pageMarkdownAppend')) {
+    const siteSettings = settings.sites.confluence;
+    return renderConfluenceFeatureOptions(
+      featureId,
+      siteSettings.enabled && siteSettings.features[featureId]?.enabled === true,
+    );
+  }
+
   if (siteId === 'amaranth' && featureId === 'titleAutofill') {
     const titleText = normalizeTitleAutofillText(
       settings.sites.amaranth.features.titleAutofill?.options.titleText,
@@ -300,7 +316,13 @@ function renderRoute(route: PopupRoute): string {
 
 async function render(): Promise<void> {
   settings = await getSettings();
-  app.innerHTML = renderRoute(parsePopupRoute(window.location.hash));
+  const route = parsePopupRoute(window.location.hash);
+  if (route.page === 'feature'
+    && route.siteId === 'confluence'
+    && (route.featureId === 'pageMarkdownExport' || route.featureId === 'pageMarkdownAppend')) {
+    await prepareConfluencePopupState();
+  }
+  app.innerHTML = renderRoute(route);
 }
 
 function parseList(value: string): string[] {
@@ -362,9 +384,11 @@ async function saveFeatureOptionsWithFeedback(form: HTMLElement): Promise<void> 
 
 app.addEventListener('click', async (event) => {
   const target = event.target instanceof Element
-    ? event.target.closest<HTMLElement>('[data-route], [data-open-origin], [data-save-feature-options], [data-reset-feature], [data-reset-all]')
+    ? event.target.closest<HTMLElement>('[data-route], [data-open-origin], [data-save-feature-options], [data-reset-feature], [data-reset-all], [data-confluence-action]')
     : null;
   if (!target) return;
+
+  if (await handleConfluencePopupAction(target, render)) return;
 
   if (target.dataset.openOrigin) {
     await chrome.tabs.create({ url: target.dataset.openOrigin });
@@ -399,6 +423,8 @@ app.addEventListener('change', async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
 
+  if (await handleConfluencePopupFile(target, render)) return;
+
   if (target.hasAttribute('data-site-toggle') && isSiteId(target.dataset.siteId)) {
     await setSiteEnabled(target.dataset.siteId, target.checked);
     await render();
@@ -416,6 +442,13 @@ app.addEventListener('change', async (event) => {
   if (target.dataset.optionKind === 'string') return;
   const form = target.closest<HTMLElement>('[data-options-form]');
   if (form) await saveFeatureOptions(form);
+});
+
+app.addEventListener('input', (event) => {
+  const target = event.target;
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+    handleConfluencePopupInput(target);
+  }
 });
 
 window.addEventListener('hashchange', () => void render());

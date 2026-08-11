@@ -13,14 +13,24 @@ import {
   escapeMarkdownText,
   isRedundantHeaderOnlyTable,
 } from '../src/sites/confluence/features/pageMarkdownCopy/markdown';
-import { parseConfluencePageUrl } from '../src/sites/confluence/routes';
+import {
+  isSameConfluencePage,
+  parseConfluencePageId,
+  parseConfluencePageUrl,
+} from '../src/sites/confluence/routes';
+import {
+  fetchConfluencePageAdf,
+  updateConfluencePageAdf,
+} from '../src/sites/confluence/api/client';
 import { buildIssueClipboardContent } from '../src/sites/jira/features/issueLinkCopy/clipboard';
 import {
   extractIssueKeyFromHref,
   isJiraBoardRoute,
   parseJiraBoardUrl,
+  parseJiraIssueUrl,
   uniqueIssueKeys,
 } from '../src/sites/jira/routes';
+import './confluence-adf.test';
 
 test('catalog의 사이트와 기능 ID는 중복되지 않고 기본 설정이 존재한다', () => {
   const defaults = createDefaultSettings();
@@ -41,12 +51,17 @@ test('catalog의 사이트와 기능 ID는 중복되지 않고 기본 설정이 
 test('Manifest origin과 catalog origin이 일치한다', async () => {
   const manifest = JSON.parse(await readFile('manifest.json', 'utf8')) as {
     content_scripts: Array<{ matches: string[] }>;
+    host_permissions?: string[];
+    permissions?: string[];
   };
   const manifestOrigins = manifest.content_scripts
     .flatMap((entry) => entry.matches)
     .sort();
   const catalogMatches = SITES.flatMap((site) => site.contentMatches).sort();
   assert.deepEqual(manifestOrigins, catalogMatches);
+  assert.deepEqual(manifest.host_permissions, ['https://pms-innogrid.atlassian.net/*']);
+  assert.equal(manifest.permissions?.includes('scripting'), false);
+  assert.equal(manifest.permissions?.includes('downloads'), false);
 });
 
 test('서비스 아이콘 asset은 정사각형 PNG이며 표시 크기 이상의 해상도를 가진다', async () => {
@@ -97,6 +112,8 @@ test('부분 설정을 기본값과 병합하고 알 수 없는 값을 무시한
   });
   assert.equal(settings.sites.amaranth.features.attendanceHeader?.enabled, true);
   assert.equal(settings.sites.confluence.features.pageMarkdownCopy?.enabled, true);
+  assert.equal(settings.sites.confluence.features.pageMarkdownExport?.enabled, false);
+  assert.equal(settings.sites.confluence.features.pageMarkdownAppend?.enabled, false);
 });
 
 test('과거 overlayEnabled 설정을 boardInspector로 이관한다', () => {
@@ -156,6 +173,25 @@ test('Jira issue 링크 추출과 정렬을 유지한다', () => {
   );
 });
 
+test('Jira 직접 업무 조회 URL을 파싱한다', () => {
+  assert.deepEqual(
+    parseJiraIssueUrl('https://pms-innogrid.atlassian.net/browse/NPT-123'),
+    {
+      issueKey: 'NPT-123',
+      url: 'https://pms-innogrid.atlassian.net/browse/NPT-123',
+    },
+  );
+  assert.deepEqual(
+    parseJiraIssueUrl('https://pms-innogrid.atlassian.net/issues/NPT-123'),
+    {
+      issueKey: 'NPT-123',
+      url: 'https://pms-innogrid.atlassian.net/issues/NPT-123',
+    },
+  );
+  assert.equal(extractIssueKeyFromHref('/issues/NPT-123'), 'NPT-123');
+  assert.equal(parseJiraIssueUrl('https://example.com/browse/NPT-123'), null);
+});
+
 test('Jira 업무 링크 복사는 제목 포함 여부에 따라 브라우저 링크 payload를 만든다', () => {
   assert.deepEqual(buildIssueClipboardContent('npt-4'), {
     plainText: 'NPT-4',
@@ -187,6 +223,142 @@ test('Confluence 문서 조회 URL만 Markdown 복사 대상으로 판별한다'
     )),
     null,
   );
+});
+
+test('Confluence 조회·편집·초안 URL에서 page ID를 추출한다', () => {
+  assert.equal(parseConfluencePageId('2166423922'), '2166423922');
+  assert.equal(
+    parseConfluencePageId('https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/pages/2166423922/title'),
+    '2166423922',
+  );
+  assert.equal(
+    parseConfluencePageId('https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/pages/edit-v2/2166423922'),
+    '2166423922',
+  );
+  assert.equal(
+    parseConfluencePageId('https://pms-innogrid.atlassian.net/wiki/pages/resumedraft.action?fromPageId=2166423922'),
+    '2166423922',
+  );
+  assert.equal(parseConfluencePageId('not-a-page'), null);
+  assert.equal(parseConfluencePageId('https://example.com/wiki/spaces/X/pages/2166423922/title'), null);
+});
+
+test('Confluence 쓰기 대상 URL과 page ID가 일치해야 한다', () => {
+  const pageUrl = 'https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/pages/2166423922/title';
+  assert.equal(isSameConfluencePage(pageUrl, '2166423922'), true);
+  assert.equal(isSameConfluencePage(pageUrl, '999'), false);
+  assert.equal(
+    isSameConfluencePage(pageUrl, 'https://example.com/wiki/spaces/X/pages/2166423922/title'),
+    false,
+  );
+});
+
+test('Confluence ADF 조회는 current 404 후 draft로 재시도한다', async () => {
+  const originalFetch = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    urls.push(url);
+    if (!url.includes('status=draft')) return new Response('', { status: 404 });
+    return new Response(JSON.stringify({
+      id: '2166423922',
+      title: '초안 문서',
+      status: 'draft',
+      spaceId: '1',
+      version: { number: 3 },
+      body: { atlas_doc_format: { value: JSON.stringify({ type: 'doc', version: 1, content: [] }) } },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }) as typeof fetch;
+
+  try {
+    const page = await fetchConfluencePageAdf(
+      { email: 'user@example.com', apiToken: 'placeholder' },
+      '2166423922',
+    );
+    assert.equal(page.status, 'draft');
+    assert.equal(urls.length, 2);
+    assert.match(urls[1], /status=draft/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Confluence ADF 쓰기는 current와 draft version 규칙을 구분한다', async () => {
+  const originalFetch = globalThis.fetch;
+  const requestBodies: Array<Record<string, unknown>> = [];
+  globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
+    requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    return new Response(JSON.stringify({ id: '2166423922', _links: { webui: '/wiki/spaces/PAAS/pages/2166423922' } }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  const base = {
+    pageId: '2166423922',
+    title: '문서',
+    currentVersion: 7,
+    adf: { type: 'doc', version: 1 as const, content: [] },
+  };
+  try {
+    await updateConfluencePageAdf(
+      { email: 'user@example.com', apiToken: 'placeholder' },
+      { ...base, status: 'current' },
+    );
+    await updateConfluencePageAdf(
+      { email: 'user@example.com', apiToken: 'placeholder' },
+      { ...base, status: 'draft' },
+    );
+    assert.deepEqual(requestBodies.map((body) => body.version), [{ number: 8 }, { number: 7 }]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Confluence API 오류와 잘못된 ADF 응답을 구분한다', async () => {
+  const originalFetch = globalThis.fetch;
+
+  try {
+    globalThis.fetch = (async () => new Response('', { status: 401 })) as typeof fetch;
+    await assert.rejects(
+      fetchConfluencePageAdf(
+        { email: 'user@example.com', apiToken: 'placeholder' },
+        '2166423922',
+      ),
+      (error: unknown) => (error as { code?: string }).code === 'unauthorized',
+    );
+
+    globalThis.fetch = (async () => new Response('', { status: 409 })) as typeof fetch;
+    await assert.rejects(
+      updateConfluencePageAdf(
+        { email: 'user@example.com', apiToken: 'placeholder' },
+        {
+          pageId: '2166423922',
+          title: '문서',
+          status: 'current',
+          currentVersion: 7,
+          adf: { type: 'doc', version: 1, content: [] },
+        },
+      ),
+      (error: unknown) => (error as { code?: string }).code === 'conflict',
+    );
+
+    globalThis.fetch = (async () => new Response(JSON.stringify({
+      id: '2166423922',
+      title: '깨진 문서',
+      version: { number: 1 },
+      body: { atlas_doc_format: { value: 'not-json' } },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+    await assert.rejects(
+      fetchConfluencePageAdf(
+        { email: 'user@example.com', apiToken: 'placeholder' },
+        '2166423922',
+      ),
+      /ADF 형식이 올바르지 않습니다/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('Confluence 본문의 Markdown 제어 문자를 이스케이프한다', () => {
