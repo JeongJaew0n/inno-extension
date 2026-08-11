@@ -14,8 +14,10 @@ import {
   isRedundantHeaderOnlyTable,
 } from '../src/sites/confluence/features/pageMarkdownCopy/markdown';
 import {
+  parseConfluenceEditPageUrl,
   parseConfluencePageUrl,
 } from '../src/sites/confluence/routes';
+import { adfDocumentToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/adf-to-editor-html';
 import { buildIssueClipboardContent } from '../src/sites/jira/features/issueLinkCopy/clipboard';
 import {
   extractIssueKeyFromHref,
@@ -217,6 +219,59 @@ test('Confluence 문서 조회 URL만 Markdown 복사 대상으로 판별한다'
       'https://example.com/wiki/spaces/PAAS/pages/2166423922/example',
     )),
     null,
+  );
+});
+
+test('Confluence edit-v2 URL만 편집기 변환 대상으로 판별한다', () => {
+  assert.deepEqual(
+    parseConfluenceEditPageUrl(new URL(
+      'https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/pages/edit-v2/2177630217',
+    )),
+    { spaceKey: 'PAAS', pageId: '2177630217', mode: 'edit' },
+  );
+  assert.equal(
+    parseConfluenceEditPageUrl(new URL(
+      'https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/pages/2177630217/title',
+    )),
+    null,
+  );
+  assert.equal(
+    parseConfluenceEditPageUrl(new URL(
+      'https://example.com/wiki/spaces/PAAS/pages/edit-v2/2177630217',
+    )),
+    null,
+  );
+});
+
+test('ADF를 Confluence 편집기 paste용 안전한 HTML로 직렬화한다', () => {
+  assert.equal(
+    adfDocumentToEditorHtml({
+      type: 'doc',
+      version: 1,
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: '배포 <계획>' }],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: '강조', marks: [{ type: 'strong' }] },
+            { type: 'text', text: ' 링크', marks: [{ type: 'link', attrs: { href: 'https://example.com' } }] },
+            { type: 'text', text: ' 차단', marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }] },
+          ],
+        },
+        {
+          type: 'bulletList',
+          content: [{
+            type: 'listItem',
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: '항목' }] }],
+          }],
+        },
+      ],
+    }),
+    '<h2>배포 &lt;계획&gt;</h2><p><strong>강조</strong><a href="https://example.com"> 링크</a> 차단</p><ul><li><p>항목</p></li></ul>',
   );
 });
 

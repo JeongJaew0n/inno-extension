@@ -69,6 +69,10 @@ export function renderConfluenceFeatureOptions(enabled: boolean): string {
   return `
     <div class="option-fields confluence-converter-options" data-confluence-converter-enabled="${enabled}">
       ${enabled ? '' : '<p class="notice">서비스와 이 기능을 켜야 변환할 수 있습니다.</p>'}
+      <div class="editor-converter-guide">
+        <strong>Confluence 편집 화면</strong>
+        <p><code>edit-v2</code> 편집기 toolbar의 변환 버튼으로 본문의 Markdown 원문을 편집 콘텐츠로 바꿀 수 있습니다. 이미 서식화된 본문은 변환하지 않습니다.</p>
+      </div>
       <section class="confluence-converter-section" aria-label="Markdown ADF 변환기">
         <label>
           <span>Markdown</span>
@@ -78,7 +82,7 @@ export function renderConfluenceFeatureOptions(enabled: boolean): string {
           <span>.md 파일 불러오기</span>
           <input type="file" data-confluence-markdown-file accept=".md,.markdown,text/markdown" />
         </label>
-        <p class="field-help">입력 내용은 브라우저 안에서만 변환되며 Confluence 문서를 조회하거나 변경하지 않습니다.</p>
+        <p class="field-help">이 Popup 입력은 브라우저 안에서만 변환되며 Confluence 문서를 조회하거나 변경하지 않습니다.</p>
         <button type="button" class="primary-action" data-confluence-action="convert" ${enabled && state.markdown.trim() ? '' : 'disabled'}>ADF로 변환</button>
       </section>
       ${feedbackHtml()}

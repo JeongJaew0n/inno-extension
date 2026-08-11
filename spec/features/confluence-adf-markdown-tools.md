@@ -6,31 +6,35 @@
 
 ## 한 줄 요약
 
-사용자가 Extension Popup에 입력한 Markdown을 네트워크 요청 없이 ADF JSON 문서로 변환해 화면에 보여준다.
+사용자가 입력한 Markdown을 네트워크 요청 없이 ADF로 변환하고, Popup에서 JSON을 확인하거나 Confluence 편집 본문에 적용한다.
 
 ## 배경과 사용자 문제
 
 Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, 표, 코드 블록 같은 구조를 다시 작성해야 한다. 초기 통합안은 Atlassian API로 현재 문서를 읽고 쓰는 기능까지 포함했지만, 인증 정보 관리와 원격 문서 변경 위험이 단순 변환 요구에 비해 컸다.
 
-현재 범위는 변환 결과 자체를 확인하는 로컬 도구로 축소한다. 기존 `본문 Markdown 복사` 기능과 독립적이며 Confluence 페이지를 열어 둘 필요가 없다.
+현재 범위는 API를 사용하지 않는 로컬 변환 도구다. Popup에서는 변환 결과만 확인할 수 있고, Confluence `edit-v2` 화면에서는 본문에 붙여넣은 Markdown 원문을 현재 편집 콘텐츠로 바꿀 수 있다. 기존 `본문 Markdown 복사` 기능과 독립적이다.
 
 ## 목표
 
 - Markdown의 주요 블록·인라인 구조를 ADF document JSON으로 변환한다.
 - 변환 결과와 최상위 block 수를 Popup에서 확인할 수 있게 한다.
+- Confluence 편집 화면에서 본문 전체의 Markdown 원문을 편집 가능한 문서 구조로 바꾼다.
 - 손실되거나 축약된 요소를 경고로 드러낸다.
 - 입력과 결과를 브라우저 안에서만 처리한다.
 
 ## 비목표
 
-- Confluence 문서를 API로 조회, 생성, 수정하거나 기존 본문에 추가하지 않는다.
+- Confluence 문서를 API로 조회, 생성, 수정하거나 저장하지 않는다.
+- 기존 본문 뒤에 내용을 추가하지 않는다. 편집기 동작은 본문 전체 교체다.
 - ADF를 Markdown으로 역변환하지 않는다.
 - 결과 복사, 파일 다운로드, 자동 업로드 기능을 제공하지 않는다.
-- Atlassian 이메일, API 토큰 또는 현재 탭 정보를 요구하지 않는다.
+- Atlassian 이메일이나 API 토큰을 요구하지 않는다.
 - 로컬 이미지 업로드와 특정 Mermaid Forge 앱 매크로 생성을 지원하지 않는다.
 - 모든 Confluence node와 서드파티 매크로를 손실 없이 생성하지 않는다.
 
 ## 사용자 경험과 행동 계약
+
+### Popup 변환기
 
 사용자는 Confluence 서비스의 `Markdown -> ADF 변환` 기능 상세에서 Markdown을 직접 붙여넣거나 `.md`·`.markdown` 파일을 불러온다.
 
@@ -42,13 +46,27 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 - 기능 또는 Confluence 서비스가 OFF이면 입력값은 보존하되 변환 버튼을 사용할 수 없다.
 - Popup을 닫으면 입력과 결과를 영구 저장하지 않는다.
 
+### Confluence 편집기 변환
+
+기능이 활성화되면 Confluence `edit-v2` 편집기 toolbar에 `Markdown -> ADF 변환` 버튼을 표시한다.
+
+- 사용자는 편집 본문에 Markdown 원문을 넣고 버튼을 누른다.
+- 제목 입력란은 변환 대상에서 제외하고 본문 전체만 변환한다.
+- 본문이 일반 문단과 줄바꿈만으로 구성된 경우에만 Markdown 원문으로 취급한다.
+- 제목, 목록, 표, 인용, 코드 블록, 링크, 강조 등 Confluence 서식이 이미 적용된 본문은 손실 방지를 위해 변환하지 않는다.
+- 변환은 현재 편집기 내용을 전체 선택한 뒤 한 번의 편집 transaction으로 교체한다.
+- 변환 직후 Confluence의 실행 취소 기능으로 이전 본문을 복구할 수 있어야 한다.
+- 확장은 `업데이트` 버튼을 누르지 않는다. 저장 여부는 사용자가 결정한다.
+- 변환 경고가 있으면 버튼 상태와 hover 안내로 경고 수·내용을 확인할 수 있게 한다.
+
 ## 입력과 출력
 
-- 입력: UTF-8 Markdown 문자열 또는 사용자가 선택한 Markdown 텍스트 파일
-- 출력: `type: "doc"`, `version: 1`, `content` 배열을 갖는 ADF JSON
-- 처리 위치: Extension Popup의 로컬 JavaScript 실행 환경
+- 입력: Popup의 UTF-8 Markdown 문자열·Markdown 파일 또는 현재 편집 본문의 일반 문단 텍스트
+- Popup 출력: `type: "doc"`, `version: 1`, `content` 배열을 갖는 ADF JSON
+- 편집기 출력: 변환된 ADF를 Confluence 편집기가 수용하는 paste 표현으로 전달한 현재 draft 본문
+- 처리 위치: Extension Popup 또는 Confluence content script의 로컬 JavaScript 실행 환경
 - 네트워크: 사용하지 않음
-- 외부 상태 변경: 없음
+- 외부 상태 변경: 편집기 draft 상태만 변경하며 페이지 저장은 하지 않음
 
 ## 변환 지원 범위
 
@@ -77,19 +95,25 @@ Mermaid fenced code block은 Mermaid 앱 매크로가 아니라 `expand` 안의 
 
 - 기능 기본값은 OFF다.
 - 서비스 gate와 기능 enabled 값이 모두 ON일 때만 변환할 수 있다.
+- Popup 변환기와 편집기 버튼은 같은 기능 enabled 값을 공유한다.
 - 기존 사용자 설정을 잃지 않기 위해 내부 기능 ID `pageMarkdownAppend`는 유지한다. 사용자에게 보이는 계약에는 문서 추가 동작이 없다.
 - 일반 enabled 설정 외 인증 정보나 변환 결과는 저장하지 않는다.
 
 ## 보안과 권한
 
 - 변환 기능은 `storage` 외 추가 Chrome 권한을 요구하지 않는다.
-- Atlassian API, 현재 탭 URL, 로그인 쿠키, 인증 토큰에 접근하지 않는다.
+- Atlassian API, 로그인 쿠키, 인증 토큰에 접근하지 않는다.
 - Markdown 입력과 ADF 결과를 외부 서버로 전송하지 않는다.
+- 편집기 적용은 현재 `edit-v2` DOM에만 수행하고 확장이 페이지를 저장하지 않는다.
 - 결과 JSON 안에는 사용자가 입력한 본문이 포함되므로 화면 공유나 수동 반출 시 사용자가 민감정보를 확인해야 한다.
 
 ## 결정과 트레이드오프
 
-원격 문서 추가까지 자동화하면 작업 단계는 줄지만 API 토큰 보관, host permission, version conflict, 잘못된 문서 변경 복구가 필요하다. 사용자의 현재 요구는 변환 결과만이므로 이 책임을 제거하고 로컬 변환기로 범위를 제한했다.
+원격 문서 추가까지 자동화하면 작업 단계는 줄지만 API 토큰 보관, host permission, version conflict, 잘못된 문서 변경 복구가 필요하다. 편집기 안에서 변환하고 사용자가 저장하게 하면 같은 편집 세션의 실행 취소와 검토 흐름을 유지하면서 이 책임을 제거할 수 있다.
+
+ADF JSON을 편집기 내부 상태에 직접 주입하는 방식은 Confluence의 비공개 editor 객체에 의존한다. 현재는 브라우저의 HTML paste 표현으로 전달하고 Confluence가 내부 ADF로 수용하게 한다. 이 방식도 editor DOM과 paste 계약에 의존하지만 비공개 상태 객체를 직접 조작하지 않는다는 장점이 있다.
+
+이미 서식화된 본문을 다시 Markdown으로 간주하면 표, 매크로, 링크, 코드 같은 정보를 평문으로 축약할 수 있다. 따라서 자동 추측보다 안전을 우선해 일반 문단 형태의 원문만 허용한다.
 
 결과 복사와 다운로드도 편리하지만 변환 이외의 전달 경로와 사용자 행동을 제품 계약에 추가한다. 현재는 결과 확인만 제공하고 필요성이 확인될 때 별도 기능으로 검토한다.
 
@@ -98,7 +122,11 @@ Mermaid fenced code block은 Mermaid 앱 매크로가 아니라 `expand` 안의 
 - Markdown 입력과 파일 입력이 동일한 변환 경로를 사용한다.
 - 지원 요소가 유효한 ADF document 구조로 변환된다.
 - 경고, 최상위 block 수와 Mermaid 수가 결과와 함께 표시된다.
-- 변환 과정에서 네트워크 요청, 클립보드 쓰기, 다운로드, Confluence 문서 변경이 발생하지 않는다.
+- `edit-v2` 화면의 편집기 toolbar에 기능 버튼이 한 번만 표시된다.
+- 일반 문단 형태의 Markdown 본문은 제목·목록·표·코드 등 식별 가능한 편집 구조로 교체된다.
+- 이미 서식이 적용된 본문에서는 변환을 중단하고 이유를 안내한다.
+- 편집기 변환 후 실행 취소가 가능하며 확장이 페이지 저장을 실행하지 않는다.
+- 변환 과정에서 네트워크 요청, 시스템 클립보드 쓰기 또는 다운로드가 발생하지 않는다.
 - manifest에 API용 host permission과 background service worker가 없다.
 - API 인증·조회·쓰기 코드가 배포 산출물에 포함되지 않는다.
 - typecheck, unit test, production build가 성공한다.
@@ -107,12 +135,15 @@ Mermaid fenced code block은 Mermaid 앱 매크로가 아니라 `expand` 안의 
 
 - ADF schema는 지원 node보다 넓어 변환 결과가 모든 Confluence 입력 경로에서 동일하게 수용된다고 보장할 수 없다.
 - Popup 안에서 긴 입력과 JSON 결과를 함께 다루는 사용성은 제한적이다.
-- 결과를 실제 Confluence에 전달하는 방식은 현재 범위 밖이며 확정하지 않았다.
+- Confluence editor toolbar, ProseMirror DOM 또는 paste 처리 방식이 바뀌면 버튼 표시나 본문 적용이 중단될 수 있다.
+- Mermaid source는 일반 코드 표현으로 보존되며 Mermaid Forge 앱 매크로로 자동 변환되지 않는다.
+- 편집기 적용 결과는 실제 `업데이트` 전 사용자가 검토해야 한다.
 
 ## 변경 이력
 
 - 2026-08-11: 별도 Jira·Confluence 도구의 ADF 양방향 변환과 API 기반 문서 추가를 기본 OFF 기능으로 통합했다.
 - 2026-08-11: 사용자 요구를 변환 자체로 재확정해 ADF -> Markdown, 인증, API 조회·쓰기, 현재 문서 추가, 복사·다운로드를 제거하고 로컬 Markdown -> ADF JSON 변환기만 유지했다.
+- 2026-08-11: Confluence `edit-v2` toolbar에서 현재 본문의 Markdown 원문을 편집 콘텐츠로 변환하는 동작을 추가했다. API 저장 대신 편집기의 paste·실행 취소·사용자 업데이트 흐름을 사용하고, 이미 서식화된 본문은 손실 방지를 위해 거부한다.
 
 ## 관련 문서
 
