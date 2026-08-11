@@ -53,6 +53,24 @@ export const SITES = [
       },
     ],
   },
+  {
+    id: 'confluence',
+    name: 'Confluence',
+    hostLabel: 'pms-innogrid.atlassian.net/wiki',
+    origin: 'https://pms-innogrid.atlassian.net/wiki',
+    contentMatches: ['https://pms-innogrid.atlassian.net/wiki/*'],
+    color: '#1868db',
+    features: [
+      {
+        id: 'pageMarkdownCopy',
+        name: '본문 Markdown 복사',
+        description: '현재 Confluence 문서의 본문을 Markdown 형식으로 복사합니다.',
+        routeSummary: 'Confluence 문서 조회 화면',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
+    ],
+  },
 ] as const satisfies readonly SiteDescriptor[];
 
 export function findSiteDescriptor(siteId: SiteId): SiteDescriptor {

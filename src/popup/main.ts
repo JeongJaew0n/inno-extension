@@ -36,6 +36,7 @@ let saveFeedbackTimer: number | null = null;
 const SITE_ICON_URLS: Record<SiteId, string> = {
   amaranth: new URL('./assets/amaranth-favicon.png', import.meta.url).href,
   jira: new URL('./assets/jira-favicon.png', import.meta.url).href,
+  confluence: new URL('./assets/confluence-favicon.png', import.meta.url).href,
 };
 
 function escapeHtml(value: string): string {

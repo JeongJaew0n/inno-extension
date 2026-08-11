@@ -1,6 +1,6 @@
 # Inno Extension
 
-아마란스와 Jira의 사내 업무 편의 기능을 하나의 Chrome Extension으로 제공한다.
+아마란스, Jira, Confluence의 사내 업무 편의 기능을 하나의 Chrome Extension으로 제공한다.
 
 ## 지원 사이트와 기능
 
@@ -26,9 +26,17 @@
   - 현재 보드, 화면 이슈 수, 선택 이슈를 표시한다.
   - 기본값은 OFF이며 Popup에서 프로젝트 키와 보드 ID를 설정할 수 있다.
 
+### Confluence
+
+- 대상: `https://pms-innogrid.atlassian.net/wiki/*`
+- 본문 Markdown 복사
+  - 문서 조회 화면의 `링크 복사` 버튼 옆에 `본문 Markdown 복사` 버튼을 표시한다.
+  - 제목, 작성자, 댓글을 제외하고 현재 문서 본문만 Markdown으로 복사한다.
+  - 제목 계층, 목록, 표, 코드 블록, 링크와 기본 텍스트 서식을 Markdown으로 변환한다.
+
 ## Popup 설정
 
-- 사이트 목록에서 아마란스/Jira 마스터 토글을 켜고 끈다.
+- 서비스 목록에서 아마란스/Jira/Confluence 전체 기능을 켜고 끈다.
 - 서비스 카드는 각 서비스의 로컬 아이콘 asset을 표시한다.
 - 사이트를 꺼도 하위 기능의 enabled 값은 보존된다.
 - 사이트 상세에서 기능별 토글을 독립적으로 변경한다.
@@ -73,7 +81,8 @@ src/
 ├── popup/            사이트 목록, 사이트 상세, 기능 상세, 일반 설정
 └── sites/
     ├── amaranth/     아마란스 content entry와 기능
-    └── jira/         Jira content entry와 기능
+    ├── jira/         Jira content entry와 기능
+    └── confluence/   Confluence content entry와 기능
 ```
 
 사이트 runtime은 사이트당 하나의 MutationObserver를 사용하며 활성 기능의 `reconcile()`을 호출한다. 기능이 꺼지면 `dispose()`로 자신이 만든 DOM, style, timer, listener를 정리한다.

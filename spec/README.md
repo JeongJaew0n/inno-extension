@@ -13,6 +13,7 @@
 | [glossary.md](./glossary.md) | 제품·서비스·기능·사이트 등 기획과 기술 문서에서 사용하는 기준 용어 |
 | [features/amaranth-title-autofill.md](./features/amaranth-title-autofill.md) | 아마란스 신청서 제목 자동채움의 기획, 행동 계약, 설정, 리스크, 변경 이력 |
 | [features/jira-work-link-copy.md](./features/jira-work-link-copy.md) | Jira 업무 링크 복사 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
+| [features/confluence-page-markdown-copy.md](./features/confluence-page-markdown-copy.md) | Confluence 문서 본문 Markdown 복사의 범위, 변환 계약, 리스크, 변경 이력 |
 | [AGENTS.md](./AGENTS.md) | `spec/` 문서를 작성·수정하는 에이전트와 기여자가 따라야 할 규칙 |
 
 새 기능을 추가할 때는 `features/<feature-name>.md`를 만들고 이 목록에 연결한다.
