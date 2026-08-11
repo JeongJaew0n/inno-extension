@@ -36,7 +36,7 @@
 - 본문 Markdown 고정밀 내보내기 (기본 OFF)
   - 저장한 Atlassian API 인증으로 현재 문서의 ADF 원문을 읽어 Markdown으로 복사한다.
   - 기존 DOM 기반 복사는 그대로 유지되며, 고정밀 내보내기는 별도 기능이다.
-- Markdown 본문 추가 (기본 OFF)
+- Markdown -> ADF 변환 (기본 OFF)
   - 붙여넣거나 `.md` 파일에서 읽은 Markdown을 검토한 뒤 현재 문서 맨 아래에 추가한다.
   - 대상 문서, 상태, 추가 block 수와 변환 경고를 확인해야 실제 문서를 변경할 수 있다.
   - 첫 통합 범위에서는 로컬 이미지 upload/download와 Mermaid 앱 삽입을 지원하지 않는다.

@@ -181,12 +181,12 @@ function appendPreviewHtml(): string {
 function appendHtml(enabled: boolean): string {
   const usable = enabled && state.credentials.hasApiToken && isSupportedConfluenceTab(state.activeTabUrl);
   return `
-    <section class="confluence-api-section" aria-label="Markdown 본문 추가">
-      <h3>현재 문서 맨 아래에 추가</h3>
+    <section class="confluence-api-section" aria-label="Markdown ADF 변환">
+      <h3>Markdown -> ADF 변환</h3>
       ${contextHtml()}
       <label>
         <span>Markdown</span>
-        <textarea data-confluence-markdown rows="9" placeholder="추가할 Markdown을 입력하세요">${escapeHtml(state.markdown)}</textarea>
+        <textarea data-confluence-markdown rows="14" placeholder="ADF로 변환해 추가할 Markdown을 입력하세요">${escapeHtml(state.markdown)}</textarea>
       </label>
       <label class="file-input-label">
         <span>.md 파일 불러오기</span>
