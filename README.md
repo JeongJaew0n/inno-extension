@@ -39,9 +39,10 @@
   - Confluence `edit-v2` 편집 화면의 toolbar에 변환 버튼을 표시한다.
   - 편집 본문이 일반 문단 형태의 Markdown 원문일 때 전체 본문을 Confluence 편집 콘텐츠로 변환하며, 이미 서식화된 본문은 손실 방지를 위해 거부한다.
   - 편집 toolbar의 `코드블럭 벗기기`로 현재 본문에 있는 모든 코드 블록의 서식만 제거하고 원문과 줄바꿈은 보존한다.
+  - 편집 toolbar의 `Mermaid -> ADF`로 Mermaid 선언이 들어 있는 코드 블록만 찾아 원문 뒤에 Confluence Mermaid 매크로를 생성한다.
   - 편집 결과는 실행 취소할 수 있고 사용자가 `업데이트`를 누르기 전에는 저장되지 않는다.
   - Confluence API를 호출하지 않으며 복사·다운로드 기능도 제공하지 않는다.
-  - 로컬 이미지 upload와 Mermaid 앱 매크로 삽입은 지원하지 않는다.
+  - 로컬 이미지 upload는 지원하지 않는다. Mermaid 매크로 삽입은 현재 사내 Confluence에 설치된 앱 계약을 사용한다.
 
 ## Popup 설정
 

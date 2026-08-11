@@ -76,7 +76,7 @@ export const SITES = [
       {
         id: 'pageMarkdownAppend',
         name: 'Markdown -> ADF 변환',
-        description: 'Markdown을 ADF로 변환하고 편집 본문의 코드블럭 서식을 벗깁니다.',
+        description: 'Markdown과 Mermaid 코드블럭을 ADF로 변환하고 코드블럭 서식을 벗깁니다.',
         routeSummary: 'Extension Popup 및 Confluence 문서 편집 화면',
         defaultEnabled: false,
         hasDetails: true,

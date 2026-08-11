@@ -194,7 +194,7 @@ flowchart LR
 - Confluence가 생성하는 embedded macro context를 임의로 구성하는 것은 공개 계약인지 확인되지 않았다.
 - 앱이 없는 사이트에서는 알 수 없는 extension으로 남거나 렌더링에 실패할 수 있다.
 
-따라서 기본 동작은 Mermaid fence를 손실 없이 코드 블록으로 보존하고, 앱 매크로 자동 생성은 사이트·앱 버전을 검증한 실험 기능으로 분리하는 편이 안전하다.
+따라서 Popup의 범용 Markdown 변환은 Mermaid fence를 손실 없이 코드 블록으로 보존한다. 현재 사내 tenant의 편집 화면에서는 별도 명시적 버튼으로만 앱 매크로를 생성하고, 실패해도 source가 남도록 코드 블록을 유지한다.
 
 ### 7.2 Confluence -> Markdown 내보내기
 
@@ -231,21 +231,26 @@ index가 범위를 벗어나거나 대상 codeBlock이 Mermaid 문법이 아니�
 
 현재 기준으로는 Mermaid를 Confluence의 기본 ADF 기능으로 취급하면 안 된다. 이 사이트에 설치된 특정 Forge 앱의 macro 계약으로 취급해야 한다.
 
-Inno Extension의 안정적인 1차 정책은 다음과 같다.
+Inno Extension의 현재 정책은 다음과 같다.
 
 1. Markdown import 시 Mermaid 원문을 코드 블록으로 보존한다.
-2. 현재의 무API content script에서는 Confluence Mermaid macro를 자동 생성하지 않는다.
-3. Mermaid 문법 후보 탐지는 가능하지만, Forge 앱의 cross-origin 설정 iframe을 완료하거나 공개 paste 계약으로 extension node를 생성할 수 없으므로 탐지 결과만으로 자동 변환 완료를 보장할 수 없다.
-4. 향후 공개 API나 검증된 editor extension 계약을 채택한다면 현재 페이지 전체 codeBlock 순번을 다시 계산하고, 앱 식별자나 parameter가 달라질 때 일반 코드 블록으로 폴백해야 한다.
+2. 편집기에서는 Mermaid 선언이 확인된 기존 codeBlock만 명시적 사용자 동작으로 변환한다.
+3. 현재 페이지 전체 codeBlock 순번을 계산해 `guestParams.index`를 만들고 원본 뒤에 extension을 삽입한다.
+4. 앱 식별자나 parameter가 달라져도 source를 잃지 않도록 codeBlock은 제거하지 않는다.
 
 ### 9.1 2026-08-11 편집 화면 재검토
 
 로그인된 `edit-v2` 화면에서 현재 본문을 다시 확인한 결과, 편집기에는 13개의 `codeBlock` node가 있었고 그중 `flowchart LR`로 시작하는 Mermaid source 후보가 2개 있었다. 후보 탐지는 코드 블록 원문의 첫 유효 줄로 안정적으로 수행할 수 있다.
 
-하지만 편집 DOM에는 이 두 source와 연결된 Mermaid `extension` node가 없었고, 페이지의 Forge iframe은 외부 앱 origin에서 실행됐다. Chrome extension content script는 동일 출처 정책 때문에 그 iframe 내부의 코드 블록 선택과 `Submit`을 직접 조작할 수 없다. Confluence slash menu로 매크로를 띄우는 데 성공하더라도 자동 설정 완료 단계가 남는다.
+편집 DOM에는 이 두 source와 연결된 Mermaid `extension` node가 없었고, 페이지의 Forge iframe은 외부 앱 origin에서 실행됐다. Chrome extension content script가 그 iframe 내부의 선택 UI와 `Submit`을 직접 조작할 수 없다는 점은 그대로다.
 
-따라서 이미 ADF인 본문에 대해 가능한 범위는 다음처럼 구분한다.
+추가로 Atlassian의 `@atlaskit/adf-schema` 56.7.2를 확인한 결과, extension node의 공식 DOM parser는 `data-node-type="extension"` 요소에서 `data-extension-type`, `data-extension-key`, `data-text`, `data-parameters`, `data-layout`, `data-local-id`를 읽는다. 실제 tenant의 기존 Mermaid node가 가진 extension type/key와도 일치했다. 따라서 iframe을 거치지 않고 이 paste 표현을 편집기에 전달하는 구현 경로를 확보했다.
 
-- 가능: Mermaid 선언으로 시작하는 코드 블록 후보 탐지, 개수·위치 안내, source 보존
-- 조건부 가능: 사용자가 Forge 설정 화면을 마무리하는 보조 삽입 흐름
-- 현재 불가: API나 비공개 editor state 주입 없이 모든 후보를 Mermaid 매크로로 완전 자동 변환
+구현 범위는 다음처럼 제한한다.
+
+- Mermaid 선언으로 시작하는 codeBlock만 후보로 판정한다.
+- 원본은 유지하고 바로 뒤에 실제 ADF extension을 삽입한다.
+- `guestParams.index`는 삽입 전 전체 codeBlock의 0-based 순번을 사용한다.
+- 바로 다음 node가 동일 Mermaid extension이면 중복 삽입하지 않는다.
+- extension key가 바뀌거나 앱이 제거된 경우 원본 codeBlock은 그대로 남는다.
+- 확장은 페이지 저장을 실행하지 않으므로 사용자가 결과를 확인하고 실행 취소하거나 업데이트한다.
