@@ -7,6 +7,8 @@ export const FEATURE_IDS = [
   'issueLinkCopy',
   'boardInspector',
   'pageMarkdownCopy',
+  'pageMarkdownExport',
+  'pageMarkdownAppend',
 ] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 
