@@ -58,3 +58,14 @@ export function buildCollapsedMermaidSourceHtml(source: string): string {
     '</details>',
   ].join('');
 }
+
+export function buildConfluenceMermaidReplacementHtml(
+  codeBlockIndex: number,
+  localId: string,
+  source: string,
+): string {
+  return [
+    buildConfluenceMermaidExtensionHtml(codeBlockIndex, localId),
+    buildCollapsedMermaidSourceHtml(source),
+  ].join('');
+}

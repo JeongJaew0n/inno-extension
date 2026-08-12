@@ -22,6 +22,7 @@ import { codeBlockTextToEditorHtml } from '../src/sites/confluence/features/edit
 import {
   buildCollapsedMermaidSourceHtml,
   buildConfluenceMermaidExtensionHtml,
+  buildConfluenceMermaidReplacementHtml,
   CONFLUENCE_MERMAID_EXTENSION_KEY,
   isMermaidCodeBlockSource,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
@@ -319,6 +320,16 @@ test('Mermaid 원본 코드블럭을 접힌 Confluence source HTML로 만든다'
     buildCollapsedMermaidSourceHtml('flowchart LR\r\n  A --> B\n<script>'),
     '<details><summary>Mermaid 원본</summary><pre><code>flowchart LR\n  A --&gt; B\n&lt;script&gt;</code></pre></details>',
   );
+});
+
+test('Mermaid 컴포넌트와 접힌 원본을 한 번의 치환용 HTML로 만든다', () => {
+  const html = buildConfluenceMermaidReplacementHtml(10, 'replacement-id', 'flowchart LR\n  A --> B');
+
+  assert.match(html, /^<div data-node-type="extension"/);
+  assert.match(html, /&quot;guestParams&quot;:\{&quot;index&quot;:10\}/);
+  assert.match(html, /data-local-id="replacement-id"><\/div><details>/);
+  assert.match(html, /<summary>Mermaid 원본<\/summary>/);
+  assert.match(html, /<pre><code>flowchart LR\n  A --&gt; B<\/code><\/pre><\/details>$/);
 });
 
 test('Confluence 본문의 Markdown 제어 문자를 이스케이프한다', () => {
