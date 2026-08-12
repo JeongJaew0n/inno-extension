@@ -312,9 +312,9 @@ Mermaid 원본 codeBlock은 ADF상 top-level node지만 편집 DOM에서는 다�
 | 3 | 중복 검사가 source 바로 뒤 extension만 찾도록 되어 잘못 배치된 기존 macro를 인식하지 못했다. | 높음 | macro는 문서 앞, source는 index 8·10 위치에 있어 매 클릭마다 후보로 다시 판정됐다. |
 | 4 | CSP font와 iframe resize 경고가 macro 위치를 바꿨다. | 낮음 | 경고는 Forge iframe의 font 표시·deprecated option에 관한 것이며 ADF node 위치 결정과 무관하다. |
 
-### 10.5 수정 계약
+### 10.5 당시 수정 계약 — 후속 검증으로 폐기
 
-수정 구현은 다음 계약을 따른다.
+아래 계약은 10.7 구현 당시 채택했지만, 11장의 Chrome 실측으로 성립하지 않는 것으로 확인됐다. 현재 구현 방향의 근거로 사용하면 안 된다.
 
 1. 원본 codeBlock 하나를 선택하고 `macro + Mermaid 원본 expand`를 단일 paste payload로 전달한다.
 2. 생성한 `localId`를 가진 extension node와 접힌 source가 원래 위치에서 서로 인접하게 생성될 때까지 최대 3초 기다린다.
@@ -323,7 +323,7 @@ Mermaid 원본 codeBlock은 ADF상 top-level node지만 편집 DOM에서는 다�
 5. 정상 pair가 아닌 기존 Mermaid extension이 하나라도 있으면 추가 생성을 중단해 중복을 막는다.
 6. 실제 Forge ADF와 맞추기 위해 `parameters.layout`, `parameters.localId`, `parameters.extensionId`도 함께 전달한다.
 
-이전 동작으로 생성된 unpaired Mermaid component 6개는 페이지 version 4에 저장됐으나 이후 정리됐다. 2026-08-12 재조회한 version 5와 현재 편집 draft에는 Mermaid extension이 없고 원본 codeBlock만 남아 있다. 수정본은 다른 문서에서 unpaired component를 발견해도 자동 삭제하거나 임의로 재배치하지 않는다.
+이전 동작으로 생성된 unpaired Mermaid component 6개는 페이지 version 4에 저장됐으나 이후 정리됐다. 당시 2026-08-12 재조회한 version 5에는 Mermaid extension이 없고 원본 codeBlock만 남아 있었다. 이후 버튼을 다시 실행한 편집 draft의 상태는 11.2와 같이 달라졌다.
 
 ### 10.6 함께 관찰된 콘솔 경고
 
@@ -333,11 +333,11 @@ Mermaid 원본 codeBlock은 ADF상 top-level node지만 편집 DOM에서는 다�
 
 세 메시지는 macro iframe이 실행되고 있음을 보여주지만, extension의 ADF 위치나 source 참조 index를 바꾸는 원인은 아니다.
 
-### 10.7 두 단계 치환 실패와 최종 수정
+### 10.7 두 단계 치환 실패와 단일 paste 시도 — 후속 검증으로 실패
 
 top-level wrapper 앞에 macro를 먼저 붙이고, 비동기 생성이 끝난 뒤 source wrapper를 `<details>`로 다시 붙이는 두 단계 구현도 실제 편집기에서는 안정적이지 않았다. 첫 paste가 selection을 macro node view 쪽으로 이동시킨 뒤 두 번째 paste의 DOM Range가 ProseMirror 문서 selection으로 복원되지 않아, `Mermaid 원본 코드블럭을 접힌 영역으로 바꾸지 못했습니다` 오류가 발생했다. 이때 첫 transaction은 이미 반영돼 macro가 문서 최상단에 남고 원문도 별도로 노출될 수 있었다.
 
-수정 구현은 원본 codeBlock을 선택해 다음 두 node를 단일 paste transaction으로 교체한다.
+후속 구현은 원본 codeBlock을 선택해 다음 두 node를 단일 paste transaction으로 교체하려고 했다.
 
 ```text
 원본 codeBlock selection
@@ -354,7 +354,226 @@ top-level wrapper 앞에 macro를 먼저 붙이고, 비동기 생성이 끝난 �
 - 같은 codeBlock index에 동일 source가 접힌 영역 안에 보존됐는가
 - extension과 source expand가 editor top-level에서 서로 인접한가
 
-하나라도 만족하지 않으면 잘못 배치된 결과를 남기지 않도록 한 번의 paste를 자동 실행 취소한다.
+하나라도 만족하지 않으면 한 번의 paste를 자동 실행 취소하도록 구현했다. 그러나 Chrome 실측 결과, paste 위치·`<details>` 변환·실행 취소에 관한 세 전제가 모두 실제 Confluence 편집기 동작과 맞지 않았다. 따라서 이 절의 구조는 목표였을 뿐 실제 달성된 동작이 아니다.
+
+## 11. 2026-08-12 Chrome 정밀 분석: 단일 paste 구현 실패
+
+### 11.1 분석 범위와 상태 구분
+
+사용자가 다음 오류와 함께 Mermaid component가 계속 문서 최상단에 생긴다고 보고했다.
+
+```text
+Confluence Mermaid -> ADF 변환 실패
+Mermaid 변환 결과가 올바르지 않고 자동 되돌리기도 실패했습니다.
+Confluence 실행 취소를 한 번 눌러주세요.
+```
+
+이 분석에서는 구현을 수정하지 않고 로그인된 Chrome의 실제 `edit-v2` 화면, 현재 편집 draft DOM, 게시된 페이지 version 5 ADF, 그리고 현행 content script 코드를 대조했다.
+
+- 게시된 version 5에는 Mermaid extension이 없고 기존 codeBlock만 남아 있다.
+- 잘못 생성된 component와 복제 source는 게시본이 아니라 Confluence 편집 draft에 존재한다.
+- 따라서 현재 draft 상태에서 `업데이트`를 누르면 손상된 구조가 게시본에 반영될 수 있다.
+
+### 11.2 Chrome에서 확인한 실제 draft 구조
+
+편집기의 top-level DOM은 다음 상태였다.
+
+```text
+top 0: 빈 heading
+top 1: 빈 heading
+top 2: Mermaid extension
+top 3: paragraph "Mermaid 원본"
+top 4: 복제된 Mermaid codeBlock
+top 5: 실제 문서 제목
+...
+top 77: Mermaid extension
+top 78: paragraph "Mermaid 원본"
+top 79: 복제된 Mermaid codeBlock
+...
+top 88: 원래 위치에 남은 Mermaid codeBlock
+```
+
+동일한 CCP Mermaid source가 codeBlock index `0`, `9`, `11`에 각각 존재했다. 세 source의 길이는 모두 592자이고 첫 줄과 전체 내용이 동일했다. 반면 게시된 version 5에 있던 DevOpsit `User -> Ticket` Mermaid source는 현재 draft에서 확인되지 않았다.
+
+현재 버튼의 pair 판정을 그대로 재현하면 다음 결과가 나온다.
+
+```text
+Mermaid extension: 2개
+정상 pair로 오인되는 source: codeBlock 0, 9
+새 변환 후보: codeBlock 11
+unpaired extension 판정: 0개
+```
+
+즉 손상된 두 묶음을 정상 변환 결과로 오인하고, 남은 복제 source만 다시 변환 대상으로 삼는다. 같은 draft에서 버튼을 다시 누르면 손상이 추가될 가능성이 높다.
+
+### 11.3 원인이 문서 최상단 삽입으로 나타나는 이유
+
+현행 구현은 `selectEditorNode()`에서 브라우저 DOM `Range`를 만든 뒤 `ClipboardEvent('paste')`를 `.ProseMirror`에 dispatch한다.
+
+```text
+DOM Selection 변경
+  -> synthetic paste event dispatch
+  -> Confluence/ProseMirror paste handler 실행
+```
+
+그러나 코드에는 ProseMirror의 `EditorState.selection`을 갱신하거나, 목표 document position을 지정한 transaction을 dispatch하는 경로가 없다. Chrome 실측에서도 다음 현상이 동시에 확인됐다.
+
+- 의도한 대상 codeBlock은 top-level 88에 있었다.
+- paste 결과는 top-level 2~4에 생성됐다.
+- 의도한 원본 codeBlock은 top-level 88에 그대로 남았다.
+
+이는 DOM Range가 보이는 선택을 표현하더라도 Confluence 내부 editor selection과 동일한 삽입 위치로 채택되지 않았음을 강하게 지지한다. synthetic paste가 DOM Range를 원본 node 치환 위치로 사용한다는 전제는 폐기해야 한다.
+
+관련 코드:
+
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:90` — DOM Range만 만드는 `selectEditorNode()`
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:156` — synthetic paste를 dispatch하는 `pasteAndWaitForChange()`
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:297` — 위 두 동작을 조합한 `replaceMermaidCodeBlock()`
+
+### 11.4 `<details>`는 Confluence expand가 되지 않는다
+
+현행 replacement HTML은 extension 뒤에 다음 HTML을 연결한다.
+
+```html
+<details>
+  <summary>Mermaid 원본</summary>
+  <pre><code>...</code></pre>
+</details>
+```
+
+그러나 실제 Confluence paste 결과는 `expand` 또는 `nestedExpand` node가 아니었다.
+
+```text
+paragraph "Mermaid 원본"
+codeBlock
+```
+
+Chrome에서 현재 draft의 `expand`/`nestedExpand` node는 0개였다. 따라서 `isCollapsedMermaidSource()`가 요구하는 조건은 현재 payload로 만족할 수 없다.
+
+이 때문에 extension과 source가 우연히 같은 위치에 들어가더라도 `didReplaceSource()`는 성공할 수 없고, 3초 후 반드시 실패 경로로 들어간다.
+
+관련 코드:
+
+- `src/sites/confluence/features/editorMarkdownToAdf/mermaid.ts:53` — `<details>` 기반 source HTML
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:228` — 실제 `expand` node 존재를 요구하는 검사
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:305` — 위 검사를 포함한 성공 조건
+- `tests/unit.test.ts:317` — Confluence parser 결과가 아니라 HTML 문자열 모양만 검증하는 테스트
+
+### 11.5 자동 실행 취소가 실패하는 이유
+
+실패 후 rollback은 `document.execCommand('undo')`를 호출한다. 이 경로는 Confluence 편집기 toolbar의 실행 취소나 ProseMirror history transaction을 직접 호출하지 않는다.
+
+현재 draft에 extension과 복제 source가 남은 상태로 오류가 발생했으므로 완전한 rollback은 수행되지 않았다. 현재 오류 메시지는 다음 두 경우를 구분하지 못한다.
+
+1. `execCommand('undo')` 자체가 동작하지 않은 경우
+2. 일부 DOM 변화는 되돌렸지만 index 기반 사후 검증이 실패한 경우
+
+따라서 현 증거로 둘 중 하나를 확정할 수는 없지만, `execCommand('undo')`가 이 paste를 신뢰성 있게 되돌린다는 전제는 성립하지 않는다.
+
+관련 코드:
+
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:277` — rollback 함수
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:284` — `execCommand('undo')`
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:320` — rollback 실패 오류 분기
+
+### 11.6 중복·pair 판정이 손상된 결과를 정상으로 보는 이유
+
+`hasPrecedingMermaidExtension()`은 모든 codeBlock과 extension만 모은 축약 배열에서 source 바로 앞 항목을 확인한다. 실제 DOM 사이에 있는 `paragraph "Mermaid 원본"`은 이 배열에서 제외된다.
+
+따라서 실제 구조가 다음과 같아도 정상 pair로 판정한다.
+
+```text
+extension
+paragraph "Mermaid 원본"
+codeBlock
+```
+
+또한 source가 접힌 영역 안에 있는지, extension과 source가 같은 top-level 위치의 의도된 묶음인지, source가 원래 node인지 확인하지 않는다. 이 때문에 최상단에 잘못 생긴 결과도 다음 실행의 중복 방지 대상이 되어 손상 상태가 고착된다.
+
+관련 코드:
+
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:199` — 축약 node 배열 기반 pair 판정
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:509` — pair가 아니라고 판단한 source만 후보로 선택
+- `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts:512` — 잘못 계산될 수 있는 paired/unpaired 개수
+
+### 11.7 원인 순위
+
+| 순위 | 설명 | 확신도 | 근거 |
+| ---: | --- | --- | --- |
+| 1 | DOM Range와 ProseMirror 내부 selection이 일치한다는 전제가 틀려 synthetic paste가 원본 위치가 아닌 문서 최상단에 적용된다. | 높음 | 목표는 top 88, 결과는 top 2~4, 원본은 top 88에 그대로 남았다. |
+| 2 | `<details>` paste가 Confluence `expand`로 변환된다는 전제가 틀렸다. | 확정 | 실제 결과는 paragraph + codeBlock이며 expand node는 0개다. |
+| 3 | `execCommand('undo')`가 Confluence paste transaction을 되돌린다는 전제가 틀리거나 검증 방식과 맞지 않는다. | 높음 | 오류 후 extension과 복제 source가 draft에 남았다. |
+| 4 | pair 판정이 중간 paragraph와 source 위치를 무시해 손상된 결과를 정상으로 오인한다. | 확정 | 현재 로직 재현 결과 extension 2개를 모두 정상 pair로 계산했다. |
+
+### 11.8 당시 결론과 안전 상태
+
+현재의 `DOM Range + synthetic paste + <details> + execCommand undo` 방식으로는 다음 제품 요구를 보장할 수 없다.
+
+```text
+기존 Mermaid codeBlock의 정확한 위치에서
+원본 block이 사라지고
+그 자리에 Confluence Mermaid component가 생성되는 동작
+```
+
+이는 단순한 selector 또는 timeout 문제가 아니라 편집기 내부 transaction 경계를 사용하지 못하는 구조적 문제다. 현 구현을 다시 실행해서는 안 되며, 게시된 version 5가 정상인 동안 손상된 draft를 게시하지 않는 것이 안전하다.
+
+후속 기술 검토에서는 구현 수정 전에 최소한 다음 사실을 읽기 전용으로 먼저 확인해야 했다. 이 항목의 검토와 최종 수정 결과는 12장에 기록한다.
+
+- Confluence가 UI에서 macro를 삽입할 때 사용하는 공식 또는 노출된 editor command 경로
+- extension과 source를 정확한 ADF position에 넣을 수 있는 transaction/API 접근 가능 여부
+- 실제 Confluence `expand` node를 생성하는 지원 paste 표현 또는 editor command
+- Chrome extension content script에서 해당 경로에 접근할 수 있는지 여부
+
+## 12. 2026-08-12 최종 수정과 Chrome 검증
+
+### 12.1 DOM selection 대기만으로는 해결되지 않음
+
+첫 수정에서는 DOM Range를 설정한 뒤 `selectionchange`와 두 번의 animation frame을 기다렸다. 그러나 정상 게시본 version 5에서 다시 실행한 결과, source는 원래 위치에 남고 `extension + expand`가 문서 top-level 1~2에 생성됐다. 즉 대기 시간 문제가 아니라 ProseMirror `EditorState.selection` 자체를 바꾸지 못한 것이 원인이었다.
+
+### 12.2 MAIN world selection bridge
+
+최종 구현은 Confluence용 MAIN world content script를 추가했다. 격리된 기존 content script는 대상 codeBlock의 `data-local-id`만 bridge에 전달한다. bridge는 다음 순서로 selection을 적용한다.
+
+1. 대상 codeBlock과 조상 wrapper의 `pmViewDesc`에서 문서 position과 node size를 읽는다.
+2. 편집기 DOM의 React fiber를 제한된 범위로 탐색해 `state`, `dispatch`, `focus` 계약을 가진 실제 ProseMirror EditorView를 찾는다.
+3. ProseMirror `Selection.fromJSON(..., { type: "node", anchor: position })`으로 NodeSelection을 만든다.
+4. selection transaction을 dispatch하고 적용된 `from`, `to`, node 여부를 검증한다.
+5. 성공 응답을 받은 경우에만 격리 world가 replacement HTML paste를 실행한다.
+
+bridge는 임의 ADF나 HTML을 전달받지 않고 codeBlock 선택만 수행한다. `scripting`, `activeTab`, host permission, background service worker는 추가하지 않았다.
+
+### 12.3 함께 수정한 계약
+
+- `<details>` 대신 Atlassian ADF schema parser가 인식하는 `div[data-node-type="expand"][data-title]`을 사용한다.
+- 실패 rollback은 `document.execCommand('undo')`가 아니라 Confluence toolbar의 `ak-editor-toolbar-button-undo`를 클릭한다.
+- 정상 pair는 source가 실제 `expand` 안에 있고, 그 top-level node의 직전 형제가 대상 Mermaid extension인 경우로 제한한다.
+- 기존 unpaired extension이 있으면 paste 전에 중단해 손상을 누적하지 않는다.
+
+### 12.4 실제 Chrome 검증 결과
+
+사용자 승인 후 이전 실패가 남긴 편집 draft를 영구 폐기하고 정상 게시본 version 5에서 다시 검증했다. 페이지 저장이나 `업데이트`는 실행하지 않았다.
+
+| 검증 항목 | 결과 |
+| --- | --- |
+| 변환 대상 | codeBlock index 8의 DevOpsit flowchart, index 10의 CCP flowchart |
+| 버튼 결과 | `2개 변환` |
+| 첫 번째 위치 | `DevOpsit` heading 직후 top-level 73 extension, 74 expand |
+| 두 번째 위치 | `CI/CD 실행 흐름` heading 직후 top-level 83 extension, 84 expand |
+| 문서 최상단 | 기존 제목·비교 범위 구조 유지, Mermaid extension 0개 |
+| 접힘 상태 | 두 expand 모두 `aria-expanded="false"` |
+| source 보존 | codeBlock 총수 13개 유지, 각 source는 해당 expand 내부에 보존 |
+| 중복 방지 | 재실행 시 `변환 대상 없음`, extension 2개·expand 2개 유지 |
+| 실행 취소 | Confluence toolbar undo 활성화 확인 |
+
+따라서 최종 동작은 다음 요구를 충족한다.
+
+```text
+원래 Mermaid codeBlock 위치
+  -> Mermaid diagram extension
+  -> 접힌 Mermaid 원본 expand
+```
+
+현재 변환 결과는 편집 draft에만 있고 게시되지 않았다.
 
 ## 참고 자료
 

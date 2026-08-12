@@ -25,6 +25,9 @@ interface MarkdownEditorSource {
 }
 
 const MERMAID_EXTENSION_INSERT_TIMEOUT_MS = 3000;
+const PROSEMIRROR_SELECTION_TIMEOUT_MS = 1000;
+const PROSEMIRROR_SELECT_REQUEST_EVENT = 'inno-extension:confluence:select-prosemirror-node';
+const PROSEMIRROR_SELECT_RESPONSE_EVENT = 'inno-extension:confluence:select-prosemirror-node-result';
 
 function readNodeText(node: Node): string {
   if (node.nodeType === 3) return node.nodeValue ?? '';
@@ -87,16 +90,45 @@ function selectEditorContents(editor: HTMLElement): void {
   selection.addRange(range);
 }
 
-function selectEditorNode(editor: HTMLElement, node: HTMLElement): void {
-  editor.focus();
-  const selection = editor.ownerDocument.getSelection();
-  if (!selection) throw new Error('편집기 선택 영역을 만들 수 없습니다.');
+async function selectEditorNode(editor: HTMLElement, node: HTMLElement): Promise<void> {
+  const localId = node.dataset.localId;
+  if (!localId) throw new Error('Confluence codeBlock 식별자를 찾을 수 없습니다.');
 
-  const range = editor.ownerDocument.createRange();
-  range.setStartBefore(node);
-  range.setEndAfter(node);
-  selection.removeAllRanges();
-  selection.addRange(range);
+  const document = editor.ownerDocument;
+  const requestId = crypto.randomUUID();
+  await new Promise<void>((resolve, reject) => {
+    const finish = (error?: Error): void => {
+      document.removeEventListener(PROSEMIRROR_SELECT_RESPONSE_EVENT, onResponse);
+      window.clearTimeout(timer);
+      if (error) reject(error);
+      else resolve();
+    };
+    const onResponse = (event: Event): void => {
+      if (!(event instanceof CustomEvent) || typeof event.detail !== 'string') return;
+      let detail: { requestId?: unknown; success?: unknown; message?: unknown };
+      try {
+        detail = JSON.parse(event.detail) as typeof detail;
+      } catch {
+        return;
+      }
+      if (detail.requestId !== requestId) return;
+      if (detail.success === true) finish();
+      else finish(new Error(
+        typeof detail.message === 'string'
+          ? detail.message
+          : 'Confluence 편집기 선택에 실패했습니다.',
+      ));
+    };
+    const timer = window.setTimeout(
+      () => finish(new Error('Confluence 편집기 선택 브리지가 응답하지 않았습니다.')),
+      PROSEMIRROR_SELECTION_TIMEOUT_MS,
+    );
+
+    document.addEventListener(PROSEMIRROR_SELECT_RESPONSE_EVENT, onResponse);
+    document.dispatchEvent(new CustomEvent(PROSEMIRROR_SELECT_REQUEST_EVENT, {
+      detail: JSON.stringify({ requestId, localId }),
+    }));
+  });
 }
 
 function pasteOverSelection(
@@ -182,10 +214,10 @@ function replaceEditorContents(editor: HTMLElement, html: string, markdown: stri
   pasteOverSelection(editor, html, markdown, () => editor.innerHTML !== beforeHtml);
 }
 
-function unwrapCodeBlock(editor: HTMLElement, codeBlock: HTMLElement): void {
+async function unwrapCodeBlock(editor: HTMLElement, codeBlock: HTMLElement): Promise<void> {
   const plainText = readConfluenceCodeBlockText(codeBlock);
   const html = codeBlockTextToEditorHtml(plainText);
-  selectEditorNode(editor, codeBlock);
+  await selectEditorNode(editor, codeBlock);
   pasteOverSelection(editor, html, plainText, () => !codeBlock.isConnected);
 }
 
@@ -194,17 +226,6 @@ function isMermaidExtension(node: Element): boolean {
     ?? node.getAttribute('data-extension-key');
   return node.getAttribute('data-prosemirror-node-name') === 'extension'
     && extensionKey === CONFLUENCE_MERMAID_EXTENSION_KEY;
-}
-
-function hasPrecedingMermaidExtension(editor: HTMLElement, codeBlock: HTMLElement): boolean {
-  const editorNodes = Array.from(editor.querySelectorAll<HTMLElement>(
-    `${EDITOR_CODE_BLOCK}, [data-prosemirror-node-name="extension"]`,
-  ));
-  const codeBlockPosition = editorNodes.indexOf(codeBlock);
-  if (codeBlockPosition < 0) return false;
-
-  const precedingNode = editorNodes[codeBlockPosition - 1];
-  return precedingNode ? isMermaidExtension(precedingNode) : false;
 }
 
 function countMermaidExtensions(editor: HTMLElement): number {
@@ -229,6 +250,14 @@ function isCollapsedMermaidSource(codeBlock: HTMLElement): boolean {
   return Boolean(codeBlock.closest(
     '[data-prosemirror-node-name="expand"], [data-prosemirror-node-name="nestedExpand"]',
   ));
+}
+
+function hasValidMermaidPair(editor: HTMLElement, codeBlock: HTMLElement): boolean {
+  if (!isCollapsedMermaidSource(codeBlock)) return false;
+
+  const sourceTopLevel = findEditorTopLevelNode(editor, codeBlock);
+  const precedingTopLevel = sourceTopLevel?.previousElementSibling;
+  return Boolean(precedingTopLevel && isMermaidExtension(precedingTopLevel));
 }
 
 function findEditorTopLevelNode(editor: HTMLElement, node: HTMLElement): HTMLElement | null {
@@ -280,9 +309,11 @@ async function rollbackMermaidReplacement(
   localId: string,
   source: string,
 ): Promise<boolean> {
-  editor.focus();
-  const undone = editor.ownerDocument.execCommand('undo');
-  if (!undone) return false;
+  const undoButton = editor.ownerDocument.querySelector<HTMLButtonElement>(
+    '[data-testid="ak-editor-toolbar-button-undo"]',
+  );
+  if (!undoButton || undoButton.disabled) return false;
+  undoButton.click();
 
   return waitForEditorChange(
     editor,
@@ -307,7 +338,7 @@ async function replaceMermaidCodeBlock(
     && isMermaidReplacementAtOriginalPosition(editor, codeBlockIndex, localId, source)
   );
 
-  selectEditorNode(editor, codeBlock);
+  await selectEditorNode(editor, codeBlock);
   try {
     await pasteAndWaitForChange(
       editor,
@@ -457,7 +488,7 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
       resetLater(convertButton, convertLabel, 'Markdown -> ADF 변환');
     });
 
-    unwrapButton.addEventListener('click', () => {
+    unwrapButton.addEventListener('click', async () => {
       setBusy(true);
       unwrapLabel.textContent = '벗기는 중';
       unwrapButton.removeAttribute('title');
@@ -473,7 +504,7 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         if (codeBlocks.length === 0) throw new Error('벗길 코드블럭이 없습니다.');
 
         for (const codeBlock of codeBlocks.reverse()) {
-          unwrapCodeBlock(currentEditor, codeBlock);
+          await unwrapCodeBlock(currentEditor, codeBlock);
           unwrappedCount += 1;
         }
 
@@ -507,7 +538,7 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
             readConfluenceCodeBlockText(codeBlock),
           ));
         const candidates = mermaidCodeBlocks.filter(
-          ({ codeBlock }) => !hasPrecedingMermaidExtension(currentEditor, codeBlock),
+          ({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock),
         );
         const pairedCount = mermaidCodeBlocks.length - candidates.length;
         const unpairedExtensionCount = countMermaidExtensions(currentEditor) - pairedCount;

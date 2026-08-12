@@ -75,13 +75,13 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 
 - 빈 줄과 `%%` 주석·초기화 지시문을 건너뛴 첫 줄이 `flowchart LR`, `sequenceDiagram`, `stateDiagram-v2` 등 지원 Mermaid 선언과 일치해야 한다.
 - 일반 JavaScript, shell, JSON 같은 코드 블록은 변경하지 않는다.
-- 원본 codeBlock 선택 영역을 한 번의 paste transaction으로 사내 Confluence의 `Mermaid diagram` ADF `extension`과 접힌 source로 교체한다.
+- MAIN world bridge가 해당 codeBlock의 ProseMirror document position에 실제 `NodeSelection` transaction을 적용한 뒤, 한 번의 paste transaction으로 사내 Confluence의 `Mermaid diagram` ADF `extension`과 접힌 source로 교체한다.
 - 매크로의 `guestParams.index`에는 변환 직전 본문 전체 코드 블록에서 해당 원본이 차지하는 0부터 시작하는 순번을 넣는다.
 - Forge 앱이 source codeBlock을 index로 참조하므로 node를 실제 삭제하지 않고 `Mermaid 원본` 접힌 영역 안에 보존한다.
-- source 바로 앞 편집 node가 동일한 Mermaid extension이면 이미 변환된 것으로 보고 중복 삽입하지 않는다.
+- source가 `expand` 안에 있고 그 top-level node 바로 앞이 동일 Mermaid extension인 경우만 이미 변환된 정상 pair로 본다.
 - 여러 후보는 뒤에서부터 처리해 앞쪽 삽입이 기존 코드 블록 순번에 영향을 주지 않게 한다.
 - Confluence의 비동기 node view 생성을 최대 3초 기다리고, extension과 접힌 source가 원래 위치에서 인접한 경우에만 성공으로 판단한다.
-- macro가 문서 최상단으로 이동하거나 원본이 그대로 남는 등 검증에 실패하면 해당 paste transaction을 자동 실행 취소한다.
+- macro가 문서 최상단으로 이동하거나 원본이 그대로 남는 등 검증에 실패하면 Confluence toolbar의 실제 실행 취소 명령으로 해당 paste transaction을 되돌린다.
 - source와 연결되지 않은 기존 Mermaid component가 있으면 추가 중복을 막기 위해 변환을 중단하고 정리를 안내한다.
 - 처리 개수와 실패 여부를 버튼 상태로 안내하며, 확장은 페이지를 저장하지 않는다.
 
@@ -139,13 +139,13 @@ Popup의 Markdown 변환 결과에서 Mermaid fenced code block은 Mermaid 앱 �
 
 원격 문서 추가까지 자동화하면 작업 단계는 줄지만 API 토큰 보관, host permission, version conflict, 잘못된 문서 변경 복구가 필요하다. 편집기 안에서 변환하고 사용자가 저장하게 하면 같은 편집 세션의 실행 취소와 검토 흐름을 유지하면서 이 책임을 제거할 수 있다.
 
-ADF JSON을 편집기 내부 상태에 직접 주입하는 방식은 Confluence의 비공개 editor 객체에 의존한다. 현재는 브라우저의 HTML paste 표현으로 전달하고 Confluence가 내부 ADF로 수용하게 한다. 이 방식도 editor DOM과 paste 계약에 의존하지만 비공개 상태 객체를 직접 조작하지 않는다는 장점이 있다.
+ADF JSON 자체는 편집기 내부 상태에 직접 주입하지 않는다. 다만 DOM Range만으로는 ProseMirror의 내부 selection이 바뀌지 않아 paste가 문서 최상단에 적용되므로, MAIN world bridge가 현재 codeBlock의 ViewDesc와 React fiber에서 EditorView를 찾고 `NodeSelection` transaction만 적용한다. 실제 콘텐츠는 계속 HTML paste 표현으로 전달하고 Confluence가 내부 ADF로 수용한다. 따라서 REST API와 추가 Chrome 권한은 필요 없지만, Atlassian의 비공개 EditorView 구조에 대한 의존성은 명시적인 호환성 리스크다.
 
 이미 서식화된 본문을 다시 Markdown으로 간주하면 표, 매크로, 링크, 코드 같은 정보를 평문으로 축약할 수 있다. 따라서 자동 추측보다 안전을 우선해 일반 문단 형태의 원문만 허용한다.
 
 코드 블록 벗기기는 전체 문서를 Markdown으로 재해석하지 않고 명시적인 코드 블록 node만 일반 문단으로 바꾼다. 이 때문에 기존 ADF 구조를 유지할 수 있지만, 실제 소스 코드 블록도 함께 벗겨진다. 자동 추측 대신 사용자 클릭과 저장 전 검토를 안전 경계로 둔다.
 
-Mermaid 매크로는 API 호출이나 비공개 ProseMirror state 주입 대신 ADF schema의 DOM 표현을 사용한다. 실제 저장 결과로 tenant 호환성은 확인했지만, 이 방식은 공개 clipboard API가 아니므로 Confluence editor 변경에 취약하다. source를 실제 삭제할 수 없는 앱 계약은 접힌 원본 영역으로 해결한다.
+Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위치 선택에만 MAIN world의 ProseMirror transaction을 사용하며, 매크로 node 자체를 transaction으로 직접 만들지는 않는다. 실제 tenant에서 원위치 extension과 `expand` pair가 생성되는 것을 확인했지만, 선택 bridge와 paste 표현 모두 공개 API가 아니므로 Confluence editor 변경에 취약하다. source를 실제 삭제할 수 없는 앱 계약은 접힌 원본 영역으로 해결한다.
 
 결과 복사와 다운로드도 편리하지만 변환 이외의 전달 경로와 사용자 행동을 제품 계약에 추가한다. 현재는 결과 확인만 제공하고 필요성이 확인될 때 별도 기능으로 검토한다.
 
@@ -164,6 +164,7 @@ Mermaid 매크로는 API 호출이나 비공개 ProseMirror state 주입 대신 
 - 편집기 변환 후 실행 취소가 가능하며 확장이 페이지 저장을 실행하지 않는다.
 - 변환 과정에서 네트워크 요청, 시스템 클립보드 쓰기 또는 다운로드가 발생하지 않는다.
 - manifest에 API용 host permission과 background service worker가 없다.
+- MAIN world selection bridge는 codeBlock 선택만 허용하며 임의 콘텐츠나 ADF를 주입하지 않는다.
 - API 인증·조회·쓰기 코드가 배포 산출물에 포함되지 않는다.
 - typecheck, unit test, production build가 성공한다.
 
@@ -187,6 +188,7 @@ Mermaid 매크로는 API 호출이나 비공개 ProseMirror state 주입 대신 
 - 2026-08-11: Atlassian ADF schema의 extension paste 계약을 확인해 기존 결정을 갱신했다. `Mermaid -> ADF`가 Mermaid 선언 코드 블록만 탐지하고 원본 뒤에 현재 tenant의 `Mermaid diagram` extension을 생성하도록 추가했다.
 - 2026-08-12: 저장 ADF에서 실제 extension 6개를 확인해 앞선 실패 결론을 정정했다. 비동기 생성을 기다리고 editor top-level wrapper 앞에 삽입하며, source를 접힌 영역에 보존하고 unpaired 기존 component가 있으면 중복 생성을 막도록 계약을 수정했다.
 - 2026-08-12: macro 삽입 후 source를 별도로 접는 두 단계 paste가 selection을 잃어 macro와 원문을 문서 최상단에 남기는 문제를 확인했다. 원본 codeBlock을 `extension + 접힌 source`로 한 번에 교체하고 위치 검증 실패 시 자동 실행 취소하도록 수정했다.
+- 2026-08-12: DOM Range와 `selectionchange` 대기로도 ProseMirror 내부 selection이 바뀌지 않는 것을 Chrome에서 재확인했다. MAIN world bridge가 codeBlock의 ViewDesc position과 React fiber의 EditorView를 찾아 실제 `NodeSelection` transaction을 적용하도록 수정했다. `<details>` 대신 공식 ADF schema가 인식하는 `data-node-type="expand"`를 사용하고, 실제 toolbar 실행 취소와 엄격한 pair 판정을 적용했다. 대상 문서에서 두 후보가 각각 원래 문맥의 top-level `extension + expand`로 생성되고 재실행 시 중복되지 않음을 확인했다.
 
 ## 관련 문서
 
