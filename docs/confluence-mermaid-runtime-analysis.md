@@ -1,7 +1,7 @@
 # Confluence Mermaid 동작 방식 분석
 
 - 분석 대상: <https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/pages/2177630217/DevOpsit+CCP>
-- 분석 일자: 2026-08-11 (Asia/Seoul)
+- 분석 일자: 2026-08-11, 실패 재검증 2026-08-12 (Asia/Seoul)
 - 분석 범위: 대상 페이지의 Mermaid 매크로 저장 구조, 편집 UX, 조회 화면 렌더링 방식, 오류 처리
 - 분석 방법: 로그인된 Chrome에서 조회·편집 화면과 Forge iframe을 관찰하고, 동일 페이지의 ADF를 교차 확인했다.
 
@@ -194,7 +194,7 @@ flowchart LR
 - Confluence가 생성하는 embedded macro context를 임의로 구성하는 것은 공개 계약인지 확인되지 않았다.
 - 앱이 없는 사이트에서는 알 수 없는 extension으로 남거나 렌더링에 실패할 수 있다.
 
-따라서 Popup의 범용 Markdown 변환은 Mermaid fence를 손실 없이 코드 블록으로 보존한다. 현재 사내 tenant의 편집 화면에서는 별도 명시적 버튼으로만 앱 매크로를 생성하고, 실패해도 source가 남도록 코드 블록을 유지한다.
+따라서 Popup의 범용 Markdown 변환은 Mermaid fence를 손실 없이 코드 블록으로 보존한다. 현재 사내 tenant의 편집 화면에는 별도 명시적 버튼이 있지만 앱 매크로 생성은 실패한다. source가 손실되지 않도록 코드 블록은 유지한다.
 
 ### 7.2 Confluence -> Markdown 내보내기
 
@@ -231,12 +231,12 @@ index가 범위를 벗어나거나 대상 codeBlock이 Mermaid 문법이 아니�
 
 현재 기준으로는 Mermaid를 Confluence의 기본 ADF 기능으로 취급하면 안 된다. 이 사이트에 설치된 특정 Forge 앱의 macro 계약으로 취급해야 한다.
 
-Inno Extension의 현재 정책은 다음과 같다.
+Inno Extension의 현재 구현 상태는 다음과 같다.
 
 1. Markdown import 시 Mermaid 원문을 코드 블록으로 보존한다.
-2. 편집기에서는 Mermaid 선언이 확인된 기존 codeBlock만 명시적 사용자 동작으로 변환한다.
-3. 현재 페이지 전체 codeBlock 순번을 계산해 `guestParams.index`를 만들고 원본 뒤에 extension을 삽입한다.
-4. 앱 식별자나 parameter가 달라져도 source를 잃지 않도록 codeBlock은 제거하지 않는다.
+2. 편집기에서는 Mermaid 선언이 확인된 기존 codeBlock만 변환 후보로 판정한다.
+3. 현재 페이지 전체 codeBlock 순번을 계산해 `guestParams.index`를 만들고 source의 top-level 위치 바로 앞에 extension을 삽입한다.
+4. source를 잃지 않도록 codeBlock은 접힌 `Mermaid 원본` 영역 안에 보존한다.
 
 ### 9.1 2026-08-11 편집 화면 재검토
 
@@ -244,13 +244,97 @@ Inno Extension의 현재 정책은 다음과 같다.
 
 편집 DOM에는 이 두 source와 연결된 Mermaid `extension` node가 없었고, 페이지의 Forge iframe은 외부 앱 origin에서 실행됐다. Chrome extension content script가 그 iframe 내부의 선택 UI와 `Submit`을 직접 조작할 수 없다는 점은 그대로다.
 
-추가로 Atlassian의 `@atlaskit/adf-schema` 56.7.2를 확인한 결과, extension node의 공식 DOM parser는 `data-node-type="extension"` 요소에서 `data-extension-type`, `data-extension-key`, `data-text`, `data-parameters`, `data-layout`, `data-local-id`를 읽는다. 실제 tenant의 기존 Mermaid node가 가진 extension type/key와도 일치했다. 따라서 iframe을 거치지 않고 이 paste 표현을 편집기에 전달하는 구현 경로를 확보했다.
+추가로 Atlassian의 `@atlaskit/adf-schema` 56.7.2를 확인한 결과, extension node의 DOM parser는 `data-node-type="extension"` 요소에서 `data-extension-type`, `data-extension-key`, `data-text`, `data-parameters`, `data-layout`, `data-local-id`를 읽는다. 실제 tenant의 기존 Mermaid node가 가진 extension type/key와도 일치했다.
+
+이 `parseDOM` 규칙은 공개적으로 보장된 Confluence clipboard API는 아니지만, 2026-08-12 저장된 페이지 ADF를 재조회한 결과 현재 tenant의 편집기는 이 HTML paste를 실제 Forge `extension`으로 수용했다. 다만 반영이 비동기이며 외부 editor 구현에 종속된다.
 
 구현 범위는 다음처럼 제한한다.
 
 - Mermaid 선언으로 시작하는 codeBlock만 후보로 판정한다.
-- 원본은 유지하고 바로 뒤에 실제 ADF extension을 삽입한다.
+- 원본 위치의 top-level editor wrapper 바로 앞에 실제 ADF extension을 삽입한다.
 - `guestParams.index`는 삽입 전 전체 codeBlock의 0-based 순번을 사용한다.
-- 바로 다음 node가 동일 Mermaid extension이면 중복 삽입하지 않는다.
-- extension key가 바뀌거나 앱이 제거된 경우 원본 codeBlock은 그대로 남는다.
+- 바로 앞 node가 동일 Mermaid extension이면 중복 삽입하지 않는다.
+- raw codeBlock은 `Mermaid 원본` 접힌 영역으로 바꿔 화면에서 숨기되 참조 source로는 보존한다.
+- extension key가 바뀌거나 앱이 제거된 경우에도 원본 codeBlock은 그대로 남는다.
 - 확장은 페이지 저장을 실행하지 않으므로 사용자가 결과를 확인하고 실행 취소하거나 업데이트한다.
+
+## 10. 2026-08-12 실제 저장 결과 재검증과 위치 오류 분석
+
+### 10.1 최초 관찰의 오판
+
+버튼 실행 직후 100ms 시점에는 `extension` node가 0개였고 본문 `textContent`가 `Mermaid diagram` 길이만큼 증가했다. 이 상태만 보고 HTML이 폐기되고 plain text만 삽입됐다고 판단했지만, 이는 너무 이른 관찰이었다.
+
+저장된 페이지 version 4의 ADF를 다시 조회하자 실제 Mermaid extension 6개가 존재했다. 모두 문서 최상위 index 0~5에 있었고 `guestParams.index`는 원본 후보인 8과 10을 참조했다. 즉 `Mermaid diagram` 15자는 plain text가 아니라 비동기로 생성 중이던 macro node의 표시 text였을 가능성이 높다.
+
+정정된 결론은 다음과 같다.
+
+- extension paste는 성공한다.
+- Confluence가 macro node view를 완성하는 데 시간이 걸린다.
+- 구현은 `dispatchEvent` 직후 동기적으로 extension 개수를 확인해 성공한 작업을 실패로 오판했다.
+- 사용자가 실패 메시지를 보고 다시 누를 때마다 macro가 추가돼 중복 6개가 저장됐다.
+
+### 10.2 위치가 문서 맨 앞으로 이동한 이유
+
+Mermaid 원본 codeBlock은 ADF상 top-level node지만 편집 DOM에서는 다음 wrapper 안에 있다.
+
+```text
+.ProseMirror
+  └─ .fabric-editor-breakout-mark
+       └─ .fabric-editor-breakout-mark-dom
+            └─ [data-prosemirror-node-name="codeBlock"]
+```
+
+기존 구현은 가장 안쪽의 CodeMirror codeBlock node에 `Range.setStartAfter()`를 적용했다. 그러나 Forge extension은 해당 wrapper 내부에 들어갈 수 있는 node가 아니며, 이 DOM 위치는 ProseMirror의 top-level insertion position과 일치하지 않는다. Confluence가 유효한 위치로 정규화하는 과정에서 macro가 문서 맨 앞으로 이동했다.
+
+실제 후보의 editor top-level 위치는 각각 79와 88이었지만 저장된 macro는 top-level 0~5에 배치됐다. 따라서 원본 codeBlock을 포함하는 `.fabric-editor-breakout-mark`까지 올라간 뒤 그 wrapper 바로 앞에 selection을 만들어야 한다.
+
+### 10.3 원본 codeBlock을 완전히 삭제할 수 없는 이유
+
+현재 Forge Mermaid 앱은 source를 macro 내부에 저장하지 않고 `guestParams.index`로 페이지의 codeBlock을 참조한다. 따라서 raw codeBlock node를 문서에서 실제로 삭제하면 Mermaid renderer가 읽을 source도 사라진다.
+
+요구한 화면을 만들려면 다음 구조가 필요하다.
+
+```text
+원래 Mermaid codeBlock 위치
+  ├─ Mermaid diagram extension
+  └─ 접힌 `Mermaid 원본` expand
+       └─ renderer가 참조하는 codeBlock
+```
+
+사용자 화면에서는 raw codeBlock이 사라지고 component가 해당 위치에 보인다. source는 접힌 영역 안에 남아 renderer 계약을 유지한다. 기존 페이지에서 관찰된 정상 Mermaid 작성 사례도 macro와 접힌 codeBlock을 함께 사용한다.
+
+### 10.4 원인 순위
+
+| 순위 | 설명 | 확신도 | 근거 |
+| ---: | --- | --- | --- |
+| 1 | 비동기 macro 생성을 동기적으로 검사해 성공을 실패로 오판했다. | 높음 | 저장된 ADF에 실제 extension 6개가 존재하며 반복 클릭 결과와 일치한다. |
+| 2 | 내부 CodeMirror node를 삽입 기준으로 사용해 top-level macro 위치가 문서 맨 앞으로 정규화됐다. | 높음 | 후보 DOM은 breakout wrapper 안에 있고 저장 ADF의 macro는 모두 top-level 0~5로 이동했다. |
+| 3 | 중복 검사가 source 바로 뒤 extension만 찾도록 되어 잘못 배치된 기존 macro를 인식하지 못했다. | 높음 | macro는 문서 앞, source는 index 8·10 위치에 있어 매 클릭마다 후보로 다시 판정됐다. |
+| 4 | CSP font와 iframe resize 경고가 macro 위치를 바꿨다. | 낮음 | 경고는 Forge iframe의 font 표시·deprecated option에 관한 것이며 ADF node 위치 결정과 무관하다. |
+
+### 10.5 수정 계약
+
+수정 구현은 다음 계약을 따른다.
+
+1. codeBlock 내부 node가 아니라 이를 포함하는 editor top-level wrapper 바로 앞에 macro를 삽입한다.
+2. 생성한 `localId`를 가진 extension node가 나타날 때까지 최대 3초 기다린다.
+3. macro가 생성된 후 raw source를 `Mermaid 원본` expand로 바꾼다.
+4. source 바로 앞의 Mermaid extension을 정상 pair로 간주한다.
+5. 정상 pair가 아닌 기존 Mermaid extension이 하나라도 있으면 추가 생성을 중단해 중복을 막는다.
+6. 실제 Forge ADF와 맞추기 위해 `parameters.layout`, `parameters.localId`, `parameters.extensionId`도 함께 전달한다.
+
+현재 대상 페이지에는 이전 동작으로 생성된 unpaired Mermaid component 6개가 이미 저장돼 있다. 수정본은 이를 자동 삭제하거나 임의로 재배치하지 않는다. 기존 component를 정리한 뒤 다시 실행해야 새 위치 계약을 적용할 수 있다.
+
+### 10.6 함께 관찰된 콘솔 경고
+
+- `data:font/woff2` CSP 차단은 Forge iframe의 폰트 fallback 문제다.
+- `csp-report ... ERR_BLOCKED_BY_CLIENT`는 CSP 진단 보고 전송이 브라우저 측에서 차단된 것이다.
+- `iFrameSizer initCallback deprecated`는 Atlassian host library의 폐기 예정 API 경고다.
+
+세 메시지는 macro iframe이 실행되고 있음을 보여주지만, extension의 ADF 위치나 source 참조 index를 바꾸는 원인은 아니다.
+
+## 참고 자료
+
+- [Atlassian Forge macro module](https://developer.atlassian.com/platform/forge/manifest-reference/modules/macro/)
+- [Forge Confluence bridge `getMacroContent`](https://developer.atlassian.com/platform/forge/apis-reference/confluence-api-bridge/getMacroContent/)
+- [Atlassian Document Format](https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/)
