@@ -75,12 +75,13 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 
 - 빈 줄과 `%%` 주석·초기화 지시문을 건너뛴 첫 줄이 `flowchart LR`, `sequenceDiagram`, `stateDiagram-v2` 등 지원 Mermaid 선언과 일치해야 한다.
 - 일반 JavaScript, shell, JSON 같은 코드 블록은 변경하지 않는다.
-- 원본 codeBlock이 있던 top-level 위치에 사내 Confluence의 `Mermaid diagram` ADF `extension`을 삽입한다.
+- 원본 codeBlock 선택 영역을 한 번의 paste transaction으로 사내 Confluence의 `Mermaid diagram` ADF `extension`과 접힌 source로 교체한다.
 - 매크로의 `guestParams.index`에는 변환 직전 본문 전체 코드 블록에서 해당 원본이 차지하는 0부터 시작하는 순번을 넣는다.
 - Forge 앱이 source codeBlock을 index로 참조하므로 node를 실제 삭제하지 않고 `Mermaid 원본` 접힌 영역 안에 보존한다.
 - source 바로 앞 편집 node가 동일한 Mermaid extension이면 이미 변환된 것으로 보고 중복 삽입하지 않는다.
 - 여러 후보는 뒤에서부터 처리해 앞쪽 삽입이 기존 코드 블록 순번에 영향을 주지 않게 한다.
-- Confluence의 비동기 node view 생성을 최대 3초 기다린 뒤 성공 여부를 판단한다.
+- Confluence의 비동기 node view 생성을 최대 3초 기다리고, extension과 접힌 source가 원래 위치에서 인접한 경우에만 성공으로 판단한다.
+- macro가 문서 최상단으로 이동하거나 원본이 그대로 남는 등 검증에 실패하면 해당 paste transaction을 자동 실행 취소한다.
 - source와 연결되지 않은 기존 Mermaid component가 있으면 추가 중복을 막기 위해 변환을 중단하고 정리를 안내한다.
 - 처리 개수와 실패 여부를 버튼 상태로 안내하며, 확장은 페이지를 저장하지 않는다.
 
@@ -171,7 +172,7 @@ Mermaid 매크로는 API 호출이나 비공개 ProseMirror state 주입 대신 
 - ADF schema는 지원 node보다 넓어 변환 결과가 모든 Confluence 입력 경로에서 동일하게 수용된다고 보장할 수 없다.
 - Popup 안에서 긴 입력과 JSON 결과를 함께 다루는 사용성은 제한적이다.
 - Confluence editor toolbar, ProseMirror DOM 또는 paste 처리 방식이 바뀌면 버튼 표시나 본문 적용이 중단될 수 있다.
-- 현재 대상 페이지에는 과거 동작으로 문서 맨 앞에 저장된 중복 Mermaid component 6개가 있어 수동 정리가 필요하다.
+- 과거 대상 페이지 version 4에는 문서 맨 앞의 중복 Mermaid component 6개가 저장됐지만 version 5에서 정리됐다. 다른 문서에 unpaired component가 남아 있으면 자동 삭제하지 않고 사용자의 정리를 요구한다.
 - Mermaid extension key와 `guestParams.index` 계약이 앱 업데이트로 바뀌면 새 매크로가 렌더링되지 않을 수 있다.
 - 코드 블록을 삽입·삭제·재정렬한 뒤 Forge 앱이 저장된 index를 자동 보정하는지는 추가 검증이 필요하다.
 - 코드블럭 벗기기는 실제 코드와 Markdown 원문을 구분하지 않고 모든 코드 블록에 적용되므로 저장 전 검토가 필요하다.
@@ -185,6 +186,7 @@ Mermaid 매크로는 API 호출이나 비공개 ProseMirror state 주입 대신 
 - 2026-08-11: 편집 본문의 모든 코드 블록을 일반 문단으로 되돌리는 `코드블럭 벗기기`를 추가했다. 이미 ADF인 Mermaid source의 자동 매크로 변환은 Forge 앱의 비공개 extension 계약과 cross-origin 설정 UI 때문에 현재 무API 범위에서 제외하기로 했다.
 - 2026-08-11: Atlassian ADF schema의 extension paste 계약을 확인해 기존 결정을 갱신했다. `Mermaid -> ADF`가 Mermaid 선언 코드 블록만 탐지하고 원본 뒤에 현재 tenant의 `Mermaid diagram` extension을 생성하도록 추가했다.
 - 2026-08-12: 저장 ADF에서 실제 extension 6개를 확인해 앞선 실패 결론을 정정했다. 비동기 생성을 기다리고 editor top-level wrapper 앞에 삽입하며, source를 접힌 영역에 보존하고 unpaired 기존 component가 있으면 중복 생성을 막도록 계약을 수정했다.
+- 2026-08-12: macro 삽입 후 source를 별도로 접는 두 단계 paste가 selection을 잃어 macro와 원문을 문서 최상단에 남기는 문제를 확인했다. 원본 codeBlock을 `extension + 접힌 source`로 한 번에 교체하고 위치 검증 실패 시 자동 실행 취소하도록 수정했다.
 
 ## 관련 문서
 

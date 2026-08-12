@@ -116,7 +116,7 @@ effectiveEnabled = site.enabled && feature.enabled
 
 Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서는 ADF JSON만 보여주고, Confluence `edit-v2`에서는 사용자의 클릭으로 현재 편집 본문을 변환한다. 편집기 적용은 Confluence가 제공하는 paste 처리 경계를 사용하므로 페이지 저장 API와 version conflict 책임을 피하고 실행 취소 흐름을 유지한다. 대신 외부 editor DOM과 paste 동작 변경에 영향을 받는다.
 
-같은 편집기 도구에서 코드블럭 벗기기는 기존 ADF 전체를 재해석하지 않고 코드 블록만 일반 문단으로 바꾼다. `Mermaid -> ADF`는 Mermaid 선언 codeBlock의 top-level 위치에 Forge component를 만들고, 앱이 index로 참조해야 하는 source는 접힌 `Mermaid 원본` 영역에 보존한다. 비동기 macro 생성을 기다리고 잘못 배치된 기존 component가 있으면 중복 생성을 차단한다.
+같은 편집기 도구에서 코드블럭 벗기기는 기존 ADF 전체를 재해석하지 않고 코드 블록만 일반 문단으로 바꾼다. `Mermaid -> ADF`는 Mermaid 선언 codeBlock을 한 번의 transaction으로 Forge component와 접힌 `Mermaid 원본`으로 교체한다. 앱이 index로 참조하는 source는 접힌 영역에 보존하며, 비동기 생성 후 원래 위치에 인접한 pair인지 검증하고 실패하면 자동으로 되돌린다.
 
 ### Vanilla TypeScript Popup
 

@@ -235,8 +235,8 @@ Inno Extension의 현재 구현 상태는 다음과 같다.
 
 1. Markdown import 시 Mermaid 원문을 코드 블록으로 보존한다.
 2. 편집기에서는 Mermaid 선언이 확인된 기존 codeBlock만 변환 후보로 판정한다.
-3. 현재 페이지 전체 codeBlock 순번을 계산해 `guestParams.index`를 만들고 source의 top-level 위치 바로 앞에 extension을 삽입한다.
-4. source를 잃지 않도록 codeBlock은 접힌 `Mermaid 원본` 영역 안에 보존한다.
+3. 현재 페이지 전체 codeBlock 순번을 계산해 `guestParams.index`를 만든다.
+4. 원본 codeBlock 선택 영역을 한 번의 paste transaction으로 `extension + 접힌 Mermaid 원본`으로 교체한다.
 
 ### 9.1 2026-08-11 편집 화면 재검토
 
@@ -251,7 +251,7 @@ Inno Extension의 현재 구현 상태는 다음과 같다.
 구현 범위는 다음처럼 제한한다.
 
 - Mermaid 선언으로 시작하는 codeBlock만 후보로 판정한다.
-- 원본 위치의 top-level editor wrapper 바로 앞에 실제 ADF extension을 삽입한다.
+- 원본 codeBlock을 선택한 상태에서 실제 ADF extension과 접힌 source를 한 번에 붙여넣는다.
 - `guestParams.index`는 삽입 전 전체 codeBlock의 0-based 순번을 사용한다.
 - 바로 앞 node가 동일 Mermaid extension이면 중복 삽입하지 않는다.
 - raw codeBlock은 `Mermaid 원본` 접힌 영역으로 바꿔 화면에서 숨기되 참조 source로는 보존한다.
@@ -316,14 +316,14 @@ Mermaid 원본 codeBlock은 ADF상 top-level node지만 편집 DOM에서는 다�
 
 수정 구현은 다음 계약을 따른다.
 
-1. codeBlock 내부 node가 아니라 이를 포함하는 editor top-level wrapper 바로 앞에 macro를 삽입한다.
-2. 생성한 `localId`를 가진 extension node가 나타날 때까지 최대 3초 기다린다.
-3. macro가 생성된 후 raw source를 `Mermaid 원본` expand로 바꾼다.
+1. 원본 codeBlock 하나를 선택하고 `macro + Mermaid 원본 expand`를 단일 paste payload로 전달한다.
+2. 생성한 `localId`를 가진 extension node와 접힌 source가 원래 위치에서 서로 인접하게 생성될 때까지 최대 3초 기다린다.
+3. macro만 문서 최상단에 생기거나 원본이 그대로 남으면 성공으로 처리하지 않고 해당 paste transaction을 자동 실행 취소한다.
 4. source 바로 앞의 Mermaid extension을 정상 pair로 간주한다.
 5. 정상 pair가 아닌 기존 Mermaid extension이 하나라도 있으면 추가 생성을 중단해 중복을 막는다.
 6. 실제 Forge ADF와 맞추기 위해 `parameters.layout`, `parameters.localId`, `parameters.extensionId`도 함께 전달한다.
 
-현재 대상 페이지에는 이전 동작으로 생성된 unpaired Mermaid component 6개가 이미 저장돼 있다. 수정본은 이를 자동 삭제하거나 임의로 재배치하지 않는다. 기존 component를 정리한 뒤 다시 실행해야 새 위치 계약을 적용할 수 있다.
+이전 동작으로 생성된 unpaired Mermaid component 6개는 페이지 version 4에 저장됐으나 이후 정리됐다. 2026-08-12 재조회한 version 5와 현재 편집 draft에는 Mermaid extension이 없고 원본 codeBlock만 남아 있다. 수정본은 다른 문서에서 unpaired component를 발견해도 자동 삭제하거나 임의로 재배치하지 않는다.
 
 ### 10.6 함께 관찰된 콘솔 경고
 
@@ -332,6 +332,29 @@ Mermaid 원본 codeBlock은 ADF상 top-level node지만 편집 DOM에서는 다�
 - `iFrameSizer initCallback deprecated`는 Atlassian host library의 폐기 예정 API 경고다.
 
 세 메시지는 macro iframe이 실행되고 있음을 보여주지만, extension의 ADF 위치나 source 참조 index를 바꾸는 원인은 아니다.
+
+### 10.7 두 단계 치환 실패와 최종 수정
+
+top-level wrapper 앞에 macro를 먼저 붙이고, 비동기 생성이 끝난 뒤 source wrapper를 `<details>`로 다시 붙이는 두 단계 구현도 실제 편집기에서는 안정적이지 않았다. 첫 paste가 selection을 macro node view 쪽으로 이동시킨 뒤 두 번째 paste의 DOM Range가 ProseMirror 문서 selection으로 복원되지 않아, `Mermaid 원본 코드블럭을 접힌 영역으로 바꾸지 못했습니다` 오류가 발생했다. 이때 첫 transaction은 이미 반영돼 macro가 문서 최상단에 남고 원문도 별도로 노출될 수 있었다.
+
+수정 구현은 원본 codeBlock을 선택해 다음 두 node를 단일 paste transaction으로 교체한다.
+
+```text
+원본 codeBlock selection
+  └─ 한 번의 paste
+       ├─ Mermaid extension
+       └─ Mermaid 원본 expand
+            └─ source codeBlock
+```
+
+완료 조건도 단순 node 존재 여부가 아니라 다음을 모두 검사한다.
+
+- 선택했던 원본 DOM node가 제거됐는가
+- 생성한 `localId`의 extension이 존재하는가
+- 같은 codeBlock index에 동일 source가 접힌 영역 안에 보존됐는가
+- extension과 source expand가 editor top-level에서 서로 인접한가
+
+하나라도 만족하지 않으면 잘못 배치된 결과를 남기지 않도록 한 번의 paste를 자동 실행 취소한다.
 
 ## 참고 자료
 
