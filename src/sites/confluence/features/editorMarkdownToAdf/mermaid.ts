@@ -52,10 +52,11 @@ export function buildConfluenceMermaidExtensionHtml(
 
 export function buildCollapsedMermaidSourceHtml(source: string): string {
   return [
-    '<details>',
-    `<summary>${CONFLUENCE_MERMAID_SOURCE_TITLE}</summary>`,
+    '<div data-node-type="expand"',
+    ` data-title="${CONFLUENCE_MERMAID_SOURCE_TITLE}"`,
+    ' data-expanded="false">',
     `<pre><code>${escapeEditorHtml(source.replace(/\r\n?/g, '\n'))}</code></pre>`,
-    '</details>',
+    '</div>',
   ].join('');
 }
 

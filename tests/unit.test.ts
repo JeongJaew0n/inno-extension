@@ -54,16 +54,24 @@ test('catalog의 사이트와 기능 ID는 중복되지 않고 기본 설정이 
 
 test('Manifest origin과 catalog origin이 일치한다', async () => {
   const manifest = JSON.parse(await readFile('manifest.json', 'utf8')) as {
-    content_scripts: Array<{ matches: string[] }>;
+    content_scripts: Array<{ matches: string[]; world?: string; js?: string[] }>;
     host_permissions?: string[];
     permissions?: string[];
     background?: unknown;
   };
-  const manifestOrigins = manifest.content_scripts
-    .flatMap((entry) => entry.matches)
-    .sort();
+  const manifestOrigins = Array.from(new Set(
+    manifest.content_scripts.flatMap((entry) => entry.matches),
+  )).sort();
   const catalogMatches = SITES.flatMap((site) => site.contentMatches).sort();
   assert.deepEqual(manifestOrigins, catalogMatches);
+  assert.equal(
+    manifest.content_scripts.some((entry) => (
+      entry.world === 'MAIN'
+      && entry.js?.includes('src/sites/confluence/main.ts')
+      && entry.matches.includes('https://pms-innogrid.atlassian.net/wiki/*')
+    )),
+    true,
+  );
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.background, undefined);
   assert.equal(manifest.permissions?.includes('scripting'), false);
@@ -318,7 +326,7 @@ test('Mermaid 코드블럭 순번을 참조하는 Confluence extension paste HTM
 test('Mermaid 원본 코드블럭을 접힌 Confluence source HTML로 만든다', () => {
   assert.equal(
     buildCollapsedMermaidSourceHtml('flowchart LR\r\n  A --> B\n<script>'),
-    '<details><summary>Mermaid 원본</summary><pre><code>flowchart LR\n  A --&gt; B\n&lt;script&gt;</code></pre></details>',
+    '<div data-node-type="expand" data-title="Mermaid 원본" data-expanded="false"><pre><code>flowchart LR\n  A --&gt; B\n&lt;script&gt;</code></pre></div>',
   );
 });
 
@@ -327,9 +335,9 @@ test('Mermaid 컴포넌트와 접힌 원본을 한 번의 치환용 HTML로 만�
 
   assert.match(html, /^<div data-node-type="extension"/);
   assert.match(html, /&quot;guestParams&quot;:\{&quot;index&quot;:10\}/);
-  assert.match(html, /data-local-id="replacement-id"><\/div><details>/);
-  assert.match(html, /<summary>Mermaid 원본<\/summary>/);
-  assert.match(html, /<pre><code>flowchart LR\n  A --&gt; B<\/code><\/pre><\/details>$/);
+  assert.match(html, /data-local-id="replacement-id"><\/div><div data-node-type="expand"/);
+  assert.match(html, /data-title="Mermaid 원본" data-expanded="false">/);
+  assert.match(html, /<pre><code>flowchart LR\n  A --&gt; B<\/code><\/pre><\/div>$/);
 });
 
 test('Confluence 본문의 Markdown 제어 문자를 이스케이프한다', () => {

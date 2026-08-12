@@ -116,7 +116,7 @@ effectiveEnabled = site.enabled && feature.enabled
 
 Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서는 ADF JSON만 보여주고, Confluence `edit-v2`에서는 사용자의 클릭으로 현재 편집 본문을 변환한다. 편집기 적용은 Confluence가 제공하는 paste 처리 경계를 사용하므로 페이지 저장 API와 version conflict 책임을 피하고 실행 취소 흐름을 유지한다. 대신 외부 editor DOM과 paste 동작 변경에 영향을 받는다.
 
-같은 편집기 도구에서 코드블럭 벗기기는 기존 ADF 전체를 재해석하지 않고 코드 블록만 일반 문단으로 바꾼다. `Mermaid -> ADF`는 Mermaid 선언 codeBlock을 한 번의 transaction으로 Forge component와 접힌 `Mermaid 원본`으로 교체한다. 앱이 index로 참조하는 source는 접힌 영역에 보존하며, 비동기 생성 후 원래 위치에 인접한 pair인지 검증하고 실패하면 자동으로 되돌린다.
+같은 편집기 도구에서 코드블럭 벗기기는 기존 ADF 전체를 재해석하지 않고 코드 블록만 일반 문단으로 바꾼다. `Mermaid -> ADF`는 MAIN world bridge로 대상 codeBlock에 실제 ProseMirror NodeSelection을 적용한 뒤 한 번의 paste transaction으로 Forge component와 접힌 `Mermaid 원본`으로 교체한다. 앱이 index로 참조하는 source는 접힌 영역에 보존하며, 비동기 생성 후 원래 위치에 인접한 pair인지 검증하고 실패하면 Confluence toolbar 실행 취소로 되돌린다.
 
 ### Vanilla TypeScript Popup
 
@@ -155,6 +155,7 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - 2026-08-11: Confluence `edit-v2` toolbar에서 일반 문단 형태의 Markdown 본문 전체를 편집 콘텐츠로 변환하는 버튼을 추가했다. API 저장 대신 편집기의 실행 취소·사용자 업데이트 흐름을 따르도록 했다.
 - 2026-08-11: Confluence 편집 본문의 코드블럭 서식을 일괄 제거하는 버튼을 추가하고, 기존 ADF의 Mermaid 자동 매크로 변환은 Forge 앱 계약이 공개·검증되기 전까지 지원하지 않기로 했다.
 - 2026-08-11: 공식 ADF schema의 extension paste 계약과 tenant의 Mermaid extension key를 확인해 기존 결정을 갱신하고, Mermaid 코드 블록만 원본 뒤에 Forge 매크로를 생성하는 `Mermaid -> ADF`를 추가했다.
+- 2026-08-12: DOM Range 기반 paste가 ProseMirror 내부 selection을 갱신하지 않아 문서 최상단에 삽입되는 문제를 수정했다. MAIN world selection bridge, 공식 expand DOM 표현, 실제 toolbar undo, 엄격한 pair 검증을 적용하고 실제 Confluence 편집기에서 두 Mermaid의 원위치 치환과 중복 방지를 확인했다.
 - 2026-08-12: 저장 ADF에서 macro가 실제 생성된 것을 확인해 실패 판단을 정정했다. 비동기 완료 대기, top-level 위치 삽입, 접힌 source 보존, unpaired component 중복 방지를 반영했다.
 
 ## 관련 문서
