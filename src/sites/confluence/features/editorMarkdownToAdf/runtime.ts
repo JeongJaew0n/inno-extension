@@ -14,6 +14,7 @@ import {
   readConfluenceCodeBlockText,
 } from './code-block';
 import {
+  buildCollapsedMermaidSourceHtml,
   buildConfluenceMermaidExtensionHtml,
   CONFLUENCE_MERMAID_EXTENSION_KEY,
   CONFLUENCE_MERMAID_TITLE,
@@ -24,6 +25,8 @@ interface MarkdownEditorSource {
   markdown: string;
   isPlain: boolean;
 }
+
+const MERMAID_EXTENSION_INSERT_TIMEOUT_MS = 3000;
 
 function readNodeText(node: Node): string {
   if (node.nodeType === 3) return node.nodeValue ?? '';
@@ -66,6 +69,7 @@ function readMarkdownEditorSource(editor: HTMLElement): MarkdownEditorSource {
 }
 
 function selectEditorContents(editor: HTMLElement): void {
+  editor.focus();
   const selection = editor.ownerDocument.getSelection();
   if (!selection) throw new Error('편집기 선택 영역을 만들 수 없습니다.');
 
@@ -83,10 +87,10 @@ function selectEditorContents(editor: HTMLElement): void {
   }
   selection.removeAllRanges();
   selection.addRange(range);
-  editor.focus();
 }
 
 function selectEditorNode(editor: HTMLElement, node: HTMLElement): void {
+  editor.focus();
   const selection = editor.ownerDocument.getSelection();
   if (!selection) throw new Error('편집기 선택 영역을 만들 수 없습니다.');
 
@@ -95,19 +99,29 @@ function selectEditorNode(editor: HTMLElement, node: HTMLElement): void {
   range.setEndAfter(node);
   selection.removeAllRanges();
   selection.addRange(range);
-  editor.focus();
 }
 
-function placeCaretAfterEditorNode(editor: HTMLElement, node: HTMLElement): void {
+function findTopLevelEditorNode(editor: HTMLElement, node: HTMLElement): HTMLElement {
+  let current = node;
+  while (current.parentElement && current.parentElement !== editor) {
+    current = current.parentElement;
+  }
+  if (current.parentElement !== editor) {
+    throw new Error('Mermaid 원본의 편집기 위치를 찾을 수 없습니다.');
+  }
+  return current;
+}
+
+function placeCaretBeforeEditorNode(editor: HTMLElement, node: HTMLElement): void {
+  editor.focus();
   const selection = editor.ownerDocument.getSelection();
   if (!selection) throw new Error('편집기 선택 영역을 만들 수 없습니다.');
 
   const range = editor.ownerDocument.createRange();
-  range.setStartAfter(node);
+  range.setStartBefore(findTopLevelEditorNode(editor, node));
   range.collapse(true);
   selection.removeAllRanges();
   selection.addRange(range);
-  editor.focus();
 }
 
 function pasteOverSelection(
@@ -140,6 +154,53 @@ function pasteOverSelection(
   }
 }
 
+function waitForEditorChange(
+  editor: HTMLElement,
+  didChange: () => boolean,
+  timeoutMs: number,
+): Promise<boolean> {
+  if (didChange()) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (changed: boolean): void => {
+      if (settled) return;
+      settled = true;
+      observer.disconnect();
+      window.clearTimeout(timer);
+      resolve(changed);
+    };
+    const observer = new MutationObserver(() => {
+      if (didChange()) finish(true);
+    });
+    const timer = window.setTimeout(() => finish(didChange()), timeoutMs);
+    observer.observe(editor, { childList: true, subtree: true, attributes: true });
+  });
+}
+
+async function pasteAndWaitForChange(
+  editor: HTMLElement,
+  html: string,
+  plainText: string,
+  didChange: () => boolean,
+  failureMessage: string,
+): Promise<void> {
+  const clipboardData = new DataTransfer();
+  clipboardData.setData('text/html', html);
+  clipboardData.setData('text/plain', plainText);
+
+  editor.dispatchEvent(new ClipboardEvent('paste', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    clipboardData,
+  }));
+
+  if (!await waitForEditorChange(editor, didChange, MERMAID_EXTENSION_INSERT_TIMEOUT_MS)) {
+    throw new Error(failureMessage);
+  }
+}
+
 function replaceEditorContents(editor: HTMLElement, html: string, markdown: string): void {
   selectEditorContents(editor);
   const beforeHtml = editor.innerHTML;
@@ -160,33 +221,64 @@ function isMermaidExtension(node: Element): boolean {
     && extensionKey === CONFLUENCE_MERMAID_EXTENSION_KEY;
 }
 
-function hasFollowingMermaidExtension(editor: HTMLElement, codeBlock: HTMLElement): boolean {
+function hasPrecedingMermaidExtension(editor: HTMLElement, codeBlock: HTMLElement): boolean {
   const editorNodes = Array.from(editor.querySelectorAll<HTMLElement>(
     `${EDITOR_CODE_BLOCK}, [data-prosemirror-node-name="extension"]`,
   ));
   const codeBlockPosition = editorNodes.indexOf(codeBlock);
   if (codeBlockPosition < 0) return false;
 
-  const followingNode = editorNodes[codeBlockPosition + 1];
-  return followingNode ? isMermaidExtension(followingNode) : false;
+  const precedingNode = editorNodes[codeBlockPosition - 1];
+  return precedingNode ? isMermaidExtension(precedingNode) : false;
 }
 
-function insertMermaidExtension(
+function countMermaidExtensions(editor: HTMLElement): number {
+  return Array.from(editor.querySelectorAll<HTMLElement>(
+    '[data-prosemirror-node-name="extension"]',
+  )).filter(isMermaidExtension).length;
+}
+
+async function insertMermaidExtension(
   editor: HTMLElement,
   codeBlock: HTMLElement,
   codeBlockIndex: number,
-): void {
-  const beforeCount = editor.querySelectorAll('[data-prosemirror-node-name="extension"]').length;
+): Promise<void> {
   const localId = crypto.randomUUID();
   const html = buildConfluenceMermaidExtensionHtml(codeBlockIndex, localId);
+  const didInsertTargetExtension = (): boolean => Array.from(
+    editor.querySelectorAll<HTMLElement>('[data-prosemirror-node-name="extension"]'),
+  ).some((extension) => (
+    extension.getAttribute('localid') === localId
+    || extension.getAttribute('data-local-id') === localId
+  ));
 
-  placeCaretAfterEditorNode(editor, codeBlock);
-  pasteOverSelection(
+  placeCaretBeforeEditorNode(editor, codeBlock);
+  await pasteAndWaitForChange(
     editor,
     html,
     CONFLUENCE_MERMAID_TITLE,
-    () => editor.querySelectorAll('[data-prosemirror-node-name="extension"]').length > beforeCount,
-    false,
+    didInsertTargetExtension,
+    'Confluence 편집기가 ADF extension 붙여넣기를 수용하지 않았습니다.',
+  );
+}
+
+async function collapseMermaidSource(
+  editor: HTMLElement,
+  codeBlock: HTMLElement,
+): Promise<void> {
+  if (codeBlock.closest('[data-prosemirror-node-name="expand"], [data-prosemirror-node-name="nestedExpand"]')) {
+    return;
+  }
+
+  const source = readConfluenceCodeBlockText(codeBlock);
+  const topLevelNode = findTopLevelEditorNode(editor, codeBlock);
+  selectEditorNode(editor, topLevelNode);
+  await pasteAndWaitForChange(
+    editor,
+    buildCollapsedMermaidSourceHtml(source),
+    source,
+    () => !topLevelNode.isConnected,
+    'Mermaid 원본 코드블럭을 접힌 영역으로 바꾸지 못했습니다.',
   );
 }
 
@@ -353,7 +445,7 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
       resetLater(unwrapButton, unwrapLabel, '코드블럭 벗기기');
     });
 
-    mermaidButton.addEventListener('click', () => {
+    mermaidButton.addEventListener('click', async () => {
       setBusy(true);
       mermaidLabel.textContent = '변환 중';
       mermaidButton.removeAttribute('title');
@@ -366,19 +458,34 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         const allCodeBlocks = Array.from(
           currentEditor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK),
         );
-        const candidates = allCodeBlocks
+        const mermaidCodeBlocks = allCodeBlocks
           .map((codeBlock, index) => ({ codeBlock, index }))
-          .filter(({ codeBlock }) => (
-            isMermaidCodeBlockSource(readConfluenceCodeBlockText(codeBlock))
-            && !hasFollowingMermaidExtension(currentEditor, codeBlock)
+          .filter(({ codeBlock }) => isMermaidCodeBlockSource(
+            readConfluenceCodeBlockText(codeBlock),
           ));
+        const candidates = mermaidCodeBlocks.filter(
+          ({ codeBlock }) => !hasPrecedingMermaidExtension(currentEditor, codeBlock),
+        );
+        const pairedCount = mermaidCodeBlocks.length - candidates.length;
+        const unpairedExtensionCount = countMermaidExtensions(currentEditor) - pairedCount;
+
+        if (unpairedExtensionCount > 0) {
+          throw new Error(`문서 다른 위치에 Mermaid 컴포넌트 ${unpairedExtensionCount}개가 있습니다. 기존 컴포넌트를 정리한 뒤 다시 실행하세요.`);
+        }
 
         if (candidates.length === 0) {
           throw new Error('변환할 Mermaid 코드블럭이 없습니다.');
         }
 
         for (const { codeBlock, index } of candidates.reverse()) {
-          insertMermaidExtension(currentEditor, codeBlock, index);
+          await insertMermaidExtension(currentEditor, codeBlock, index);
+          const currentCodeBlock = currentEditor.querySelectorAll<HTMLElement>(
+            EDITOR_CODE_BLOCK,
+          )[index];
+          if (!currentCodeBlock) {
+            throw new Error(`${index + 1}번째 Mermaid 원본을 다시 찾을 수 없습니다.`);
+          }
+          await collapseMermaidSource(currentEditor, currentCodeBlock);
           convertedCount += 1;
         }
 

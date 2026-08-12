@@ -5,6 +5,7 @@ export const CONFLUENCE_MERMAID_EXTENSION_KEY =
 
 export const CONFLUENCE_MERMAID_EXTENSION_TYPE = 'com.atlassian.ecosystem';
 export const CONFLUENCE_MERMAID_TITLE = 'Mermaid diagram';
+export const CONFLUENCE_MERMAID_SOURCE_TITLE = 'Mermaid 원본';
 
 const MERMAID_DECLARATION = /^(?:(?:graph|flowchart)\s+(?:tb|td|bt|rl|lr)\b|sequenceDiagram\b|classDiagram(?:-v2)?\b|stateDiagram(?:-v2)?\b|erDiagram\b|journey\b|gantt\b|pie\b|quadrantChart\b|requirementDiagram\b|gitGraph\b|C4(?:Context|Container|Component|Dynamic|Deployment)\b|mindmap\b|timeline\b|zenuml\b|sankey-beta\b|xychart-beta\b|block-beta\b|packet-beta\b|architecture-beta\b|kanban\b)/i;
 
@@ -28,8 +29,11 @@ export function buildConfluenceMermaidExtensionHtml(
   }
 
   const parameters = {
+    layout: 'extension',
     guestParams: { index: codeBlockIndex },
     forgeEnvironment: 'PRODUCTION',
+    localId,
+    extensionId: `ari:cloud:ecosystem::extension/${CONFLUENCE_MERMAID_EXTENSION_KEY}`,
     extensionTitle: CONFLUENCE_MERMAID_TITLE,
   };
 
@@ -46,3 +50,11 @@ export function buildConfluenceMermaidExtensionHtml(
   ].join('');
 }
 
+export function buildCollapsedMermaidSourceHtml(source: string): string {
+  return [
+    '<details>',
+    `<summary>${CONFLUENCE_MERMAID_SOURCE_TITLE}</summary>`,
+    `<pre><code>${escapeEditorHtml(source.replace(/\r\n?/g, '\n'))}</code></pre>`,
+    '</details>',
+  ].join('');
+}

@@ -20,6 +20,7 @@ import {
 import { adfDocumentToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/adf-to-editor-html';
 import { codeBlockTextToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/code-block';
 import {
+  buildCollapsedMermaidSourceHtml,
   buildConfluenceMermaidExtensionHtml,
   CONFLUENCE_MERMAID_EXTENSION_KEY,
   isMermaidCodeBlockSource,
@@ -307,7 +308,17 @@ test('Mermaid 코드블럭 순번을 참조하는 Confluence extension paste HTM
   assert.match(html, /data-local-id="local-id-&amp;-1"/);
   assert.match(html, /&quot;guestParams&quot;:\{&quot;index&quot;:8\}/);
   assert.match(html, /&quot;forgeEnvironment&quot;:&quot;PRODUCTION&quot;/);
+  assert.match(html, /&quot;layout&quot;:&quot;extension&quot;/);
+  assert.match(html, /&quot;localId&quot;:&quot;local-id-&amp;-1&quot;/);
+  assert.match(html, /&quot;extensionId&quot;:&quot;ari:cloud:ecosystem::extension\//);
   assert.throws(() => buildConfluenceMermaidExtensionHtml(-1, 'invalid'));
+});
+
+test('Mermaid 원본 코드블럭을 접힌 Confluence source HTML로 만든다', () => {
+  assert.equal(
+    buildCollapsedMermaidSourceHtml('flowchart LR\r\n  A --> B\n<script>'),
+    '<details><summary>Mermaid 원본</summary><pre><code>flowchart LR\n  A --&gt; B\n&lt;script&gt;</code></pre></details>',
+  );
 });
 
 test('Confluence 본문의 Markdown 제어 문자를 이스케이프한다', () => {
