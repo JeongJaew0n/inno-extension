@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amaranth Notification Tools Harness</title>
+    <style>
+      body { margin: 0; padding: 32px; background: #eef2f5; font-family: Arial, sans-serif; }
+      #intergratedNotificationBtn { width: 420px; margin: 0 auto; }
+      .commonPopup.integratedNotification { overflow: hidden; border: 1px solid #cbd3da; background: #fff; box-shadow: 0 8px 24px #0002; }
+      .categoryFn { display: flex; gap: 4px; padding: 10px; border-bottom: 1px solid #e2e7eb; }
+      .categoryFn .item { padding: 5px 9px; border-radius: 3px; cursor: pointer; }
+      .categoryFn .item.on { background: #347fc9; color: #fff; }
+      .dayline { position: sticky; height: 30px; overflow: hidden; padding-left: 24px; background: #f2f6f8; line-height: 30px; }
+      .today { display: inline-block; margin-left: 6px; color: #2874bd; }
+      ul { margin: 0; padding: 0; list-style: none; }
+      li.h-box { display: flex; padding: 10px 14px; border-bottom: 1px solid #edf0f2; }
+      .list_con { min-width: 0; flex: 1; }
+      .topline, .topline dl { display: flex; min-width: 0; margin: 0; }
+      .topline dl { width: 100%; }
+      dt { flex: 0 0 auto; margin-right: 5px; color: #557084; }
+      dd.name { overflow: hidden; min-width: 0; margin: 0; text-overflow: ellipsis; white-space: nowrap; }
+      .botline { color: #7c8791; font-size: 12px; }
+      .time { margin-left: 8px; color: #8b959e; font-size: 11px; }
+      #harness-status { display: block; width: 420px; margin: 16px auto 0; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div id="intergratedNotificationBtn">
+      <div class="commonPopup integratedNotification v-box alert">
+        <div class="tabCon flex-1 v-box"></div>
+      </div>
+    </div>
+    <div class="harness-controls" style="width:420px;margin:12px auto 0;display:flex;gap:8px">
+      <button id="disable-feature" type="button">기능 끄기</button>
+      <button id="enable-feature" type="button">기능 켜기</button>
+    </div>
+    <output id="harness-status"></output>
+    <script type="module" src="/tests/amaranth-notification-harness.ts"></script>
+  </body>
+</html>

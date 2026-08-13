@@ -85,6 +85,22 @@ test('지원하지 않는 HTML과 이미지 변환 제외는 warnings에 남긴�
   ]);
 });
 
+test('인라인 HTML br은 ADF hardBreak으로 보존한다', () => {
+  const result = markdownToConfluenceAdf('첫째<br>둘째<br />셋째');
+
+  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(result.doc.content[0], {
+    type: 'paragraph',
+    content: [
+      { type: 'text', text: '첫째' },
+      { type: 'hardBreak' },
+      { type: 'text', text: '둘째' },
+      { type: 'hardBreak' },
+      { type: 'text', text: '셋째' },
+    ],
+  });
+});
+
 test('외부 HTTP 이미지는 ADF external media로 보존한다', () => {
   const converted = markdownToConfluenceAdf('![구성도](https://example.com/diagram.png)');
   assert.deepEqual(converted.warnings, []);

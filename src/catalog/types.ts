@@ -4,6 +4,7 @@ export type SiteId = (typeof SITE_IDS)[number];
 export const FEATURE_IDS = [
   'attendanceHeader',
   'titleAutofill',
+  'notificationTools',
   'issueLinkCopy',
   'boardInspector',
   'pageMarkdownCopy',

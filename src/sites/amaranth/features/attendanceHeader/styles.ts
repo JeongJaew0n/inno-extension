@@ -3,13 +3,20 @@ import { INJECTED_ID, STYLE_ID } from '../../selectors';
 const STYLE_TEXT = `
 #${INJECTED_ID} {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
   width: 100%;
   gap: 6px;
   margin-top: 8px;
   clear: both;
   box-sizing: border-box;
+}
+#${INJECTED_ID} .inno-amaranth-attendance-checkin-group {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
 }
 #${INJECTED_ID} .inno-amaranth-attendance-button {
   appearance: none;
@@ -33,6 +40,40 @@ const STYLE_TEXT = `
   background: #4a7dff;
   border-color: #4a7dff;
   color: #ffffff;
+}
+#${INJECTED_ID} .inno-amaranth-attendance-greeting-copy {
+  appearance: none;
+  border: 1px solid #b9c5cf;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #59636d;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 5px 8px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#${INJECTED_ID} .inno-amaranth-attendance-greeting-copy:hover:not(:disabled) {
+  border-color: #4a7dff;
+  color: #4a7dff;
+}
+#${INJECTED_ID} .inno-amaranth-attendance-greeting-copy:focus-visible {
+  outline: 2px solid #4a7dff;
+  outline-offset: 1px;
+}
+#${INJECTED_ID} .inno-amaranth-attendance-greeting-copy:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+#${INJECTED_ID} .inno-amaranth-attendance-greeting-copy[data-state="success"] {
+  border-color: #70ad8b;
+  color: #327552;
+}
+#${INJECTED_ID} .inno-amaranth-attendance-greeting-copy[data-state="error"] {
+  border-color: #d88a8a;
+  color: #b33d3d;
 }
 `;
 

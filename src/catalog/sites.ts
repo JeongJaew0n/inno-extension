@@ -12,7 +12,7 @@ export const SITES = [
       {
         id: 'attendanceHeader',
         name: '헤더 출퇴근 버튼',
-        description: '출근과 퇴근 버튼을 화면 상단 헤더에서 바로 사용할 수 있습니다.',
+        description: '출퇴근 버튼을 헤더에서 사용하고 현재 시각의 출근 인사말을 복사합니다.',
         routeSummary: 'gw.innogrid.com 전체 화면',
         defaultEnabled: true,
         hasDetails: true,
@@ -22,6 +22,14 @@ export const SITES = [
         name: '신청서 제목 자동채움',
         description: '근태신청서의 제목을 미리 저장한 문구로 한 번에 입력합니다.',
         routeSummary: '아마란스 근태신청서 작성 화면',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
+      {
+        id: 'notificationTools',
+        name: '통합알림 새로고침·인증번호 복사',
+        description: '통합알림을 바로 갱신하고 메일의 인증번호를 한 번에 복사합니다.',
+        routeSummary: '아마란스 통합알림 전체 탭',
         defaultEnabled: true,
         hasDetails: true,
       },

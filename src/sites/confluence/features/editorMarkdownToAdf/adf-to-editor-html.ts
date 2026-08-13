@@ -79,8 +79,13 @@ function renderNode(node: AdfNode): string {
     }
     case 'blockquote':
       return `<blockquote>${renderChildren(node)}</blockquote>`;
-    case 'codeBlock':
-      return `<pre><code>${escapeEditorHtml(node.content?.map((child) => child.text ?? '').join('') ?? '')}</code></pre>`;
+    case 'codeBlock': {
+      const language = typeof node.attrs?.language === 'string'
+        ? ` data-language="${escapeEditorHtml(node.attrs.language)}"`
+        : '';
+      const content = node.content?.map((child) => child.text ?? '').join('') ?? '';
+      return `<pre${language}><code>${escapeEditorHtml(content)}</code></pre>`;
+    }
     case 'bulletList':
       return `<ul>${(node.content ?? []).map(renderListItem).join('')}</ul>`;
     case 'orderedList': {
@@ -105,7 +110,7 @@ function renderNode(node: AdfNode): string {
     case 'rule':
       return '<hr>';
     case 'expand':
-      return `<details><summary>${escapeEditorHtml(String(node.attrs?.title ?? '상세 내용'))}</summary>${renderChildren(node)}</details>`;
+      return `<div data-node-type="expand" data-title="${escapeEditorHtml(String(node.attrs?.title ?? '상세 내용'))}" data-expanded="false">${renderChildren(node)}</div>`;
     case 'mediaSingle':
       return renderChildren(node);
     case 'media': {
