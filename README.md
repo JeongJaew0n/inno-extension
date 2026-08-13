@@ -1,123 +1,228 @@
-# Inno Extension
+<div align="center">
+  <img src="./public/icons/icon-128.png" width="112" height="112" alt="Inno Extension 아이콘">
 
-아마란스, Jira, Confluence의 사내 업무 편의 기능을 하나의 Chrome Extension으로 제공한다.
+  # Inno Extension
 
-## 지원 사이트와 기능
+  아마란스, Jira, Confluence에서 반복되는 사내 업무를 더 짧게 처리하는 Chrome 확장 프로그램
 
-### 아마란스
+  [최신 릴리즈](https://github.com/JeongJaew0n/inno-extension/releases/latest) · [제품 Spec](./spec/README.md) · [변경 이력](./spec/product-overview.md#변경-이력)
+</div>
 
-- 대상: `https://gw.innogrid.com/*`
-- 헤더 출퇴근 버튼
-  - 헤더에 출근/퇴근 버튼을 표시한다.
-  - 클릭 시 사이트의 원본 출퇴근 버튼으로 이벤트를 위임한다.
-  - 원본 active 상태를 주입 버튼에 동기화한다.
-  - 출근 버튼 아래의 `인사말 복사`로 현재 시각의 `n시 n분 출근입니다.` 문구를 복사한다.
-- 신청서 제목 자동채움
-  - 근태신청서의 `제목` 왼쪽에 자동채움 버튼을 표시한다.
-  - Popup 기능 상세에서 저장한 문구로 제목을 교체한다.
+## 소개
 
-### Jira
+Inno Extension은 여러 업무 사이트의 편의 기능을 하나의 확장 프로그램과 하나의 설정 화면으로 관리한다. 출퇴근 접근, 신청서 제목 입력, 인증번호 복사, Jira 업무 링크 공유, Confluence 문서 변환처럼 자주 반복하지만 사이트마다 흩어져 있는 동작을 현재 화면 가까이에 제공한다.
 
-- 대상: `https://pms-innogrid.atlassian.net/*`
-- 업무 링크 복사
-  - 모든 Jira 보드에서 선택한 업무와 `/browse/ISSUE-n`, `/issues/ISSUE-n` 직접 업무 화면에 링크 복사 버튼 두 개를 표시한다.
-  - 기본 버튼은 `ISSUE-n`, 제목 포함 버튼은 `ISSUE-n 현재 업무 제목` 형태로 복사한다.
-  - 업무 번호는 HTML 클립보드에서 해당 Jira 업무로 연결되는 링크를 유지한다.
-- NPT 보드 정보 패널
-  - 현재 보드, 화면 이슈 수, 선택 이슈를 표시한다.
-  - 기본값은 OFF이며 Popup에서 프로젝트 키와 보드 ID를 설정할 수 있다.
+- 하나의 Popup에서 서비스와 기능별 활성 상태를 관리한다.
+- 사용자 클릭이 있어야 복사·변환·원본 버튼 실행이 일어난다.
+- 문서와 입력값을 별도 서버로 전송하지 않는다.
+- 기능이 실패해도 원본 사이트의 기본 동작은 그대로 사용할 수 있다.
 
-### Confluence
+> 현재 지원 범위는 `gw.innogrid.com`과 `pms-innogrid.atlassian.net`이다. 외부 서비스의 화면 구조가 바뀌면 일부 기능을 다시 맞춰야 할 수 있다.
 
-- 대상: `https://pms-innogrid.atlassian.net/wiki/*`
-- 본문 Markdown 복사
-  - 문서 조회 화면의 `링크 복사` 버튼 옆에 `본문 Markdown 복사` 버튼을 표시한다.
-  - 제목, 작성자, 댓글을 제외하고 현재 문서 본문만 Markdown으로 복사한다.
-  - 제목 계층, 목록, 표, 코드 블록, 링크와 기본 텍스트 서식을 Markdown으로 변환한다.
-- Markdown -> ADF 변환 (기본 OFF)
-  - 붙여넣거나 `.md` 파일에서 읽은 Markdown을 Extension Popup 안에서 ADF JSON으로 변환한다.
-  - 변환 결과, 최상위 block 수, Mermaid 수와 변환 경고를 화면에 표시한다.
-  - Confluence `edit-v2` 편집 toolbar의 `코드블럭 -> ADF`로 각 코드블럭 안의 Markdown을 같은 위치의 Confluence 편집 콘텐츠로 변환한다.
-  - 본문 전체를 Markdown으로 변환하는 toolbar 버튼은 제공하지 않는다.
-  - Mermaid component가 참조하는 접힌 원본 코드블럭은 `코드블럭 -> ADF` 대상에서 제외한다.
-  - 편집 toolbar의 `Mermaid -> ADF`는 Mermaid 선언 코드 블록에 실제 ProseMirror node selection을 적용한 뒤 같은 위치에 Confluence Mermaid component를 만들고, 렌더링에 필요한 원본은 접힌 `Mermaid 원본` 영역에 보존한다.
-  - 편집 결과는 실행 취소할 수 있고 사용자가 `업데이트`를 누르기 전에는 저장되지 않는다.
-  - Confluence API를 호출하지 않으며 복사·다운로드 기능도 제공하지 않는다.
-  - 로컬 이미지 upload는 지원하지 않는다. Mermaid 매크로 삽입은 현재 사내 Confluence에 설치된 앱 계약을 사용한다.
+## 설치
 
-## Popup 설정
+### 릴리즈 ZIP으로 설치
 
-- 서비스 목록에서 아마란스/Jira/Confluence 전체 기능을 켜고 끈다.
-- 서비스 카드는 각 서비스의 로컬 아이콘 asset을 표시한다.
-- 사이트를 꺼도 하위 기능의 enabled 값은 보존된다.
-- 사이트 상세에서 기능별 토글을 독립적으로 변경한다.
-- 기능 상세에서 적용 범위와 세부 옵션을 확인하거나 초기화한다.
+1. [최신 릴리즈](https://github.com/JeongJaew0n/inno-extension/releases/latest)에서 `inno-extension-<version>.zip`을 내려받는다.
+2. ZIP 파일을 원하는 위치에 압축 해제한다.
+3. Chrome 주소창에서 `chrome://extensions`를 연다.
+4. 우측 상단의 **개발자 모드**를 켠다.
+5. **압축해제된 확장 프로그램을 로드합니다**를 누르고 압축 해제한 폴더를 선택한다.
+6. 기존에 열려 있던 아마란스·Jira·Confluence 탭을 새로고침한다.
 
-## 권한
+현재 배포 버전은 [v0.2.0](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.2.0)이며, 배포 ZIP은 릴리즈 페이지에서 받을 수 있다.
 
-- `storage`: 서비스·기능 설정 저장
-- 사이트 접근: manifest의 content script `matches`에 선언한 아마란스, Jira, Confluence 화면에서만 실행
-
-별도 `host_permissions`, `scripting`, `downloads`, background service worker는 사용하지 않는다.
-
-실제 기능 실행 여부는 다음 규칙을 따른다.
-
-```text
-effectiveEnabled = site.enabled && feature.enabled
-```
-
-## 개발
+### 소스에서 설치
 
 ```bash
 npm install
-npm run typecheck
-npm test
 npm run build
-npm run package
 ```
 
-- `npm run build`: 검사 후 `dist/` 생성
-- `npm run package`: 검사와 빌드 후 `release/inno-extension-<version>.zip` 생성 및 무결성 검사
+빌드가 끝나면 `chrome://extensions`에서 이 저장소의 `dist/` 디렉터리를 로드한다. 소스를 수정한 뒤에는 다시 빌드하고 확장 프로그램 카드의 새로고침 버튼과 대상 사이트 새로고침을 순서대로 실행한다.
 
-## Chrome에 로드
+## 지원 서비스
 
-1. `npm run build`를 실행한다.
-2. Chrome에서 `chrome://extensions`를 연다.
-3. 개발자 모드를 켠다.
-4. `압축해제된 확장 프로그램을 로드합니다`에서 이 저장소의 `dist/`를 선택한다.
-5. 수정 후에는 다시 빌드하고 확장 프로그램 새로고침 버튼을 누른다.
+| 서비스 | 기본 활성 기능 | 기본 비활성 기능 | 적용 사이트 |
+| --- | --- | --- | --- |
+| 아마란스 | 헤더 출퇴근 버튼, 신청서 제목 자동채움, 통합알림 도구 | 없음 | `gw.innogrid.com` |
+| Jira | 업무 링크 복사 | NPT 보드 정보 패널 | `pms-innogrid.atlassian.net`의 Jira 화면 |
+| Confluence | 본문 Markdown 복사 | Markdown → ADF 변환 | `pms-innogrid.atlassian.net/wiki` |
 
-## 구조
+### 아마란스
+
+#### 헤더 출퇴근 버튼
+
+- 원본 출근·퇴근 버튼을 헤더 가까운 위치에서도 사용할 수 있게 한다.
+- 원본 버튼의 활성 상태를 확장 버튼에 동기화한다.
+- 출근 버튼 아래의 **인사말 복사**를 누르면 현재 시각 기준 `n시 n분 출근입니다.` 문구를 복사한다.
+
+#### 신청서 제목 자동채움
+
+- 근태신청서 작성 화면의 `제목` 왼쪽에 **자동채움** 버튼을 표시한다.
+- Popup에서 저장한 문구를 제목 입력란에 채운다.
+- 저장 결과와 기능 비활성 상태를 버튼 피드백과 안내 문구로 확인할 수 있다.
+
+#### 통합알림 새로고침·인증번호 복사
+
+- 통합알림의 `전체` 탭에서 다른 탭을 오가지 않고 목록을 새로고침한다.
+- `[메일]` 알림에서 인증 문맥과 함께 나타난 4~6자리 번호를 감지한다.
+- 표시된 **복사** 버튼을 누르면 선행 0을 포함한 인증번호 원문을 복사한다.
+- 일반 날짜나 업무번호처럼 인증 문맥이 없는 숫자는 대상으로 삼지 않는다.
+
+### Jira
+
+#### 업무 링크 복사
+
+모든 Jira 보드의 선택 업무와 `/browse/업무번호`, `/issues/업무번호` 직접 조회 화면에서 다음 두 형식을 제공한다.
+
+| 버튼 | 복사 결과 예시 |
+| --- | --- |
+| **업무 링크 복사** | `NPT-38` |
+| **업무 링크 복사(제목포함)** | `NPT-38 현재 업무 제목` |
+
+클립보드의 HTML 형식을 지원하는 곳에 붙여넣으면 업무 번호가 해당 Jira 업무로 연결되는 링크를 유지한다.
+
+#### NPT 보드 정보 패널
+
+- 현재 보드, 화면에 표시된 업무 수, 선택 업무를 보조 패널로 보여준다.
+- 기본값은 OFF다.
+- Popup에서 대상 프로젝트 키와 보드 ID를 설정할 수 있다.
+
+### Confluence
+
+#### 본문 Markdown 복사
+
+- 문서 조회 화면의 `링크 복사` 옆에 **본문 Markdown 복사** 버튼을 추가한다.
+- 제목, 작성자, 댓글을 제외한 본문만 복사한다.
+- 제목 계층, 목록, 표, 링크, 인용, 코드 블록과 기본 텍스트 서식을 Markdown으로 변환한다.
+
+#### Markdown → ADF 변환
+
+기본값은 OFF다. Popup에서 기능을 켜면 로컬 변환기와 Confluence `edit-v2` 편집 도구를 사용할 수 있다.
+
+- Popup에서 Markdown 텍스트 또는 `.md` 파일을 ADF JSON으로 변환한다.
+- **M → ADF**는 Mermaid 선언 코드 블록을 같은 위치의 Confluence Mermaid component로 바꾸고, 렌더링에 필요한 원본은 접힌 영역에 보존한다.
+- **코드블럭 → ADF**는 각 코드 블록 안의 Markdown을 제목·문단·목록·표·코드 등 편집 콘텐츠로 같은 위치에 다시 작성한다.
+- 변환은 현재 편집 초안만 변경한다. 확장이 페이지의 **업데이트** 버튼을 누르지 않으므로 결과를 확인한 뒤 사용자가 직접 저장한다.
+- 잘못된 변환은 Confluence 실행 취소로 되돌릴 수 있다.
+
+> 실제 소스 코드를 Markdown으로 해석할 가능성이 있으므로 `코드블럭 → ADF` 실행 전 대상 블록을 확인하고, 저장 전 결과를 검토해야 한다.
+
+## 설정 방식
+
+Chrome 도구 모음의 Inno Extension 아이콘을 누르면 서비스 목록이 열린다.
+
+1. 서비스 카드의 전체 토글로 해당 서비스 기능을 한 번에 켜거나 끈다.
+2. 서비스 카드를 열어 기능별 토글과 적용 범위를 확인한다.
+3. 세부 설정이 있는 기능은 상세 화면에서 값을 저장하거나 초기화한다.
+
+서비스 전체 기능을 꺼도 하위 기능별 선택값은 지워지지 않는다. 서비스를 다시 켜면 이전 조합이 복원된다.
+
+```text
+실제 실행 상태 = 서비스 전체 기능 ON && 개별 기능 ON
+```
+
+설정은 `chrome.storage.sync`에 버전이 있는 스키마로 저장한다.
+
+## 권한과 데이터 처리
+
+Manifest V3의 `storage` 권한만 사용한다. 별도 `host_permissions`, `scripting`, `downloads`, background service worker는 두지 않는다.
+
+- content script는 manifest에 선언된 아마란스, Jira, Confluence 주소에서만 실행된다.
+- 사이트의 로그인 쿠키, 인증 토큰, 비밀번호를 읽거나 저장하지 않는다.
+- 메일 알림, Confluence 본문, Markdown 입력은 기능 실행 중 현재 브라우저 안에서만 처리한다.
+- 클립보드 쓰기는 사용자가 해당 버튼을 직접 누른 경우에만 수행한다.
+- Confluence 변환은 API로 문서를 저장하지 않고 현재 편집 초안만 변경한다.
+
+자세한 제품 원칙은 [제품 개요의 보안과 개인정보](./spec/product-overview.md#보안과-개인정보)를 참고한다.
+
+## 문제 해결
+
+### 대상 사이트에 버튼이 보이지 않는다
+
+1. Popup에서 해당 서비스의 전체 기능과 개별 기능이 모두 ON인지 확인한다.
+2. 기능 상세의 적용 화면과 현재 URL이 일치하는지 확인한다.
+3. `chrome://extensions`에서 Inno Extension을 새로고침한다.
+4. 대상 사이트 탭을 새로고침한다.
+
+### 새 빌드가 반영되지 않는다
+
+`npm run build`만 실행하면 열린 Chrome 탭에는 자동 반영되지 않는다. 확장 프로그램을 새로고침한 다음 대상 사이트도 다시 불러와야 한다.
+
+### Confluence 변환 결과가 예상과 다르다
+
+페이지를 저장하기 전에 Confluence 실행 취소로 되돌린다. 편집기나 Mermaid 앱의 DOM 계약이 변경됐을 가능성이 있으므로 브라우저 콘솔의 `[Inno Extension]` 로그와 재현 화면을 함께 확인한다.
+
+## 개발
+
+### 명령어
+
+| 명령 | 설명 |
+| --- | --- |
+| `npm run dev` | Vite 개발 서버 실행 |
+| `npm run typecheck` | TypeScript 정적 검사 |
+| `npm test` | 자동화 테스트 실행 |
+| `npm run check` | typecheck와 test 순차 실행 |
+| `npm run build` | 검사 후 `dist/` 프로덕션 빌드 |
+| `npm run package` | 빌드 후 배포 ZIP 생성과 무결성 검사 |
+
+`npm run package`의 결과는 `release/inno-extension-<version>.zip`에 생성된다.
+
+### 구조
 
 ```text
 src/
-├── catalog/          사이트와 기능 metadata
+├── catalog/          서비스·기능 메타데이터
 ├── platform/
-│   ├── clipboard/    plain/rich clipboard 쓰기
-│   ├── runtime/      site runtime과 feature lifecycle
-│   └── settings/     버전화된 storage schema와 repository
-├── popup/            사이트 목록, 사이트 상세, 기능 상세, 일반 설정
+│   ├── clipboard/    일반 텍스트·리치 클립보드 출력
+│   ├── runtime/      서비스 runtime과 기능 lifecycle
+│   └── settings/     버전화된 설정 schema와 저장소
+├── popup/            서비스 목록·상세·기능 설정 UI
 └── sites/
-    ├── amaranth/     아마란스 content entry와 기능
-    ├── jira/         Jira content entry와 기능
-    └── confluence/   Confluence content entry와 기능
-        └── adf/      로컬 Markdown -> ADF 변환
+    ├── amaranth/     출퇴근, 제목 자동채움, 통합알림
+    ├── jira/         업무 링크 복사, 보드 정보 패널
+    └── confluence/   본문 Markdown 복사, ADF 변환
 ```
 
-사이트 runtime은 사이트당 하나의 MutationObserver를 사용하며 활성 기능의 `reconcile()`을 호출한다. 기능이 꺼지면 `dispose()`로 자신이 만든 DOM, style, timer, listener를 정리한다.
+사이트별 runtime은 하나의 `MutationObserver`로 활성 기능의 `reconcile()`을 호출한다. 서비스나 기능이 꺼지면 각 기능의 `dispose()`가 자신이 만든 DOM, style, timer, listener를 정리한다.
 
-## 새 기능 추가
+### 기능 추가 순서
 
-1. `src/catalog/sites.ts`에 기능 metadata를 추가한다.
+1. `src/catalog/sites.ts`에 기능 메타데이터를 등록한다.
 2. `src/platform/settings/defaults.ts`에 기본 설정을 추가한다.
-3. 해당 `src/sites/<site>/features/<feature>/` 아래에 `FeatureRuntime`을 구현한다.
-4. 사이트 content entry의 runtime 목록에 기능을 등록한다.
-5. 옵션이 있다면 Popup 기능 상세 renderer를 추가한다.
-6. catalog/default/route/lifecycle 회귀 테스트를 추가한다.
+3. `src/sites/<service>/features/<feature>/`에 기능 runtime을 구현한다.
+4. 해당 서비스의 content entry에 runtime을 연결한다.
+5. 필요한 경우 Popup 상세 설정 renderer를 추가한다.
+6. catalog, 설정 migration, route, lifecycle 회귀 테스트를 추가한다.
+7. 사용자 행동 계약이 바뀌면 같은 변경에서 관련 `spec/features/` 문서를 갱신한다.
 
-## 계획 문서
+## 문서
 
-- 제품·기능 기준 문서: [`spec/`](./spec/README.md)
-- 통합 설계와 작업 체크리스트: `docs/plans/inno-extension-multi-site/`
-- Jira/Confluence 기능 통합 계획: [`docs/plans/jira-conf-integration/`](./docs/plans/jira-conf-integration/계획서.md)
-- 기존 아마란스 기능 맥락: `docs/plans/gw-checkin-header-buttons/`
+| 위치 | 역할 |
+| --- | --- |
+| [`spec/`](./spec/README.md) | 현재 제품 방향과 기능 행동 계약의 정본 |
+| [`spec/product-overview.md`](./spec/product-overview.md) | 제품 목표, 범위, 보안, 기술 제약, 변경 이력 |
+| [`spec/glossary.md`](./spec/glossary.md) | 서비스·기능·업무 등 기준 용어 |
+| [`spec/features/`](./spec/features/) | 기능별 기획, 적용 범위, 실패·복구 계약 |
+| [`docs/plans/`](./docs/plans/) | 구현 당시 계획, 조사 맥락, 체크리스트 |
+| [`docs/`](./docs/) | Jira·Confluence 동작 분석과 장애 조사 기록 |
+
+문서와 코드의 동작이 다르면 최근 사용자 결정과 변경 이력을 확인해 의도된 변경인지 회귀인지 판단하고, 확정된 결론에 맞춰 spec·코드·테스트를 함께 정렬한다.
+
+## 기술 스택
+
+- Chrome Extension Manifest V3
+- TypeScript strict mode
+- Vite + CRXJS
+- Vanilla TypeScript Popup
+- `marked` 기반 Markdown 파싱
+
+## 배포
+
+1. `package.json`과 `manifest.json`의 버전을 맞춘다.
+2. `npm run package`로 검사·빌드·ZIP 무결성 검사를 수행한다.
+3. 변경 사항을 커밋하고 버전 태그를 푸시한다.
+4. GitHub Release에 `release/inno-extension-<version>.zip`과 변경 내역을 게시한다.
+
+현재 릴리즈: [Inno Extension v0.2.0](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.2.0)
