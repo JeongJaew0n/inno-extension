@@ -34,12 +34,12 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 
 | 서비스 | 기능 | 기본값 | 현재 범위 |
 | --- | --- | --- | --- |
-| 아마란스 | 헤더 출퇴근 버튼 | ON | `gw.innogrid.com`에서 원본 출퇴근 버튼을 헤더 가까이에 제공 |
+| 아마란스 | 헤더 출퇴근 버튼 | ON | 원본 출퇴근 버튼을 헤더 가까이에 제공하고 현재 시각의 출근 인사말을 복사 |
 | 아마란스 | 신청서 제목 자동채움 | ON | 근태신청서의 제목을 Popup에 저장한 문구로 입력 |
 | Jira | 업무 링크 복사 | ON | Jira 보드 선택 업무와 직접 업무 조회 화면에서 링크 또는 링크+제목 복사 |
 | Jira | NPT 보드 정보 패널 | OFF | 설정된 프로젝트·보드의 현재 화면 정보를 보조 패널로 표시 |
 | Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
-| Confluence | Markdown -> ADF 변환 | OFF | Popup 변환, `edit-v2` 본문 변환, 코드블럭 서식 제거 |
+| Confluence | Markdown -> ADF 변환 | OFF | Popup 변환, `edit-v2` 코드블럭 -> ADF 변환 |
 
 기능별 상세 계약은 `spec/features/` 문서에서 관리한다.
 
@@ -114,9 +114,9 @@ effectiveEnabled = site.enabled && feature.enabled
 
 기존 로그인 세션과 원본 UI 동작을 활용한다. 별도 인증과 API 권한을 피할 수 있지만 외부 사이트의 DOM 변경에 영향을 받는다. selector 중앙화와 실제 사이트 확인을 운영 비용으로 수용한다.
 
-Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서는 ADF JSON만 보여주고, Confluence `edit-v2`에서는 사용자의 클릭으로 현재 편집 본문을 변환한다. 편집기 적용은 Confluence가 제공하는 paste 처리 경계를 사용하므로 페이지 저장 API와 version conflict 책임을 피하고 실행 취소 흐름을 유지한다. 대신 외부 editor DOM과 paste 동작 변경에 영향을 받는다.
+Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서는 ADF JSON만 보여주고, Confluence `edit-v2`에서는 `코드블럭 -> ADF`가 각 코드블럭 안의 Markdown을 해당 위치의 편집 콘텐츠로 변환한다. 본문 전체를 Markdown으로 추정하는 toolbar 버튼은 제공하지 않는다. 편집기 적용은 Confluence가 제공하는 paste 처리 경계를 사용하므로 페이지 저장 API와 version conflict 책임을 피하고 실행 취소 흐름을 유지한다. 대신 외부 editor DOM과 paste 동작 변경에 영향을 받는다.
 
-같은 편집기 도구에서 코드블럭 벗기기는 기존 ADF 전체를 재해석하지 않고 코드 블록만 일반 문단으로 바꾼다. `Mermaid -> ADF`는 MAIN world bridge로 대상 codeBlock에 실제 ProseMirror NodeSelection을 적용한 뒤 한 번의 paste transaction으로 Forge component와 접힌 `Mermaid 원본`으로 교체한다. 앱이 index로 참조하는 source는 접힌 영역에 보존하며, 비동기 생성 후 원래 위치에 인접한 pair인지 검증하고 실패하면 Confluence toolbar 실행 취소로 되돌린다.
+`코드블럭 -> ADF`와 `Mermaid -> ADF`는 MAIN world bridge로 대상 codeBlock에 실제 ProseMirror NodeSelection을 적용한다. 전자는 Markdown 변환 결과로 원위치 교체하고, 후자는 한 번의 paste transaction으로 Forge component와 접힌 `Mermaid 원본`을 만든다. 앱이 index로 참조하는 source는 접힌 영역에 보존하며 `코드블럭 -> ADF` 변환에서도 제외한다. 위치 검증에 실패하면 Confluence toolbar 실행 취소로 되돌린다.
 
 ### Vanilla TypeScript Popup
 
@@ -157,6 +157,8 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - 2026-08-11: 공식 ADF schema의 extension paste 계약과 tenant의 Mermaid extension key를 확인해 기존 결정을 갱신하고, Mermaid 코드 블록만 원본 뒤에 Forge 매크로를 생성하는 `Mermaid -> ADF`를 추가했다.
 - 2026-08-12: DOM Range 기반 paste가 ProseMirror 내부 selection을 갱신하지 않아 문서 최상단에 삽입되는 문제를 수정했다. MAIN world selection bridge, 공식 expand DOM 표현, 실제 toolbar undo, 엄격한 pair 검증을 적용하고 실제 Confluence 편집기에서 두 Mermaid의 원위치 치환과 중복 방지를 확인했다.
 - 2026-08-12: 저장 ADF에서 macro가 실제 생성된 것을 확인해 실패 판단을 정정했다. 비동기 완료 대기, top-level 위치 삽입, 접힌 source 보존, unpaired component 중복 방지를 반영했다.
+- 2026-08-12: Confluence 편집기의 본문 전체 Markdown 변환 버튼을 제거하고, 코드블럭의 Markdown만 원위치 ADF 콘텐츠로 교체하는 `코드블럭 -> ADF`로 통합했다. Mermaid component가 참조하는 접힌 원본은 변환 대상에서 제외한다.
+- 2026-08-13: 아마란스 헤더 출근 버튼 아래에 현재 시각을 `n시 n분 출근입니다.` 형식으로 복사하는 `인사말 복사` 버튼을 추가했다.
 
 ## 관련 문서
 

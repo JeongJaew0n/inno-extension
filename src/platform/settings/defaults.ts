@@ -17,6 +17,10 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
               titleText: '',
             },
           },
+          notificationTools: {
+            enabled: true,
+            options: {},
+          },
         },
       },
       jira: {

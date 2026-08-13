@@ -1,6 +1,5 @@
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
-import { markdownToConfluenceAdf } from '../../adf';
 import { parseConfluenceEditPageUrl } from '../../routes';
 import {
   EDITOR_BODY,
@@ -8,157 +7,97 @@ import {
   EDITOR_MARKDOWN_TO_ADF_ROOT,
   EDITOR_PRIMARY_TOOLBAR,
 } from '../../selectors';
-import { adfDocumentToEditorHtml } from './adf-to-editor-html';
-import {
-  codeBlockTextToEditorHtml,
-  readConfluenceCodeBlockText,
-} from './code-block';
+import { codeBlockMarkdownToAdfPayload } from './code-block-to-adf';
+import { readConfluenceCodeBlockText } from './code-block';
 import {
   buildConfluenceMermaidReplacementHtml,
   CONFLUENCE_MERMAID_EXTENSION_KEY,
   isMermaidCodeBlockSource,
 } from './mermaid';
 
-interface MarkdownEditorSource {
-  markdown: string;
-  isPlain: boolean;
-}
-
 const MERMAID_EXTENSION_INSERT_TIMEOUT_MS = 3000;
 const PROSEMIRROR_SELECTION_TIMEOUT_MS = 1000;
 const PROSEMIRROR_SELECT_REQUEST_EVENT = 'inno-extension:confluence:select-prosemirror-node';
 const PROSEMIRROR_SELECT_RESPONSE_EVENT = 'inno-extension:confluence:select-prosemirror-node-result';
 
-function readNodeText(node: Node): string {
-  if (node.nodeType === 3) return node.nodeValue ?? '';
-  if (node.nodeType !== 1) return '';
+type ProseMirrorBridgeAction = 'read-node' | 'select-node';
 
-  const element = node as Element;
-  if (element.getAttribute('contenteditable') === 'false'
-    || element.classList.contains('ProseMirror-widget')) {
-    return '';
-  }
-  if (element.tagName === 'BR') return '\n';
-  return Array.from(element.childNodes).map(readNodeText).join('');
+interface ProseMirrorBridgeResponse {
+  requestId?: unknown;
+  success?: unknown;
+  message?: unknown;
+  text?: unknown;
 }
 
-function readMarkdownEditorSource(editor: HTMLElement): MarkdownEditorSource {
-  const documentNodes = Array.from(editor.children).filter(
-    (element): element is HTMLElement => (
-      element instanceof HTMLElement
-      && element.getAttribute('data-prosemirror-content-type') === 'node'
-    ),
-  );
-
-  if (documentNodes.length === 0) return { markdown: '', isPlain: true };
-
-  const isPlain = documentNodes.every((node) => {
-    if (node.getAttribute('data-prosemirror-node-name') !== 'paragraph') return false;
-    const clone = node.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll('[contenteditable="false"], .ProseMirror-widget').forEach(
-      (element) => element.remove(),
-    );
-    return Array.from(clone.querySelectorAll('*')).every((element) => element.tagName === 'BR');
-  });
-
-  const markdown = documentNodes
-    .map((node) => readNodeText(node).replace(/\r\n?/g, '\n').trimEnd())
-    .join('\n\n')
-    .trim();
-
-  return { markdown, isPlain };
-}
-
-function selectEditorContents(editor: HTMLElement): void {
-  editor.focus();
-  const selection = editor.ownerDocument.getSelection();
-  if (!selection) throw new Error('편집기 선택 영역을 만들 수 없습니다.');
-
-  const range = editor.ownerDocument.createRange();
-  const documentNodes = Array.from(editor.children).filter(
-    (element) => element.getAttribute('data-prosemirror-content-type') === 'node',
-  );
-  const firstNode = documentNodes[0];
-  const lastNode = documentNodes[documentNodes.length - 1];
-  if (firstNode && lastNode) {
-    range.setStartBefore(firstNode);
-    range.setEndAfter(lastNode);
-  } else {
-    range.selectNodeContents(editor);
-  }
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
-
-async function selectEditorNode(editor: HTMLElement, node: HTMLElement): Promise<void> {
-  const localId = node.dataset.localId;
+async function requestProseMirrorBridge(
+  editor: HTMLElement,
+  action: ProseMirrorBridgeAction,
+  node?: HTMLElement,
+): Promise<ProseMirrorBridgeResponse> {
+  const localId = node?.dataset.localId;
   if (!localId) throw new Error('Confluence codeBlock 식별자를 찾을 수 없습니다.');
-
   const document = editor.ownerDocument;
   const requestId = crypto.randomUUID();
-  await new Promise<void>((resolve, reject) => {
+
+  return new Promise<ProseMirrorBridgeResponse>((resolve, reject) => {
     const finish = (error?: Error): void => {
       document.removeEventListener(PROSEMIRROR_SELECT_RESPONSE_EVENT, onResponse);
       window.clearTimeout(timer);
       if (error) reject(error);
-      else resolve();
     };
     const onResponse = (event: Event): void => {
       if (!(event instanceof CustomEvent) || typeof event.detail !== 'string') return;
-      let detail: { requestId?: unknown; success?: unknown; message?: unknown };
+      let detail: ProseMirrorBridgeResponse;
       try {
-        detail = JSON.parse(event.detail) as typeof detail;
+        detail = JSON.parse(event.detail) as ProseMirrorBridgeResponse;
       } catch {
         return;
       }
       if (detail.requestId !== requestId) return;
-      if (detail.success === true) finish();
-      else finish(new Error(
-        typeof detail.message === 'string'
-          ? detail.message
-          : 'Confluence 편집기 선택에 실패했습니다.',
-      ));
+      if (detail.success === true) {
+        finish();
+        resolve(detail);
+      } else {
+        finish(new Error(
+          typeof detail.message === 'string'
+            ? detail.message
+            : 'Confluence 편집기 상태 처리에 실패했습니다.',
+        ));
+      }
     };
     const timer = window.setTimeout(
-      () => finish(new Error('Confluence 편집기 선택 브리지가 응답하지 않았습니다.')),
+      () => finish(new Error('Confluence 편집기 상태 브리지가 응답하지 않았습니다.')),
       PROSEMIRROR_SELECTION_TIMEOUT_MS,
     );
 
     document.addEventListener(PROSEMIRROR_SELECT_RESPONSE_EVENT, onResponse);
     document.dispatchEvent(new CustomEvent(PROSEMIRROR_SELECT_REQUEST_EVENT, {
-      detail: JSON.stringify({ requestId, localId }),
+      detail: JSON.stringify({ action, requestId, localId }),
     }));
   });
 }
 
-function pasteOverSelection(
+async function selectEditorNode(editor: HTMLElement, node: HTMLElement): Promise<void> {
+  await requestProseMirrorBridge(editor, 'select-node', node);
+}
+
+async function readProseMirrorCodeBlockText(
   editor: HTMLElement,
-  html: string,
-  plainText: string,
-  didChange: () => boolean,
-  allowInsertHtmlFallback = true,
-): void {
-  const clipboardData = new DataTransfer();
-  clipboardData.setData('text/html', html);
-  clipboardData.setData('text/plain', plainText);
-
-  editor.dispatchEvent(new ClipboardEvent('paste', {
-    bubbles: true,
-    cancelable: true,
-    composed: true,
-    clipboardData,
-  }));
-
-  if (didChange()) return;
-
-  if (!allowInsertHtmlFallback) {
-    throw new Error('Confluence 편집기가 ADF extension 붙여넣기를 수용하지 않았습니다.');
+  codeBlock: HTMLElement,
+): Promise<string> {
+  const response = await requestProseMirrorBridge(editor, 'read-node', codeBlock);
+  if (typeof response.text !== 'string') {
+    throw new Error('Confluence codeBlock 전체 원문을 읽지 못했습니다.');
   }
+  return response.text.replace(/\r\n?/g, '\n');
+}
 
-  const inserted = editor.ownerDocument.execCommand('insertHTML', false, html);
-  if (!inserted || !didChange()) {
-    throw new Error('Confluence 편집기에 변경 내용을 적용하지 못했습니다.');
-  }
+function findCodeBlockByLocalId(
+  editor: HTMLElement,
+  localId: string,
+): HTMLElement | undefined {
+  return Array.from(editor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK))
+    .find((codeBlock) => codeBlock.dataset.localId === localId);
 }
 
 function waitForEditorChange(
@@ -208,17 +147,47 @@ async function pasteAndWaitForChange(
   }
 }
 
-function replaceEditorContents(editor: HTMLElement, html: string, markdown: string): void {
-  selectEditorContents(editor);
-  const beforeHtml = editor.innerHTML;
-  pasteOverSelection(editor, html, markdown, () => editor.innerHTML !== beforeHtml);
+async function rollbackEditorChange(
+  editor: HTMLElement,
+  beforeHtml: string,
+): Promise<boolean> {
+  const undoButton = editor.ownerDocument.querySelector<HTMLButtonElement>(
+    '[data-testid="ak-editor-toolbar-button-undo"]',
+  );
+  if (!undoButton || undoButton.disabled) return false;
+  undoButton.click();
+  return waitForEditorChange(
+    editor,
+    () => editor.innerHTML === beforeHtml,
+    MERMAID_EXTENSION_INSERT_TIMEOUT_MS,
+  );
 }
 
-async function unwrapCodeBlock(editor: HTMLElement, codeBlock: HTMLElement): Promise<void> {
-  const plainText = readConfluenceCodeBlockText(codeBlock);
-  const html = codeBlockTextToEditorHtml(plainText);
+async function replaceCodeBlockWithAdf(
+  editor: HTMLElement,
+  localId: string,
+  html: string,
+  markdown: string,
+): Promise<void> {
+  const codeBlock = findCodeBlockByLocalId(editor, localId);
+  if (!codeBlock) throw new Error('변환할 코드블럭의 현재 위치를 찾을 수 없습니다.');
   await selectEditorNode(editor, codeBlock);
-  pasteOverSelection(editor, html, plainText, () => !codeBlock.isConnected);
+  const beforePasteHtml = editor.innerHTML;
+  try {
+    await pasteAndWaitForChange(
+      editor,
+      html,
+      markdown,
+      () => !codeBlock.isConnected,
+      '코드블럭을 원래 위치의 ADF 내용으로 교체하지 못했습니다.',
+    );
+  } catch (error) {
+    if (editor.innerHTML !== beforePasteHtml
+      && !await rollbackEditorChange(editor, beforePasteHtml)) {
+      throw new Error('코드블럭 -> ADF 결과가 올바르지 않고 자동 되돌리기도 실패했습니다. Confluence 실행 취소를 한 번 눌러주세요.');
+    }
+    throw error;
+  }
 }
 
 function isMermaidExtension(node: Element): boolean {
@@ -329,8 +298,8 @@ async function replaceMermaidCodeBlock(
   editor: HTMLElement,
   codeBlock: HTMLElement,
   codeBlockIndex: number,
+  source: string,
 ): Promise<void> {
-  const source = readConfluenceCodeBlockText(codeBlock);
   const localId = crypto.randomUUID();
   const html = buildConfluenceMermaidReplacementHtml(codeBlockIndex, localId, source);
   const didReplaceSource = (): boolean => (
@@ -397,22 +366,6 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         button:disabled { cursor: default; opacity: 0.72; }
         .divider { width: 1px; height: 20px; margin: 0 2px; background: #dfe1e6; }
       </style>
-      <button type="button" data-action="convert" aria-label="Markdown -> ADF 변환">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 7h10"></path><path d="m11 4 3 3-3 3"></path>
-          <path d="M20 17H10"></path><path d="m13 14-3 3 3 3"></path>
-        </svg>
-        <span data-convert-label>Markdown -&gt; ADF 변환</span>
-      </button>
-      <span class="divider" aria-hidden="true"></span>
-      <button type="button" data-action="unwrap" aria-label="코드블럭 벗기기">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m8 9-3 3 3 3"></path><path d="m16 9 3 3-3 3"></path>
-          <path d="M14 5 10 19"></path>
-        </svg>
-        <span data-unwrap-label>코드블럭 벗기기</span>
-      </button>
-      <span class="divider" aria-hidden="true"></span>
       <button type="button" data-action="mermaid" aria-label="Mermaid -> ADF 변환">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M7 4v4"></path><path d="M17 4v4"></path><path d="M5 8h14"></path>
@@ -420,18 +373,23 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         </svg>
         <span data-mermaid-label>Mermaid -&gt; ADF</span>
       </button>
+      <span class="divider" aria-hidden="true"></span>
+      <button type="button" data-action="code-block-adf" aria-label="코드블럭 -> ADF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 7h10"></path><path d="m11 4 3 3-3 3"></path>
+          <path d="M20 17H10"></path><path d="m13 14-3 3 3 3"></path>
+        </svg>
+        <span data-code-block-adf-label>코드블럭 -&gt; ADF</span>
+      </button>
     `;
 
-    const convertButton = shadow.querySelector<HTMLButtonElement>('[data-action="convert"]');
-    const convertLabel = shadow.querySelector<HTMLElement>('[data-convert-label]');
-    const unwrapButton = shadow.querySelector<HTMLButtonElement>('[data-action="unwrap"]');
-    const unwrapLabel = shadow.querySelector<HTMLElement>('[data-unwrap-label]');
+    const codeBlockAdfButton = shadow.querySelector<HTMLButtonElement>('[data-action="code-block-adf"]');
+    const codeBlockAdfLabel = shadow.querySelector<HTMLElement>('[data-code-block-adf-label]');
     const mermaidButton = shadow.querySelector<HTMLButtonElement>('[data-action="mermaid"]');
     const mermaidLabel = shadow.querySelector<HTMLElement>('[data-mermaid-label]');
-    if (!convertButton || !convertLabel || !unwrapButton || !unwrapLabel
-      || !mermaidButton || !mermaidLabel) return null;
+    if (!codeBlockAdfButton || !codeBlockAdfLabel || !mermaidButton || !mermaidLabel) return null;
 
-    const buttons = [convertButton, unwrapButton, mermaidButton];
+    const buttons = [codeBlockAdfButton, mermaidButton];
     const setBusy = (busy: boolean): void => {
       buttons.forEach((button) => { button.disabled = busy; });
     };
@@ -447,52 +405,11 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
       feedbackTimers.add(timer);
     };
 
-    convertButton.addEventListener('click', () => {
+    codeBlockAdfButton.addEventListener('click', async () => {
       setBusy(true);
-      convertLabel.textContent = '변환 중';
-      convertButton.removeAttribute('title');
-
-      try {
-        const currentEditor = context.document.querySelector<HTMLElement>(EDITOR_BODY);
-        if (!currentEditor) {
-          throw new Error('Confluence 편집 본문을 찾을 수 없습니다.');
-        }
-
-        const source = readMarkdownEditorSource(currentEditor);
-        if (!source.markdown) throw new Error('변환할 본문이 비어 있습니다.');
-        if (!source.isPlain) {
-          throw new Error('이미 서식이 적용된 본문은 변환하지 않습니다. Markdown 원문만 있는 본문에서 실행하세요.');
-        }
-
-        const conversion = markdownToConfluenceAdf(source.markdown);
-        if (conversion.doc.content.length === 0) throw new Error('변환 가능한 Markdown 내용이 없습니다.');
-
-        const html = adfDocumentToEditorHtml(conversion.doc);
-        if (!html) throw new Error('편집기에 적용할 변환 결과가 없습니다.');
-        replaceEditorContents(currentEditor, html, source.markdown);
-
-        convertLabel.textContent = conversion.warnings.length > 0
-          ? `변환됨 · 경고 ${conversion.warnings.length}`
-          : '변환됨';
-        if (conversion.warnings.length > 0) {
-          convertButton.title = conversion.warnings.join('\n');
-          console.warn('[Inno Extension] Markdown -> ADF 변환 경고', conversion.warnings);
-        }
-      } catch (error) {
-        console.error('[Inno Extension] Markdown -> ADF 편집기 변환 실패', error);
-        const message = error instanceof Error ? error.message : '변환에 실패했습니다.';
-        convertLabel.textContent = message.startsWith('이미 서식이 적용된 본문') ? '변환 불가' : '변환 실패';
-        convertButton.title = message;
-      }
-
-      resetLater(convertButton, convertLabel, 'Markdown -> ADF 변환');
-    });
-
-    unwrapButton.addEventListener('click', async () => {
-      setBusy(true);
-      unwrapLabel.textContent = '벗기는 중';
-      unwrapButton.removeAttribute('title');
-      let unwrappedCount = 0;
+      codeBlockAdfLabel.textContent = '변환 중';
+      codeBlockAdfButton.removeAttribute('title');
+      let convertedCount = 0;
 
       try {
         const currentEditor = context.document.querySelector<HTMLElement>(EDITOR_BODY);
@@ -501,22 +418,64 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         const codeBlocks = Array.from(
           currentEditor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK),
         );
-        if (codeBlocks.length === 0) throw new Error('벗길 코드블럭이 없습니다.');
+        if (codeBlocks.length === 0) throw new Error('ADF로 변환할 코드블럭이 없습니다.');
 
-        for (const codeBlock of codeBlocks.reverse()) {
-          await unwrapCodeBlock(currentEditor, codeBlock);
-          unwrappedCount += 1;
+        const codeBlocksWithSource = await Promise.all(codeBlocks.map(async (codeBlock, index) => ({
+          codeBlock,
+          index,
+          localId: codeBlock.dataset.localId ?? '',
+          source: await readProseMirrorCodeBlockText(currentEditor, codeBlock),
+        })));
+        const protectedMermaidCount = codeBlocksWithSource.filter(({ codeBlock }) => (
+          hasValidMermaidPair(currentEditor, codeBlock)
+        )).length;
+        const candidates = codeBlocksWithSource
+          .filter(({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock))
+          .map(({ index, localId, source }) => ({
+            index,
+            localId,
+            payload: codeBlockMarkdownToAdfPayload(source),
+          }));
+        if (candidates.length === 0) {
+          throw new Error('ADF로 변환할 코드블럭이 없습니다. Mermaid 컴포넌트 원본은 보호됩니다.');
         }
 
-        unwrapLabel.textContent = `${unwrappedCount}개 벗김`;
+        const warnings = candidates.flatMap(({ index, payload }) => (
+          payload.warnings.map((warning) => `코드블럭 ${index + 1}: ${warning}`)
+        ));
+        for (const { localId, payload } of candidates.reverse()) {
+          await replaceCodeBlockWithAdf(
+            currentEditor,
+            localId,
+            payload.html,
+            payload.markdown,
+          );
+          convertedCount += 1;
+        }
+
+        codeBlockAdfLabel.textContent = warnings.length > 0
+          ? `${convertedCount}개 변환 · 경고 ${warnings.length}`
+          : `${convertedCount}개 변환`;
+        const notices = [
+          ...warnings,
+          ...(protectedMermaidCount > 0
+            ? [`Mermaid 컴포넌트 원본 ${protectedMermaidCount}개는 제외했습니다.`]
+            : []),
+        ];
+        if (notices.length > 0) {
+          codeBlockAdfButton.title = notices.join('\n');
+          console.warn('[Inno Extension] Confluence 코드블럭 -> ADF 변환 안내', notices);
+        }
       } catch (error) {
-        console.error('[Inno Extension] Confluence 코드블럭 벗기기 실패', error);
-        const message = error instanceof Error ? error.message : '코드블럭을 벗기지 못했습니다.';
-        unwrapLabel.textContent = unwrappedCount > 0 ? `${unwrappedCount}개 벗김 · 일부 실패` : '벗기기 실패';
-        unwrapButton.title = message;
+        console.error('[Inno Extension] Confluence 코드블럭 -> ADF 변환 실패', error);
+        const message = error instanceof Error ? error.message : '코드블럭을 ADF로 변환하지 못했습니다.';
+        codeBlockAdfLabel.textContent = convertedCount > 0
+          ? `${convertedCount}개 변환 · 일부 실패`
+          : '변환 실패';
+        codeBlockAdfButton.title = message;
       }
 
-      resetLater(unwrapButton, unwrapLabel, '코드블럭 벗기기');
+      resetLater(codeBlockAdfButton, codeBlockAdfLabel, '코드블럭 -> ADF');
     });
 
     mermaidButton.addEventListener('click', async () => {
@@ -532,11 +491,16 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         const allCodeBlocks = Array.from(
           currentEditor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK),
         );
-        const mermaidCodeBlocks = allCodeBlocks
-          .map((codeBlock, index) => ({ codeBlock, index }))
-          .filter(({ codeBlock }) => isMermaidCodeBlockSource(
-            readConfluenceCodeBlockText(codeBlock),
-          ));
+        const codeBlocksWithSource = await Promise.all(allCodeBlocks.map(
+          async (codeBlock, index) => ({
+            codeBlock,
+            index,
+            source: await readProseMirrorCodeBlockText(currentEditor, codeBlock),
+          }),
+        ));
+        const mermaidCodeBlocks = codeBlocksWithSource.filter(({ source }) => (
+          isMermaidCodeBlockSource(source)
+        ));
         const candidates = mermaidCodeBlocks.filter(
           ({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock),
         );
@@ -551,8 +515,8 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
           throw new Error('변환할 Mermaid 코드블럭이 없습니다.');
         }
 
-        for (const { codeBlock, index } of candidates.reverse()) {
-          await replaceMermaidCodeBlock(currentEditor, codeBlock, index);
+        for (const { codeBlock, index, source } of candidates.reverse()) {
+          await replaceMermaidCodeBlock(currentEditor, codeBlock, index, source);
           convertedCount += 1;
         }
 

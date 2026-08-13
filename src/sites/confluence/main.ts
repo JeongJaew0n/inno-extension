@@ -31,7 +31,7 @@
   interface ProseMirrorViewDesc {
     parent?: ProseMirrorViewDesc | null;
     posBefore?: number;
-    node?: { nodeSize?: number };
+    node?: { nodeSize?: number; textContent?: string };
     view?: ProseMirrorEditorView;
   }
 
@@ -47,9 +47,16 @@
   if (bridgeWindow[bridgeFlag]) return;
   bridgeWindow[bridgeFlag] = true;
 
-  function respond(requestId: string, success: boolean, message?: string): void {
+  type BridgeAction = 'read-node' | 'select-node';
+
+  function respond(
+    requestId: string,
+    success: boolean,
+    message?: string,
+    text?: string,
+  ): void {
     document.dispatchEvent(new CustomEvent(responseEvent, {
-      detail: JSON.stringify({ requestId, success, message }),
+      detail: JSON.stringify({ requestId, success, message, text }),
     }));
   }
 
@@ -127,7 +134,7 @@
   }
 
   document.addEventListener(requestEvent, (event) => {
-    let detail: { requestId?: unknown; localId?: unknown } = {};
+    let detail: { action?: unknown; requestId?: unknown; localId?: unknown } = {};
     if (event instanceof CustomEvent && typeof event.detail === 'string') {
       try {
         detail = JSON.parse(event.detail) as typeof detail;
@@ -136,6 +143,7 @@
       }
     }
     const requestId = typeof detail.requestId === 'string' ? detail.requestId : '';
+    const action: BridgeAction = detail.action === 'read-node' ? detail.action : 'select-node';
     const localId = typeof detail.localId === 'string' ? detail.localId : '';
     if (!requestId || !localId) return;
 
@@ -143,25 +151,36 @@
       const target = Array.from(document.querySelectorAll<ProseMirrorElement>(
         '[data-prosemirror-node-name="codeBlock"][data-local-id]',
       )).find((node) => node.dataset.localId === localId);
-      const editor = target?.closest<HTMLElement>('.ProseMirror');
+      const editor = target?.closest<ProseMirrorElement>('.ProseMirror');
       const desc = target && editor ? findCodeBlockDesc(target, editor) : undefined;
+
+      if (action === 'read-node') {
+        const text = desc?.node?.textContent;
+        if (!target || !editor || typeof text !== 'string') {
+          throw new Error('Confluence ProseMirror codeBlock 원문을 찾을 수 없습니다.');
+        }
+        respond(requestId, true, undefined, text);
+        return;
+      }
+
       const editorElement = editor as ProseMirrorElement | undefined;
       const view = editorElement === cachedEditor && isEditorView(cachedView)
         ? cachedView
         : findEditorView(desc)
           ?? findEditorView(editorElement?.pmViewDesc)
           ?? (editorElement ? findEditorViewFromReact(editorElement) : undefined);
-      const position = desc?.posBefore;
-      const nodeSize = desc?.node?.nodeSize;
-      if (!target || !editor || !view || !Number.isInteger(position) || !Number.isInteger(nodeSize)) {
-        throw new Error('Confluence ProseMirror codeBlock 위치를 찾을 수 없습니다.');
-      }
+      if (!editor || !view) throw new Error('Confluence ProseMirror 편집기 상태를 찾을 수 없습니다.');
       cachedEditor = editorElement;
       cachedView = view;
 
       const selectionClass = Object.getPrototypeOf(view.state.selection.constructor) as {
         fromJSON(doc: unknown, value: { type: 'node'; anchor: number }): ProseMirrorSelection;
       };
+      const position = desc?.posBefore;
+      const nodeSize = desc?.node?.nodeSize;
+      if (!target || !Number.isInteger(position) || !Number.isInteger(nodeSize)) {
+        throw new Error('Confluence ProseMirror codeBlock 위치를 찾을 수 없습니다.');
+      }
       const selection = selectionClass.fromJSON(view.state.doc, {
         type: 'node',
         anchor: position as number,

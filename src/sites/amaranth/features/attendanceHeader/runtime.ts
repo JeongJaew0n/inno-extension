@@ -1,5 +1,6 @@
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
+import { writePlainText } from '../../../../platform/clipboard/writePlainText';
 import {
   ACTIVE_CLASS,
   ATTENDANCE_KIND,
@@ -9,7 +10,11 @@ import {
   NOTI_DETAILS,
   type AttendanceKind,
 } from '../../selectors';
+import { formatCheckinGreeting } from './greeting';
 import { ensureAttendanceStyles, removeAttendanceStyles } from './styles';
+
+const GREETING_COPY_LABEL = '인사말 복사';
+const GREETING_FEEDBACK_DURATION_MS = 1400;
 
 interface InjectedButton {
   element: HTMLButtonElement;
@@ -55,6 +60,38 @@ export function createAttendanceHeaderRuntime(): FeatureRuntime {
     return button;
   }
 
+  function createGreetingCopyButton(document: Document): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'inno-amaranth-attendance-greeting-copy';
+    button.textContent = GREETING_COPY_LABEL;
+    button.setAttribute('aria-label', '현재 시각으로 출근 인사말 복사');
+    button.title = "현재 시각으로 'n시 n분 출근입니다.'를 복사합니다.";
+    button.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      button.disabled = true;
+
+      try {
+        await writePlainText(formatCheckinGreeting(new Date()));
+        button.textContent = '복사됨';
+        button.dataset.state = 'success';
+      } catch (error) {
+        console.error('[Inno Extension] 아마란스 출근 인사말 복사 실패', error);
+        button.textContent = '실패';
+        button.dataset.state = 'error';
+      }
+
+      document.defaultView?.setTimeout(() => {
+        if (!button.isConnected) return;
+        button.textContent = GREETING_COPY_LABEL;
+        delete button.dataset.state;
+        button.disabled = false;
+      }, GREETING_FEEDBACK_DURATION_MS);
+    });
+    return button;
+  }
+
   function buildContainer(document: Document): HTMLDivElement {
     const container = document.createElement('div');
     container.id = INJECTED_ID;
@@ -62,7 +99,10 @@ export function createAttendanceHeaderRuntime(): FeatureRuntime {
 
     const checkin = createButton(document, '출근', ATTENDANCE_KIND.checkin);
     const checkout = createButton(document, '퇴근', ATTENDANCE_KIND.checkout);
-    container.append(checkin, checkout);
+    const checkinGroup = document.createElement('div');
+    checkinGroup.className = 'inno-amaranth-attendance-checkin-group';
+    checkinGroup.append(checkin, createGreetingCopyButton(document));
+    container.append(checkinGroup, checkout);
     injectedButtons = [
       { element: checkin, kind: ATTENDANCE_KIND.checkin },
       { element: checkout, kind: ATTENDANCE_KIND.checkout },

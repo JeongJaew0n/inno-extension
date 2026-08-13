@@ -1,25 +1,24 @@
 # Confluence Markdown -> ADF 변환기
 
 - 상태: Active
-- 최종 갱신일: 2026-08-11
+- 최종 갱신일: 2026-08-12
 - 대상 버전: 0.2.x
 
 ## 한 줄 요약
 
-사용자가 입력한 Markdown을 네트워크 요청 없이 ADF로 변환하고, Popup에서 JSON을 확인하거나 Confluence 편집 본문에 적용한다.
+사용자가 입력한 Markdown을 네트워크 요청 없이 ADF로 변환한다. Popup에서는 JSON을 확인하고, Confluence 편집기에서는 코드블럭 안의 Markdown을 원래 위치의 편집 콘텐츠로 바꾼다.
 
 ## 배경과 사용자 문제
 
 Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, 표, 코드 블록 같은 구조를 다시 작성해야 한다. 초기 통합안은 Atlassian API로 현재 문서를 읽고 쓰는 기능까지 포함했지만, 인증 정보 관리와 원격 문서 변경 위험이 단순 변환 요구에 비해 컸다.
 
-현재 범위는 API를 사용하지 않는 로컬 변환 도구다. Popup에서는 변환 결과만 확인할 수 있고, Confluence `edit-v2` 화면에서는 본문에 붙여넣은 Markdown 원문을 현재 편집 콘텐츠로 바꿀 수 있다. 기존 `본문 Markdown 복사` 기능과 독립적이다.
+현재 범위는 API를 사용하지 않는 로컬 변환 도구다. Popup에서는 변환 결과만 확인할 수 있고, Confluence `edit-v2` 화면에서는 코드블럭 안에 넣은 Markdown 원문을 해당 코드블럭 위치의 편집 콘텐츠로 바꿀 수 있다. 기존 `본문 Markdown 복사` 기능과 독립적이다.
 
 ## 목표
 
 - Markdown의 주요 블록·인라인 구조를 ADF document JSON으로 변환한다.
 - 변환 결과와 최상위 block 수를 Popup에서 확인할 수 있게 한다.
-- Confluence 편집 화면에서 본문 전체의 Markdown 원문을 편집 가능한 문서 구조로 바꾼다.
-- Confluence 편집 본문의 코드 블록을 일반 문단으로 되돌려 원문을 다시 편집하거나 변환할 수 있게 한다.
+- Confluence 편집 화면에서 코드블럭 안의 Markdown 원문을 편집 가능한 ADF 구조로 바꾼다.
 - Mermaid 선언이 들어 있는 기존 코드 블록만 찾아 사내 Confluence의 Mermaid ADF 매크로와 연결한다.
 - 손실되거나 축약된 요소를 경고로 드러낸다.
 - 입력과 결과를 브라우저 안에서만 처리한다.
@@ -27,7 +26,7 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 ## 비목표
 
 - Confluence 문서를 API로 조회, 생성, 수정하거나 저장하지 않는다.
-- 기존 본문 뒤에 내용을 추가하지 않는다. 편집기 동작은 본문 전체 교체다.
+- 기존 본문 뒤에 내용을 추가하거나 본문 전체를 변환하지 않는다. 편집기 동작은 대상 코드블럭의 원위치 교체다.
 - ADF를 Markdown으로 역변환하지 않는다.
 - 결과 복사, 파일 다운로드, 자동 업로드 기능을 제공하지 않는다.
 - Atlassian 이메일이나 API 토큰을 요구하지 않는다.
@@ -51,24 +50,20 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 
 ### Confluence 편집기 변환
 
-기능이 활성화되면 Confluence `edit-v2` 편집기 toolbar에 `Markdown -> ADF 변환`, `코드블럭 벗기기`, `Mermaid -> ADF` 버튼을 표시한다.
+기능이 활성화되면 Confluence `edit-v2` 편집기 toolbar에 왼쪽부터 `Mermaid -> ADF`, `코드블럭 -> ADF` 버튼을 표시한다. 편집기 toolbar에는 본문 전체를 대상으로 하는 `Markdown -> ADF 변환` 버튼을 표시하지 않는다.
 
-- 사용자는 편집 본문에 Markdown 원문을 넣고 버튼을 누른다.
-- 제목 입력란은 변환 대상에서 제외하고 본문 전체만 변환한다.
-- 본문이 일반 문단과 줄바꿈만으로 구성된 경우에만 Markdown 원문으로 취급한다.
-- 제목, 목록, 표, 인용, 코드 블록, 링크, 강조 등 Confluence 서식이 이미 적용된 본문은 손실 방지를 위해 변환하지 않는다.
-- 변환은 현재 편집기 내용을 전체 선택한 뒤 한 번의 편집 transaction으로 교체한다.
-- 변환 직후 Confluence의 실행 취소 기능으로 이전 본문을 복구할 수 있어야 한다.
-- 확장은 `업데이트` 버튼을 누르지 않는다. 저장 여부는 사용자가 결정한다.
-- 변환 경고가 있으면 버튼 상태와 hover 안내로 경고 수·내용을 확인할 수 있게 한다.
+`코드블럭 -> ADF`는 현재 본문 안의 Confluence 코드 블록을 대상으로 한다.
 
-`코드블럭 벗기기`는 현재 본문 안의 모든 Confluence 코드 블록을 대상으로 한다.
-
-- 코드 블록의 원문과 줄바꿈은 일반 문단으로 보존한다.
+- 각 코드블럭의 전체 원문을 독립적인 Markdown 문서로 해석한다.
+- 제목, 문단, 목록, 표, 인용, 코드, 링크 등 지원 Markdown 요소를 ADF로 변환하고, 원본 코드블럭을 같은 위치의 Confluence 편집 콘텐츠로 교체한다.
+- 긴 코드 블록도 화면에 보이는 일부 줄이 아니라 ProseMirror 문서에 저장된 전체 원문을 사용한다.
 - 제목, 목록, 표, 인용, 매크로 등 코드 블록 밖의 기존 ADF 구조는 변환 대상으로 삼지 않는다.
-- 코드 블록이 목록이나 다른 컨테이너 안에 있으면 그 컨테이너는 유지하고 코드 블록만 일반 문단으로 바꾼다.
-- 실제 코드와 Markdown 원문을 자동으로 구분하지 않는다. 사용자가 버튼을 누르면 본문의 모든 코드 블록이 대상이 된다.
-- 처리 개수와 실패 여부를 버튼 상태로 안내한다.
+- 코드 블록이 목록이나 다른 컨테이너 안에 있으면 그 컨테이너를 유지하고 코드 블록만 변환 결과로 바꾼다.
+- 실제 코드와 Markdown 원문을 자동으로 구분하지 않는다. 사용자가 버튼을 누르면 보호 대상 Mermaid 원본을 제외한 모든 코드 블록이 대상이 된다.
+- 정상 Mermaid component가 참조하는 접힌 원본 코드블럭은 component 손상을 막기 위해 변환 대상에서 제외한다.
+- 모든 코드블럭의 원문 읽기와 Markdown 변환 가능 여부를 먼저 확인한 뒤 뒤에서부터 교체한다.
+- 원본 codeBlock이 실제로 제거된 경우만 성공으로 판단한다. 잘못된 위치에 적용된 경우 toolbar 실행 취소로 해당 변경을 복구한다.
+- 처리 개수, 경고 수, 제외한 Mermaid 원본과 실패 여부를 버튼 상태·hover로 안내한다.
 - 확장은 `업데이트` 버튼을 누르지 않으며, 사용자는 저장 전 결과를 검토하고 Confluence 실행 취소로 되돌릴 수 있다.
 
 `Mermaid -> ADF`는 현재 본문의 코드 블록 중 첫 유효 선언이 Mermaid diagram type인 블록만 대상으로 한다.
@@ -87,7 +82,7 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 
 ## 입력과 출력
 
-- 입력: Popup의 UTF-8 Markdown 문자열·Markdown 파일 또는 현재 편집 본문의 일반 문단 텍스트
+- 입력: Popup의 UTF-8 Markdown 문자열·Markdown 파일 또는 현재 편집 본문의 코드블럭 원문
 - Popup 출력: `type: "doc"`, `version: 1`, `content` 배열을 갖는 ADF JSON
 - 편집기 출력: 변환된 ADF를 Confluence 편집기가 수용하는 paste 표현으로 전달한 현재 draft 본문
 - 처리 위치: Extension Popup 또는 Confluence content script의 로컬 JavaScript 실행 환경
@@ -115,6 +110,7 @@ Popup의 Markdown 변환 결과에서 Mermaid fenced code block은 Mermaid 앱 �
 ## 손실과 경고
 
 - Markdown raw HTML은 안전한 ADF 대응을 보장할 수 없어 생략하고 경고한다.
+- raw HTML 중 `<br>`, `<br/>`, `<br />`은 ADF `hardBreak`으로 보존한다.
 - 문단 중간 이미지는 링크 텍스트로 축약하고 경고한다.
 - 로컬·상대 경로 이미지는 업로드하지 않고 자리표시자 텍스트로 바꾸며 경고한다.
 - 외부 HTTP 이미지는 external media 참조로 표현하지만 실제 Confluence 수용 여부는 이 기능이 보장하지 않는다.
@@ -139,11 +135,9 @@ Popup의 Markdown 변환 결과에서 Mermaid fenced code block은 Mermaid 앱 �
 
 원격 문서 추가까지 자동화하면 작업 단계는 줄지만 API 토큰 보관, host permission, version conflict, 잘못된 문서 변경 복구가 필요하다. 편집기 안에서 변환하고 사용자가 저장하게 하면 같은 편집 세션의 실행 취소와 검토 흐름을 유지하면서 이 책임을 제거할 수 있다.
 
-ADF JSON 자체는 편집기 내부 상태에 직접 주입하지 않는다. 다만 DOM Range만으로는 ProseMirror의 내부 selection이 바뀌지 않아 paste가 문서 최상단에 적용되므로, MAIN world bridge가 현재 codeBlock의 ViewDesc와 React fiber에서 EditorView를 찾고 `NodeSelection` transaction만 적용한다. 실제 콘텐츠는 계속 HTML paste 표현으로 전달하고 Confluence가 내부 ADF로 수용한다. 따라서 REST API와 추가 Chrome 권한은 필요 없지만, Atlassian의 비공개 EditorView 구조에 대한 의존성은 명시적인 호환성 리스크다.
+ADF JSON 자체는 편집기 내부 상태에 직접 주입하지 않는다. DOM Range만으로는 ProseMirror의 내부 selection이 바뀌지 않으므로 MAIN world bridge가 EditorView를 찾아 대상 codeBlock에 `NodeSelection` transaction을 적용한다. 코드 블록 원문도 CodeMirror의 가상화된 화면 DOM 대신 같은 bridge를 통해 ProseMirror node의 전체 `textContent`를 읽는다. 실제 콘텐츠는 HTML paste 표현으로 전달하고 Confluence가 내부 ADF로 수용한다. 따라서 REST API와 추가 Chrome 권한은 필요 없지만, Atlassian의 비공개 EditorView 구조에 대한 의존성은 명시적인 호환성 리스크다.
 
-이미 서식화된 본문을 다시 Markdown으로 간주하면 표, 매크로, 링크, 코드 같은 정보를 평문으로 축약할 수 있다. 따라서 자동 추측보다 안전을 우선해 일반 문단 형태의 원문만 허용한다.
-
-코드 블록 벗기기는 전체 문서를 Markdown으로 재해석하지 않고 명시적인 코드 블록 node만 일반 문단으로 바꾼다. 이 때문에 기존 ADF 구조를 유지할 수 있지만, 실제 소스 코드 블록도 함께 벗겨진다. 자동 추측 대신 사용자 클릭과 저장 전 검토를 안전 경계로 둔다.
+편집기 본문 전체를 Markdown으로 추정하는 기능은 제거했다. Markdown 원문을 코드블럭이라는 명시적인 경계 안에 넣게 하면 기존 제목·목록·표·매크로를 변환 대상으로 오인하지 않고, 교체 범위를 개별 NodeSelection으로 제한할 수 있다. 실제 코드 블록도 Markdown으로 해석될 수 있으므로 사용자 클릭과 저장 전 검토를 안전 경계로 둔다.
 
 Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위치 선택에만 MAIN world의 ProseMirror transaction을 사용하며, 매크로 node 자체를 transaction으로 직접 만들지는 않는다. 실제 tenant에서 원위치 extension과 `expand` pair가 생성되는 것을 확인했지만, 선택 bridge와 paste 표현 모두 공개 API가 아니므로 Confluence editor 변경에 취약하다. source를 실제 삭제할 수 없는 앱 계약은 접힌 원본 영역으로 해결한다.
 
@@ -155,16 +149,16 @@ Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위�
 - 지원 요소가 유효한 ADF document 구조로 변환된다.
 - 경고, 최상위 block 수와 Mermaid 수가 결과와 함께 표시된다.
 - `edit-v2` 화면의 편집기 toolbar에 기능 버튼이 한 번만 표시된다.
-- 같은 toolbar에서 `코드블럭 벗기기`를 실행하면 모든 코드 블록의 원문과 줄바꿈이 일반 문단으로 남고 다른 기존 서식은 유지된다.
+- 같은 toolbar에서 `코드블럭 -> ADF`를 실행하면 각 코드블럭의 Markdown이 원래 위치의 제목·문단·목록·표·코드 등 식별 가능한 편집 구조로 교체된다.
+- 긴 코드 블록도 화면 DOM 일부가 아닌 전체 원문을 변환한다.
+- 정상 Mermaid component가 참조하는 접힌 원본 코드블럭은 변경하지 않는다.
 - `Mermaid -> ADF`는 Mermaid 후보만 골라 원래 top-level 위치에 `Mermaid diagram` extension을 만든다.
 - raw codeBlock은 화면에 그대로 노출되지 않고 접힌 `Mermaid 원본` 안에 보존된다.
 - 정상 pair가 아닌 기존 Mermaid component가 있으면 중복 생성 없이 중단한다.
-- 일반 문단 형태의 Markdown 본문은 제목·목록·표·코드 등 식별 가능한 편집 구조로 교체된다.
-- 이미 서식이 적용된 본문에서는 변환을 중단하고 이유를 안내한다.
 - 편집기 변환 후 실행 취소가 가능하며 확장이 페이지 저장을 실행하지 않는다.
 - 변환 과정에서 네트워크 요청, 시스템 클립보드 쓰기 또는 다운로드가 발생하지 않는다.
 - manifest에 API용 host permission과 background service worker가 없다.
-- MAIN world selection bridge는 codeBlock 선택만 허용하며 임의 콘텐츠나 ADF를 주입하지 않는다.
+- MAIN world bridge는 현재 편집기의 codeBlock 원문 읽기와 codeBlock 선택만 허용하며 임의 콘텐츠나 ADF를 직접 주입하지 않는다.
 - API 인증·조회·쓰기 코드가 배포 산출물에 포함되지 않는다.
 - typecheck, unit test, production build가 성공한다.
 
@@ -176,7 +170,7 @@ Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위�
 - 과거 대상 페이지 version 4에는 문서 맨 앞의 중복 Mermaid component 6개가 저장됐지만 version 5에서 정리됐다. 다른 문서에 unpaired component가 남아 있으면 자동 삭제하지 않고 사용자의 정리를 요구한다.
 - Mermaid extension key와 `guestParams.index` 계약이 앱 업데이트로 바뀌면 새 매크로가 렌더링되지 않을 수 있다.
 - 코드 블록을 삽입·삭제·재정렬한 뒤 Forge 앱이 저장된 index를 자동 보정하는지는 추가 검증이 필요하다.
-- 코드블럭 벗기기는 실제 코드와 Markdown 원문을 구분하지 않고 모든 코드 블록에 적용되므로 저장 전 검토가 필요하다.
+- `코드블럭 -> ADF`는 실제 코드와 Markdown 원문을 구분하지 않는다. fence가 없는 실제 소스 코드도 Markdown 문단으로 해석될 수 있으므로 저장 전 검토가 필요하다.
 - 편집기 적용 결과는 실제 `업데이트` 전 사용자가 검토해야 한다.
 
 ## 변경 이력
@@ -189,10 +183,15 @@ Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위�
 - 2026-08-12: 저장 ADF에서 실제 extension 6개를 확인해 앞선 실패 결론을 정정했다. 비동기 생성을 기다리고 editor top-level wrapper 앞에 삽입하며, source를 접힌 영역에 보존하고 unpaired 기존 component가 있으면 중복 생성을 막도록 계약을 수정했다.
 - 2026-08-12: macro 삽입 후 source를 별도로 접는 두 단계 paste가 selection을 잃어 macro와 원문을 문서 최상단에 남기는 문제를 확인했다. 원본 codeBlock을 `extension + 접힌 source`로 한 번에 교체하고 위치 검증 실패 시 자동 실행 취소하도록 수정했다.
 - 2026-08-12: DOM Range와 `selectionchange` 대기로도 ProseMirror 내부 selection이 바뀌지 않는 것을 Chrome에서 재확인했다. MAIN world bridge가 codeBlock의 ViewDesc position과 React fiber의 EditorView를 찾아 실제 `NodeSelection` transaction을 적용하도록 수정했다. `<details>` 대신 공식 ADF schema가 인식하는 `data-node-type="expand"`를 사용하고, 실제 toolbar 실행 취소와 엄격한 pair 판정을 적용했다. 대상 문서에서 두 후보가 각각 원래 문맥의 top-level `extension + expand`로 생성되고 재실행 시 중복되지 않음을 확인했다.
+- 2026-08-12: 코드블럭 벗기기가 CodeMirror 화면 DOM만 읽어 긴 원문의 일부를 잃을 수 있는 문제를 수정했다. ProseMirror codeBlock node의 전체 원문을 읽고 연속 빈 줄을 단일 문단의 `<br>` 구조로 보존한다.
+- 2026-08-12: Markdown 편집기 변환의 DOM Range 전체 선택을 ProseMirror `AllSelection`으로 교체하고, 원본 top-level node가 모두 교체된 경우만 성공으로 판정하도록 강화했다. 잘못 적용된 변경은 toolbar 실행 취소로 자동 복구한다. 줄 끝 공백과 literal `<br>`을 보존하고 code language·expand의 Confluence schema HTML 표현도 보강했다.
+- 2026-08-12: 편집기 toolbar의 본문 전체 `Markdown -> ADF 변환` 버튼을 제거했다. 기존 `코드블럭 벗기기`는 `코드블럭 -> ADF`로 변경하고, 코드블럭 원문을 단순 문단으로 푸는 대신 Markdown -> ADF 변환 결과로 원위치 교체하도록 행동 계약을 변경했다. 정상 Mermaid component가 참조하는 접힌 원본은 보호한다.
+- 2026-08-12: 편집기 toolbar에서 `Mermaid -> ADF`를 왼쪽, `코드블럭 -> ADF`를 오른쪽에 배치했다.
 
 ## 관련 문서
 
 - [제품 개요](../product-overview.md)
 - [Confluence 문서 본문 Markdown 복사](./confluence-page-markdown-copy.md)
 - [Confluence Mermaid 동작 분석](../../docs/confluence-mermaid-runtime-analysis.md)
+- [코드블럭 벗기기 및 Markdown -> ADF 데이터 유실 분석](../../docs/confluence-markdown-adf-data-loss-analysis.md)
 - [용어사전](../glossary.md)

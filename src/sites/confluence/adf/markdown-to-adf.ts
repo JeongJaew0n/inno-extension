@@ -232,6 +232,9 @@ class Converter {
         return text ? [{ type: 'text', text, marks: [{ type: 'link', attrs: { href: image.href } }] }] : [];
       }
       case 'html':
+        if (/^<br\s*\/?>$/i.test(htmlTokenText(token as Tokens.HTML).trim())) {
+          return [{ type: 'hardBreak' }];
+        }
         this.warnings.push('인라인 HTML은 그대로 옮길 수 없어 생략했습니다.');
         return [];
       default: {

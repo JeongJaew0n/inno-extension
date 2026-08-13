@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { SITES } from '../src/catalog/sites';
+import { findFeatureDescriptor, SITES } from '../src/catalog/sites';
 import { createDefaultSettings } from '../src/platform/settings/defaults';
 import { isFeatureEffectivelyEnabled, normalizeSettings } from '../src/platform/settings/schema';
 import {
@@ -9,6 +9,11 @@ import {
   normalizeTitleAutofillText,
   TITLE_AUTOFILL_MAX_LENGTH,
 } from '../src/sites/amaranth/features/titleAutofill/contracts';
+import { formatCheckinGreeting } from '../src/sites/amaranth/features/attendanceHeader/greeting';
+import {
+  extractVerificationCode,
+  findVerificationCodeInNotification,
+} from '../src/sites/amaranth/features/notificationTools/contracts';
 import {
   escapeMarkdownText,
   isRedundantHeaderOnlyTable,
@@ -18,7 +23,7 @@ import {
   parseConfluencePageUrl,
 } from '../src/sites/confluence/routes';
 import { adfDocumentToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/adf-to-editor-html';
-import { codeBlockTextToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/code-block';
+import { codeBlockMarkdownToAdfPayload } from '../src/sites/confluence/features/editorMarkdownToAdf/code-block-to-adf';
 import {
   buildCollapsedMermaidSourceHtml,
   buildConfluenceMermaidExtensionHtml,
@@ -151,6 +156,63 @@ test('아마란스 신청서 제목 자동채움은 대상 화면과 입력 길�
   assert.equal(normalizeTitleAutofillText(null), '');
 });
 
+test('아마란스 출근 인사말은 클릭 시각의 시와 분을 자연어로 만든다', () => {
+  assert.equal(formatCheckinGreeting(new Date(2026, 7, 13, 9, 5)), '9시 5분 출근입니다.');
+  assert.equal(formatCheckinGreeting(new Date(2026, 7, 13, 18, 0)), '18시 0분 출근입니다.');
+});
+
+test('아마란스 인증번호는 독립된 4~6자리 문자열만 추출한다', () => {
+  assert.equal(extractVerificationCode('인증번호 1234'), '1234');
+  assert.equal(extractVerificationCode('OTP: 12345'), '12345');
+  assert.equal(extractVerificationCode('AuthCode: 039911'), '039911');
+  assert.equal(extractVerificationCode('123'), null);
+  assert.equal(extractVerificationCode('1234567'), null);
+  assert.equal(extractVerificationCode('앞1234567뒤'), null);
+});
+
+test('아마란스 메일 알림은 인증 문맥에서 제목 우선으로 번호를 찾는다', () => {
+  assert.deepEqual(findVerificationCodeInNotification({
+    source: '[메일]',
+    title: 'AuthCode: 629528',
+    body: 'Your authentication token code is 629528.',
+  }), { code: '629528', location: 'title' });
+
+  assert.deepEqual(findVerificationCodeInNotification({
+    source: ' [메일] ',
+    title: '로그인 확인',
+    body: '인증번호는 039911 입니다.',
+  }), { code: '039911', location: 'body' });
+});
+
+test('아마란스 인증번호 감지는 메일 출처와 인증 문맥을 모두 요구한다', () => {
+  assert.equal(findVerificationCodeInNotification({
+    source: '[업무보고]',
+    title: 'OTP: 123456',
+    body: '',
+  }), null);
+
+  assert.equal(findVerificationCodeInNotification({
+    source: '[메일]',
+    title: '[WBlock] 메일 리스트 - 2026/08/12 00:00:00',
+    body: '',
+  }), null);
+
+  assert.equal(findVerificationCodeInNotification({
+    source: '[메일]',
+    title: 'AuthCode: 1234567',
+    body: '',
+  }), null);
+});
+
+test('아마란스 통합알림 도구는 기본 활성 기능으로 등록된다', () => {
+  const descriptor = findFeatureDescriptor('amaranth', 'notificationTools');
+  const settings = createDefaultSettings();
+
+  assert.equal(descriptor.name, '통합알림 새로고침·인증번호 복사');
+  assert.equal(descriptor.defaultEnabled, true);
+  assert.equal(settings.sites.amaranth.features.notificationTools?.enabled, true);
+});
+
 test('Jira board URL과 selectedIssue를 파싱한다', () => {
   const nptBoard = parseJiraBoardUrl(
     'https://pms-innogrid.atlassian.net/jira/software/c/projects/NPT/boards/2147?selectedIssue=npt-38',
@@ -259,6 +321,23 @@ test('Confluence edit-v2 URL만 편집기 변환 대상으로 판별한다', () 
   );
 });
 
+test('Confluence 편집기 toolbar는 코드블럭 -> ADF와 Mermaid 버튼만 제공한다', async () => {
+  const runtimeSource = await readFile(
+    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+
+  assert.match(runtimeSource, /data-action="code-block-adf"/);
+  assert.match(runtimeSource, /data-code-block-adf-label>코드블럭 -&gt; ADF/);
+  assert.match(runtimeSource, /data-action="mermaid"/);
+  assert.ok(
+    runtimeSource.indexOf('data-action="mermaid"')
+      < runtimeSource.indexOf('data-action="code-block-adf"'),
+  );
+  assert.doesNotMatch(runtimeSource, /data-action="convert"/);
+  assert.doesNotMatch(runtimeSource, /data-action="unwrap"/);
+});
+
 test('ADF를 Confluence 편집기 paste용 안전한 HTML로 직렬화한다', () => {
   assert.equal(
     adfDocumentToEditorHtml({
@@ -291,12 +370,38 @@ test('ADF를 Confluence 편집기 paste용 안전한 HTML로 직렬화한다', (
   );
 });
 
-test('Confluence 코드블럭 원문을 서식 없는 편집기 문단 HTML로 바꾼다', () => {
+test('ADF 코드 언어와 expand를 Confluence schema HTML로 직렬화한다', () => {
   assert.equal(
-    codeBlockTextToEditorHtml('flowchart LR\n  A --> B\n\n<script>alert(1)</script>'),
-    '<p>flowchart LR<br>  A --&gt; B</p><p>&lt;script&gt;alert(1)&lt;/script&gt;</p>',
+    adfDocumentToEditorHtml({
+      type: 'doc',
+      version: 1,
+      content: [{
+        type: 'expand',
+        attrs: { title: 'Mermaid <원본>' },
+        content: [{
+          type: 'codeBlock',
+          attrs: { language: 'mermaid' },
+          content: [{ type: 'text', text: 'flowchart LR\nA --> B' }],
+        }],
+      }],
+    }),
+    '<div data-node-type="expand" data-title="Mermaid &lt;원본&gt;" data-expanded="false"><pre data-language="mermaid"><code>flowchart LR\nA --&gt; B</code></pre></div>',
   );
-  assert.equal(codeBlockTextToEditorHtml(''), '<p><br></p>');
+});
+
+test('Confluence 코드블럭 Markdown을 ADF paste payload로 만든다', () => {
+  const payload = codeBlockMarkdownToAdfPayload([
+    '## 제목',
+    '',
+    '| 항목 | 설명 |',
+    '| --- | --- |',
+    '| API | 첫째<br>둘째 |',
+  ].join('\n'));
+
+  assert.equal(payload.warnings.length, 0);
+  assert.match(payload.html, /^<h2>제목<\/h2><table>/);
+  assert.match(payload.html, /<td><p>첫째<br>둘째<\/p><\/td>/);
+  assert.throws(() => codeBlockMarkdownToAdfPayload(''));
 });
 
 test('Mermaid 선언으로 시작하는 코드블럭만 변환 대상으로 판별한다', () => {

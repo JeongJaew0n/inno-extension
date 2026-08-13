@@ -11,6 +11,7 @@
   - 헤더에 출근/퇴근 버튼을 표시한다.
   - 클릭 시 사이트의 원본 출퇴근 버튼으로 이벤트를 위임한다.
   - 원본 active 상태를 주입 버튼에 동기화한다.
+  - 출근 버튼 아래의 `인사말 복사`로 현재 시각의 `n시 n분 출근입니다.` 문구를 복사한다.
 - 신청서 제목 자동채움
   - 근태신청서의 `제목` 왼쪽에 자동채움 버튼을 표시한다.
   - Popup 기능 상세에서 저장한 문구로 제목을 교체한다.
@@ -36,9 +37,9 @@
 - Markdown -> ADF 변환 (기본 OFF)
   - 붙여넣거나 `.md` 파일에서 읽은 Markdown을 Extension Popup 안에서 ADF JSON으로 변환한다.
   - 변환 결과, 최상위 block 수, Mermaid 수와 변환 경고를 화면에 표시한다.
-  - Confluence `edit-v2` 편집 화면의 toolbar에 변환 버튼을 표시한다.
-  - 편집 본문이 일반 문단 형태의 Markdown 원문일 때 전체 본문을 Confluence 편집 콘텐츠로 변환하며, 이미 서식화된 본문은 손실 방지를 위해 거부한다.
-  - 편집 toolbar의 `코드블럭 벗기기`로 현재 본문에 있는 모든 코드 블록의 서식만 제거하고 원문과 줄바꿈은 보존한다.
+  - Confluence `edit-v2` 편집 toolbar의 `코드블럭 -> ADF`로 각 코드블럭 안의 Markdown을 같은 위치의 Confluence 편집 콘텐츠로 변환한다.
+  - 본문 전체를 Markdown으로 변환하는 toolbar 버튼은 제공하지 않는다.
+  - Mermaid component가 참조하는 접힌 원본 코드블럭은 `코드블럭 -> ADF` 대상에서 제외한다.
   - 편집 toolbar의 `Mermaid -> ADF`는 Mermaid 선언 코드 블록에 실제 ProseMirror node selection을 적용한 뒤 같은 위치에 Confluence Mermaid component를 만들고, 렌더링에 필요한 원본은 접힌 `Mermaid 원본` 영역에 보존한다.
   - 편집 결과는 실행 취소할 수 있고 사용자가 `업데이트`를 누르기 전에는 저장되지 않는다.
   - Confluence API를 호출하지 않으며 복사·다운로드 기능도 제공하지 않는다.

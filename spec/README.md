@@ -11,7 +11,9 @@
 | --- | --- |
 | [product-overview.md](./product-overview.md) | 제품 전체의 목적, 범위, 공통 원칙, 기능 목록, 기술·운영 제약, 이력 |
 | [glossary.md](./glossary.md) | 제품·서비스·기능·사이트 등 기획과 기술 문서에서 사용하는 기준 용어 |
+| [features/amaranth-attendance-header.md](./features/amaranth-attendance-header.md) | 아마란스 헤더 출퇴근과 현재 시각 인사말 복사의 행동 계약, 시간 기준, 리스크 |
 | [features/amaranth-title-autofill.md](./features/amaranth-title-autofill.md) | 아마란스 신청서 제목 자동채움의 기획, 행동 계약, 설정, 리스크, 변경 이력 |
+| [features/amaranth-notification-tools.md](./features/amaranth-notification-tools.md) | 아마란스 통합알림 새로고침과 인증번호 복사의 범위, 판별 계약, 실패·복구 동작 |
 | [features/jira-work-link-copy.md](./features/jira-work-link-copy.md) | Jira 업무 링크 복사 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
 | [features/confluence-page-markdown-copy.md](./features/confluence-page-markdown-copy.md) | Confluence 문서 본문 Markdown 복사의 범위, 변환 계약, 리스크, 변경 이력 |
 | [features/confluence-adf-markdown-tools.md](./features/confluence-adf-markdown-tools.md) | 로컬 Markdown -> ADF 변환기의 입력·출력, 지원 범위, 손실·실패 계약 |
