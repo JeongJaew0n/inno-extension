@@ -32,6 +32,7 @@ import {
   isMermaidCodeBlockSource,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
 import { buildIssueClipboardContent } from '../src/sites/jira/features/issueLinkCopy/clipboard';
+import { findBoardIssueScope } from '../src/sites/jira/features/issueLinkCopy/runtime';
 import {
   extractIssueKeyFromHref,
   isJiraBoardRoute,
@@ -39,7 +40,49 @@ import {
   parseJiraIssueUrl,
   uniqueIssueKeys,
 } from '../src/sites/jira/routes';
+import {
+  CURRENT_ISSUE_LINK,
+  ISSUE_DIALOG,
+  ISSUE_PREVIEW_PANEL,
+} from '../src/sites/jira/selectors';
 import './confluence-adf.test';
+
+function createFakeIssueLink(href: string): HTMLAnchorElement {
+  return {
+    getAttribute(name: string) {
+      return name === 'href' ? href : null;
+    },
+  } as HTMLAnchorElement;
+}
+
+function createFakeIssueScope(hrefs: string[]): ParentNode {
+  const links = hrefs.map(createFakeIssueLink);
+  return {
+    querySelector(selector: string) {
+      return selector === CURRENT_ISSUE_LINK ? (links[0] ?? null) : null;
+    },
+    querySelectorAll(selector: string) {
+      return selector === 'a[href]' ? links : [];
+    },
+  } as unknown as ParentNode;
+}
+
+function createFakeIssueDocument(options: {
+  dialog?: ParentNode | null;
+  panel?: ParentNode | null;
+  dialogs?: ParentNode[];
+}): Document {
+  return {
+    querySelector(selector: string) {
+      if (selector === ISSUE_DIALOG) return options.dialog ?? null;
+      if (selector === ISSUE_PREVIEW_PANEL) return options.panel ?? null;
+      return null;
+    },
+    querySelectorAll(selector: string) {
+      return selector === '[role="dialog"]' ? (options.dialogs ?? []) : [];
+    },
+  } as unknown as Document;
+}
 
 test('catalog의 사이트와 기능 ID는 중복되지 않고 기본 설정이 존재한다', () => {
   const defaults = createDefaultSettings();
@@ -265,6 +308,43 @@ test('Jira 직접 업무 조회 URL을 파싱한다', () => {
   );
   assert.equal(extractIssueKeyFromHref('/issues/NPT-123'), 'NPT-123');
   assert.equal(parseJiraIssueUrl('https://example.com/browse/NPT-123'), null);
+});
+
+test('Jira 보드 업무 scope는 modal이 없으면 우측 preview panel을 사용한다', () => {
+  const panel = createFakeIssueScope(['/browse/NPT-144']);
+  const target = findBoardIssueScope(createFakeIssueDocument({ panel }), 'NPT-144');
+
+  assert.equal(target?.scope, panel);
+  assert.equal(target?.mountKind, 'board-panel-link');
+  assert.equal(target?.issueLink.getAttribute('href'), '/browse/NPT-144');
+});
+
+test('Jira 보드 업무 scope는 modal과 panel이 함께 있으면 modal을 우선한다', () => {
+  const dialog = createFakeIssueScope(['/browse/NPT-144']);
+  const panel = createFakeIssueScope(['/browse/NPT-144']);
+  const target = findBoardIssueScope(
+    createFakeIssueDocument({ dialog, panel, dialogs: [dialog] }),
+    'NPT-144',
+  );
+
+  assert.equal(target?.scope, dialog);
+  assert.equal(target?.mountKind, 'board-dialog-link');
+});
+
+test('Jira 보드 업무 scope는 현재 selectedIssue와 일치하는 link만 선택한다', () => {
+  const panel = createFakeIssueScope(['/browse/NPT-29', '/browse/NPT-144']);
+  const unrelatedDialog = createFakeIssueScope(['/browse/NPT-999']);
+  const target = findBoardIssueScope(
+    createFakeIssueDocument({ panel, dialogs: [unrelatedDialog] }),
+    'NPT-144',
+  );
+
+  assert.equal(target?.scope, panel);
+  assert.equal(target?.issueLink.getAttribute('href'), '/browse/NPT-144');
+  assert.equal(
+    findBoardIssueScope(createFakeIssueDocument({ panel }), 'NPT-999'),
+    null,
+  );
 });
 
 test('Jira 업무 링크 복사는 제목 포함 여부에 따라 브라우저 링크 payload를 만든다', () => {

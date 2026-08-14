@@ -5,6 +5,7 @@ import {
   CURRENT_ISSUE_TITLE,
   ISSUE_DIALOG,
   ISSUE_LINK_COPY_ROOT,
+  ISSUE_PREVIEW_PANEL,
 } from '../../selectors';
 import {
   extractIssueKeyFromHref,
@@ -17,8 +18,14 @@ import { buildIssueClipboardContent, writeIssueClipboardContent } from './clipbo
 interface IssueViewTarget {
   issueKey: string;
   issueTitle: string | null;
-  mountKind: 'board-dialog-link' | 'direct-link' | 'direct-title';
+  mountKind: 'board-dialog-link' | 'board-panel-link' | 'direct-link' | 'direct-title';
   mountHost(host: HTMLSpanElement): void;
+}
+
+export interface BoardIssueScope {
+  issueLink: HTMLAnchorElement;
+  mountKind: 'board-dialog-link' | 'board-panel-link';
+  scope: ParentNode;
 }
 
 function normalizeText(text: string | null | undefined): string | null {
@@ -34,6 +41,41 @@ function findIssueLink(scope: ParentNode, issueKey: string): HTMLAnchorElement |
 
   for (const link of scope.querySelectorAll<HTMLAnchorElement>('a[href]')) {
     if (extractIssueKeyFromHref(link.getAttribute('href')) === issueKey) return link;
+  }
+  return null;
+}
+
+export function findBoardIssueScope(document: Document, issueKey: string): BoardIssueScope | null {
+  const candidates: Array<{
+    mountKind: BoardIssueScope['mountKind'];
+    scope: ParentNode | null;
+  }> = [
+    {
+      mountKind: 'board-dialog-link',
+      scope: document.querySelector(ISSUE_DIALOG),
+    },
+    {
+      mountKind: 'board-panel-link',
+      scope: document.querySelector(ISSUE_PREVIEW_PANEL),
+    },
+    ...Array.from(document.querySelectorAll('[role="dialog"]')).map((scope) => ({
+      mountKind: 'board-dialog-link' as const,
+      scope,
+    })),
+  ];
+  const visited = new Set<ParentNode>();
+
+  for (const candidate of candidates) {
+    if (!candidate.scope || visited.has(candidate.scope)) continue;
+    visited.add(candidate.scope);
+    const issueLink = findIssueLink(candidate.scope, issueKey);
+    if (issueLink) {
+      return {
+        issueLink,
+        mountKind: candidate.mountKind,
+        scope: candidate.scope,
+      };
+    }
   }
   return null;
 }
@@ -68,19 +110,16 @@ function findFallbackIssueHeading(context: PageContext): HTMLElement | null {
 function resolveIssueViewTarget(context: PageContext): IssueViewTarget | null {
   const boardRoute = parseJiraBoardUrl(context.url.href);
   if (isJiraBoardRoute(boardRoute) && boardRoute.selectedIssueKey) {
-    const dialog = context.document.querySelector(ISSUE_DIALOG)
-      ?? context.document.querySelector('[role="dialog"]');
-    if (!dialog) return null;
+    const boardIssueScope = findBoardIssueScope(context.document, boardRoute.selectedIssueKey);
+    if (!boardIssueScope) return null;
 
-    const issueLink = findIssueLink(dialog, boardRoute.selectedIssueKey);
-    if (!issueLink) return null;
-    const titleElement = dialog.querySelector<HTMLElement>(CURRENT_ISSUE_TITLE);
+    const titleElement = boardIssueScope.scope.querySelector<HTMLElement>(CURRENT_ISSUE_TITLE);
     return {
       issueKey: boardRoute.selectedIssueKey,
       issueTitle: readIssueTitle(titleElement),
-      mountKind: 'board-dialog-link',
+      mountKind: boardIssueScope.mountKind,
       mountHost(host) {
-        issueLink.insertAdjacentElement('afterend', host);
+        boardIssueScope.issueLink.insertAdjacentElement('afterend', host);
       },
     };
   }
