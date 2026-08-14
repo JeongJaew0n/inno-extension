@@ -1,8 +1,8 @@
 # Inno Extension 제품 개요
 
 - 상태: Active
-- 최종 갱신일: 2026-08-11
-- 대상 버전: 0.2.x
+- 최종 갱신일: 2026-08-14
+- 대상 버전: 0.3.x
 
 ## 한 줄 요약
 
@@ -99,6 +99,8 @@ effectiveEnabled = site.enabled && feature.enabled
 - 개발 환경에서는 `dist/`를 unpacked extension으로 로드한다.
 - 새 빌드를 반영하려면 확장 프로그램을 다시 로드하고 이미 열린 대상 사이트를 새로고침해야 한다.
 - `npm run package`는 배포용 ZIP을 생성하고 산출물 무결성을 검사한다.
+- 릴리즈 버전은 프로젝트 Skill `$extension-release`의 Semantic Versioning 정책으로 결정한다. `0.x.x`에서는 기능 추가와 호환되지 않는 초기 개발 변경은 MINOR, 기존 동작을 유지하는 수정은 PATCH로 관리한다.
+- 이미 공개한 버전의 commit, tag, ZIP은 변경하지 않으며 수정이 필요하면 새 버전을 발행한다.
 
 ## 주요 결정과 트레이드오프
 
@@ -159,6 +161,7 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - 2026-08-12: 저장 ADF에서 macro가 실제 생성된 것을 확인해 실패 판단을 정정했다. 비동기 완료 대기, top-level 위치 삽입, 접힌 source 보존, unpaired component 중복 방지를 반영했다.
 - 2026-08-12: Confluence 편집기의 본문 전체 Markdown 변환 버튼을 제거하고, 코드블럭의 Markdown만 원위치 ADF 콘텐츠로 교체하는 `코드블럭 -> ADF`로 통합했다. Mermaid component가 참조하는 접힌 원본은 변환 대상에서 제외한다.
 - 2026-08-13: 아마란스 헤더 출근 버튼 아래에 현재 시각을 `n시 n분 출근입니다.` 형식으로 복사하는 `인사말 복사` 버튼을 추가했다.
+- 2026-08-14: 프로젝트 릴리즈를 재현 가능한 절차로 관리하기 위해 `$extension-release` Skill과 Semantic Versioning 정책을 추가했다. `0.x.x` 버전 결정, 패키징 검증, annotated tag, GitHub Release 발행, 공개 버전 불변 원칙을 릴리즈 계약으로 확정했다.
 
 ## 관련 문서
 

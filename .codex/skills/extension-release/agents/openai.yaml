@@ -1,0 +1,4 @@
+interface:
+  display_name: "Extension Release"
+  short_description: "Inno Extension의 SemVer 릴리즈를 검증하고 발행"
+  default_prompt: "Use $extension-release to determine the next version, package the extension, and publish a verified GitHub Release."
