@@ -92,6 +92,88 @@ async function readProseMirrorCodeBlockText(
   return response.text.replace(/\r\n?/g, '\n');
 }
 
+export interface CodeBlockSource {
+  codeBlock: HTMLElement;
+  index: number;
+  localId: string;
+  source: string;
+}
+
+export interface CodeBlockSourceReadResult {
+  failures: Array<{ index: number; message: string }>;
+  sources: CodeBlockSource[];
+}
+
+/**
+ * codeBlock 원문을 순차로 읽는다.
+ *
+ * 이전에는 문서의 모든 코드블럭을 `Promise.all`로 동시에 읽었다. 브리지 응답 타임아웃이
+ * 1000ms이므로 코드블럭이 많은 문서에서는 요청이 몰려 하나만 늦어도 전체가 실패했다.
+ * 순차 실행으로 그 경합을 없애고, 개별 실패는 건너뛴 뒤 호출자가 판단하도록 남긴다.
+ */
+export async function readCodeBlockSources(
+  editor: HTMLElement,
+  entries: Array<{ codeBlock: HTMLElement; index: number }>,
+  readSource: (
+    editor: HTMLElement,
+    codeBlock: HTMLElement,
+  ) => Promise<string> = readProseMirrorCodeBlockText,
+): Promise<CodeBlockSourceReadResult> {
+  const sources: CodeBlockSource[] = [];
+  const failures: Array<{ index: number; message: string }> = [];
+
+  for (const { codeBlock, index } of entries) {
+    try {
+      sources.push({
+        codeBlock,
+        index,
+        localId: codeBlock.dataset.localId ?? '',
+        source: await readSource(editor, codeBlock),
+      });
+    } catch (error) {
+      failures.push({
+        index,
+        message: error instanceof Error ? error.message : 'codeBlock 원문을 읽지 못했습니다.',
+      });
+    }
+  }
+
+  return { failures, sources };
+}
+
+/**
+ * 브리지로 원문을 읽기 전에 DOM 원문으로 Mermaid 후보를 좁힌다.
+ *
+ * DOM 원문을 읽을 수 없는 코드블럭은 판정을 보류하고 후보로 남긴다. 잘못 걸러내면 변환 대상이
+ * 사라지므로 확실히 Mermaid가 아닌 경우에만 제외한다.
+ */
+export function mayBeMermaidCodeBlock(codeBlock: HTMLElement): boolean {
+  const domSource = readConfluenceCodeBlockText(codeBlock);
+  if (!domSource.trim()) return true;
+  return isMermaidCodeBlockSource(domSource);
+}
+
+const CONVERSION_FAILURE_CAUSES: ReadonlyArray<{ cause: string; match: RegExp }> = [
+  { cause: '기존 컴포넌트 정리 필요', match: /^문서 다른 위치에/ },
+  { cause: '편집기 응답 없음', match: /브리지가 응답하지 않았습니다/ },
+  { cause: '교체 확인 실패', match: /원래 위치의 컴포넌트로 교체하지 못했습니다/ },
+  { cause: '되돌리기 실패', match: /자동 되돌리기도 실패했습니다/ },
+  { cause: '원문 읽기 실패', match: /원문을 (?:읽지 못했|찾을 수 없)습니다/ },
+  { cause: '블록 선택 실패', match: /선택이 적용되지 않았습니다/ },
+  { cause: '편집기 미발견', match: /편집 본문을 찾을 수 없습니다|편집기 상태를 찾을 수 없습니다/ },
+  { cause: '블록 식별 실패', match: /codeBlock (?:식별자|위치)를 찾을 수 없습니다/ },
+];
+
+/**
+ * 실패 라벨에 덧붙일 짧은 원인을 찾는다.
+ *
+ * `변환 실패` 한 문구는 서로 다른 실패 분기를 모두 같은 모습으로 만든다. tooltip을 열지 않고도
+ * 어느 단계에서 막혔는지 구분할 수 있게 한다.
+ */
+export function summarizeConversionFailure(message: string): string | null {
+  return CONVERSION_FAILURE_CAUSES.find(({ match }) => match.test(message))?.cause ?? null;
+}
+
 function findCodeBlockByLocalId(
   editor: HTMLElement,
   localId: string,
@@ -417,26 +499,26 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
 
         const codeBlocks = Array.from(
           currentEditor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK),
-        );
+        ).map((codeBlock, index) => ({ codeBlock, index }));
         if (codeBlocks.length === 0) throw new Error('ADF로 변환할 코드블럭이 없습니다.');
 
-        const codeBlocksWithSource = await Promise.all(codeBlocks.map(async (codeBlock, index) => ({
-          codeBlock,
-          index,
-          localId: codeBlock.dataset.localId ?? '',
-          source: await readProseMirrorCodeBlockText(currentEditor, codeBlock),
-        })));
-        const protectedMermaidCount = codeBlocksWithSource.filter(({ codeBlock }) => (
+        const protectedMermaidCount = codeBlocks.filter(({ codeBlock }) => (
           hasValidMermaidPair(currentEditor, codeBlock)
         )).length;
-        const candidates = codeBlocksWithSource
-          .filter(({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock))
-          .map(({ index, localId, source }) => ({
-            index,
-            localId,
-            payload: codeBlockMarkdownToAdfPayload(source),
-          }));
+        // 보호 대상은 읽지 않는다. 변환하지 않을 블록까지 읽으면 브리지 요청만 늘어난다.
+        const { failures, sources } = await readCodeBlockSources(
+          currentEditor,
+          codeBlocks.filter(({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock)),
+        );
+        const candidates = sources.map(({ index, localId, source }) => ({
+          index,
+          localId,
+          payload: codeBlockMarkdownToAdfPayload(source),
+        }));
         if (candidates.length === 0) {
+          if (failures.length > 0) {
+            throw new Error(`코드블럭 ${failures.length}개의 원문을 읽지 못했습니다. ${failures[0].message}`);
+          }
           throw new Error('ADF로 변환할 코드블럭이 없습니다. Mermaid 컴포넌트 원본은 보호됩니다.');
         }
 
@@ -453,13 +535,18 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
           convertedCount += 1;
         }
 
-        codeBlockAdfLabel.textContent = warnings.length > 0
-          ? `${convertedCount}개 변환 · 경고 ${warnings.length}`
-          : `${convertedCount}개 변환`;
+        codeBlockAdfLabel.textContent = failures.length > 0
+          ? `${convertedCount}개 변환 · 제외 ${failures.length}`
+          : warnings.length > 0
+            ? `${convertedCount}개 변환 · 경고 ${warnings.length}`
+            : `${convertedCount}개 변환`;
         const notices = [
           ...warnings,
           ...(protectedMermaidCount > 0
             ? [`Mermaid 컴포넌트 원본 ${protectedMermaidCount}개는 제외했습니다.`]
+            : []),
+          ...(failures.length > 0
+            ? [`원문을 읽지 못해 제외한 코드블럭 ${failures.length}개: ${failures.map(({ index }) => index + 1).join(', ')}번`]
             : []),
         ];
         if (notices.length > 0) {
@@ -469,9 +556,10 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
       } catch (error) {
         console.error('[Inno Extension] Confluence 코드블럭 -> ADF 변환 실패', error);
         const message = error instanceof Error ? error.message : '코드블럭을 ADF로 변환하지 못했습니다.';
+        const cause = summarizeConversionFailure(message);
         codeBlockAdfLabel.textContent = convertedCount > 0
           ? `${convertedCount}개 변환 · 일부 실패`
-          : '변환 실패';
+          : cause ? `변환 실패 · ${cause}` : '변환 실패';
         codeBlockAdfButton.title = message;
       }
 
@@ -490,28 +578,34 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
 
         const allCodeBlocks = Array.from(
           currentEditor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK),
+        ).map((codeBlock, index) => ({ codeBlock, index }));
+
+        // 브리지 요청을 Mermaid 후보로 한정한다. 문서 전체를 읽으면 실패 표면만 넓어진다.
+        const mermaidCandidateBlocks = allCodeBlocks.filter(
+          ({ codeBlock }) => mayBeMermaidCodeBlock(codeBlock),
         );
-        const codeBlocksWithSource = await Promise.all(allCodeBlocks.map(
-          async (codeBlock, index) => ({
-            codeBlock,
-            index,
-            source: await readProseMirrorCodeBlockText(currentEditor, codeBlock),
-          }),
-        ));
-        const mermaidCodeBlocks = codeBlocksWithSource.filter(({ source }) => (
-          isMermaidCodeBlockSource(source)
-        ));
-        const candidates = mermaidCodeBlocks.filter(
-          ({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock),
-        );
-        const pairedCount = mermaidCodeBlocks.length - candidates.length;
+        // 짝 판정은 DOM 구조만 사용하므로 원문 읽기 성공 여부와 무관하게 계산한다.
+        const pairedCount = mermaidCandidateBlocks.filter(
+          ({ codeBlock }) => hasValidMermaidPair(currentEditor, codeBlock),
+        ).length;
         const unpairedExtensionCount = countMermaidExtensions(currentEditor) - pairedCount;
 
         if (unpairedExtensionCount > 0) {
           throw new Error(`문서 다른 위치에 Mermaid 컴포넌트 ${unpairedExtensionCount}개가 있습니다. 기존 컴포넌트를 정리한 뒤 다시 실행하세요.`);
         }
 
+        const { failures, sources } = await readCodeBlockSources(
+          currentEditor,
+          mermaidCandidateBlocks.filter(
+            ({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock),
+          ),
+        );
+        const candidates = sources.filter(({ source }) => isMermaidCodeBlockSource(source));
+
         if (candidates.length === 0) {
+          if (failures.length > 0) {
+            throw new Error(`Mermaid 후보 코드블럭 ${failures.length}개의 원문을 읽지 못했습니다. ${failures[0].message}`);
+          }
           throw new Error('변환할 Mermaid 코드블럭이 없습니다.');
         }
 
@@ -520,13 +614,22 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
           convertedCount += 1;
         }
 
-        mermaidLabel.textContent = `${convertedCount}개 변환`;
+        mermaidLabel.textContent = failures.length > 0
+          ? `${convertedCount}개 변환 · 제외 ${failures.length}`
+          : `${convertedCount}개 변환`;
+        if (failures.length > 0) {
+          const notice = `원문을 읽지 못해 제외한 코드블럭 ${failures.length}개: ${failures.map(({ index }) => index + 1).join(', ')}번`;
+          mermaidButton.title = notice;
+          console.warn('[Inno Extension] Confluence Mermaid -> ADF 변환 안내', notice, failures);
+        }
       } catch (error) {
         console.error('[Inno Extension] Confluence Mermaid -> ADF 변환 실패', error);
         const message = error instanceof Error ? error.message : 'Mermaid를 변환하지 못했습니다.';
+        const cause = summarizeConversionFailure(message);
         mermaidLabel.textContent = convertedCount > 0
           ? `${convertedCount}개 변환 · 일부 실패`
-          : message.startsWith('변환할 Mermaid') ? '변환 대상 없음' : '변환 실패';
+          : message.startsWith('변환할 Mermaid') ? '변환 대상 없음'
+            : cause ? `변환 실패 · ${cause}` : '변환 실패';
         mermaidButton.title = message;
       }
 

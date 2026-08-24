@@ -23,6 +23,11 @@ import {
   parseConfluenceEditPageUrl,
   parseConfluencePageUrl,
 } from '../src/sites/confluence/routes';
+import {
+  mayBeMermaidCodeBlock,
+  readCodeBlockSources,
+  summarizeConversionFailure,
+} from '../src/sites/confluence/features/editorMarkdownToAdf/runtime';
 import { adfDocumentToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/adf-to-editor-html';
 import { codeBlockMarkdownToAdfPayload } from '../src/sites/confluence/features/editorMarkdownToAdf/code-block-to-adf';
 import {
@@ -771,4 +776,90 @@ test('Jira host 판정은 업무 번호가 바뀌거나 host가 분리되면 재
 
   const detached = { isConnected: false, dataset: { issueKey: 'NPT-143', mountKind: 'board-panel-link' }, previousElementSibling: anchor } as unknown as HTMLSpanElement;
   assert.equal(isIssueHostCurrent(detached, target), false, '분리된 host는 재마운트한다');
+});
+
+/** `.cm-content .cm-line` 구조만 흉내낸 코드블럭. readConfluenceCodeBlockText가 이 경로를 읽는다. */
+function createFakeCodeBlock(lines: string[] | null): HTMLElement {
+  const lineNodes = (lines ?? []).map((text) => ({ textContent: text }));
+  return {
+    dataset: { localId: 'local-1' },
+    querySelectorAll(selector: string) {
+      return selector === '.cm-content .cm-line' ? lineNodes : [];
+    },
+    querySelector(selector: string) {
+      return selector === '.cm-content' && lines !== null ? { innerText: lines.join('\n') } : null;
+    },
+  } as unknown as HTMLElement;
+}
+
+test('Mermaid 후보 사전 판정은 DOM 원문으로 확실히 아닌 코드블럭만 제외한다', () => {
+  assert.equal(mayBeMermaidCodeBlock(createFakeCodeBlock(['flowchart TD', '  A --> B'])), true);
+  assert.equal(mayBeMermaidCodeBlock(createFakeCodeBlock(['%% 주석', 'sequenceDiagram'])), true);
+  assert.equal(mayBeMermaidCodeBlock(createFakeCodeBlock(['curl -X GET https://example.com'])), false);
+  assert.equal(mayBeMermaidCodeBlock(createFakeCodeBlock(['{', '  "a": 1', '}'])), false);
+});
+
+test('Mermaid 후보 사전 판정은 DOM 원문을 읽을 수 없으면 후보로 남긴다', () => {
+  // 렌더되지 않은 코드블럭을 잘못 제외하면 변환 대상이 사라진다.
+  assert.equal(mayBeMermaidCodeBlock(createFakeCodeBlock(null)), true);
+  assert.equal(mayBeMermaidCodeBlock(createFakeCodeBlock([])), true);
+  assert.equal(mayBeMermaidCodeBlock(createFakeCodeBlock(['   ', ''])), true);
+});
+
+test('codeBlock 원문 읽기는 순차로 실행되고 개별 실패를 건너뛴다', async () => {
+  const editor = {} as HTMLElement;
+  const entries = [0, 1, 2, 3].map((index) => ({ codeBlock: createFakeCodeBlock(['x']), index }));
+  const callOrder: number[] = [];
+  let inFlight = 0;
+  let maxInFlight = 0;
+
+  const result = await readCodeBlockSources(editor, entries, async (_editor, codeBlock) => {
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    const index = entries.findIndex((entry) => entry.codeBlock === codeBlock);
+    callOrder.push(index);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    inFlight -= 1;
+    if (index === 1 || index === 3) throw new Error(`원문을 읽지 못했습니다. index=${index}`);
+    return `source-${index}`;
+  });
+
+  assert.equal(maxInFlight, 1, '동시 요청이 발생하지 않는다');
+  assert.deepEqual(callOrder, [0, 1, 2, 3], '입력 순서대로 읽는다');
+  assert.deepEqual(result.sources.map((entry) => entry.index), [0, 2]);
+  assert.deepEqual(result.sources.map((entry) => entry.source), ['source-0', 'source-2']);
+  assert.deepEqual(result.failures.map((entry) => entry.index), [1, 3]);
+  assert.ok(result.failures[0].message.includes('원문을 읽지 못했습니다'));
+});
+
+test('codeBlock 원문 읽기는 Error가 아닌 예외도 실패로 수집한다', async () => {
+  const entries = [{ codeBlock: createFakeCodeBlock(['x']), index: 0 }];
+  const result = await readCodeBlockSources({} as HTMLElement, entries, async () => {
+    throw 'not an error';
+  });
+
+  assert.equal(result.sources.length, 0);
+  assert.equal(result.failures.length, 1);
+  assert.equal(result.failures[0].message, 'codeBlock 원문을 읽지 못했습니다.');
+});
+
+test('변환 실패 원인 요약은 각 실패 분기를 서로 다른 문구로 구분한다', () => {
+  const cases: Array<[string, string | null]> = [
+    ['문서 다른 위치에 Mermaid 컴포넌트 2개가 있습니다. 기존 컴포넌트를 정리한 뒤 다시 실행하세요.', '기존 컴포넌트 정리 필요'],
+    ['Confluence 편집기 상태 브리지가 응답하지 않았습니다.', '편집기 응답 없음'],
+    ['Mermaid 코드블럭을 원래 위치의 컴포넌트로 교체하지 못했습니다.', '교체 확인 실패'],
+    ['Mermaid 변환 결과가 올바르지 않고 자동 되돌리기도 실패했습니다. Confluence 실행 취소를 한 번 눌러주세요.', '되돌리기 실패'],
+    ['Confluence codeBlock 전체 원문을 읽지 못했습니다.', '원문 읽기 실패'],
+    ['Confluence ProseMirror codeBlock 원문을 찾을 수 없습니다.', '원문 읽기 실패'],
+    ['Confluence ProseMirror codeBlock 선택이 적용되지 않았습니다.', '블록 선택 실패'],
+    ['Confluence 편집 본문을 찾을 수 없습니다.', '편집기 미발견'],
+    ['Confluence ProseMirror 편집기 상태를 찾을 수 없습니다.', '편집기 미발견'],
+    ['Confluence codeBlock 식별자를 찾을 수 없습니다.', '블록 식별 실패'],
+    ['Confluence ProseMirror codeBlock 위치를 찾을 수 없습니다.', '블록 식별 실패'],
+    ['알 수 없는 오류', null],
+  ];
+
+  for (const [message, expected] of cases) {
+    assert.equal(summarizeConversionFailure(message), expected, message);
+  }
 });
