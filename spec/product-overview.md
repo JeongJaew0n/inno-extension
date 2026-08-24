@@ -139,7 +139,7 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - Chrome 내부 확장 관리 화면을 자동 제어하기 어려워 최신 `dist` 재로드 여부가 실제 E2E 결과에 영향을 준다.
 - 기능 수가 늘면 Popup의 정보 구조와 catalog 표현력이 부족해질 수 있다.
 - 실제 조직 배포 방식, 버전 배포 정책, 자동 업데이트 경로는 아직 확정되지 않았다.
-- Jira 보드의 backlog, timeline 같은 하위 view까지 각 기능의 적용 범위에 포함할지는 기능별로 결정해야 한다.
+- Jira 보드 하위 view 중 `backlog`는 업무 링크 복사 범위에 포함했다. `timeline`, `calendar`, `reports`까지 확대할지는 기능별로 결정해야 한다.
 
 ## 변경 이력
 

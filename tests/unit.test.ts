@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { findFeatureDescriptor, SITES } from '../src/catalog/sites';
+import { createUpdateScheduler } from '../src/platform/runtime/updateScheduler';
 import { createDefaultSettings } from '../src/platform/settings/defaults';
 import { isFeatureEffectivelyEnabled, normalizeSettings } from '../src/platform/settings/schema';
 import {
@@ -32,7 +33,11 @@ import {
   isMermaidCodeBlockSource,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
 import { buildIssueClipboardContent } from '../src/sites/jira/features/issueLinkCopy/clipboard';
-import { findBoardIssueScope } from '../src/sites/jira/features/issueLinkCopy/runtime';
+import type { IssueViewTarget } from '../src/sites/jira/features/issueLinkCopy/runtime';
+import {
+  findBoardIssueScope,
+  isIssueHostCurrent,
+} from '../src/sites/jira/features/issueLinkCopy/runtime';
 import {
   extractIssueKeyFromHref,
   isJiraBoardRoute,
@@ -60,6 +65,22 @@ function createFakeIssueScope(hrefs: string[]): ParentNode {
   return {
     querySelector(selector: string) {
       return selector === CURRENT_ISSUE_LINK ? (links[0] ?? null) : null;
+    },
+    querySelectorAll(selector: string) {
+      return selector === 'a[href]' ? links : [];
+    },
+  } as unknown as ParentNode;
+}
+
+/**
+ * breadcrumb이 아직 렌더되지 않은 preview panel을 흉내낸다.
+ * 이 상태에서는 헤더의 `Open in new tab` 앵커만 업무 번호를 가리킨다.
+ */
+function createFakeScopeWithoutBreadcrumb(hrefs: string[]): ParentNode {
+  const links = hrefs.map(createFakeIssueLink);
+  return {
+    querySelector() {
+      return null;
     },
     querySelectorAll(selector: string) {
       return selector === 'a[href]' ? links : [];
@@ -273,12 +294,21 @@ test('Jira board URL과 selectedIssue를 파싱한다', () => {
     'https://pms-innogrid.atlassian.net/jira/software/c/projects/OTHER/boards/999?selectedIssue=other-1',
   );
   assert.equal(isJiraBoardRoute(otherProjectBoard), true);
-  assert.equal(
-    isJiraBoardRoute(parseJiraBoardUrl(
-      'https://pms-innogrid.atlassian.net/jira/software/c/projects/NPT/boards/2147/backlog?selectedIssue=NPT-38',
-    )),
-    false,
+  const backlogBoard = parseJiraBoardUrl(
+    'https://pms-innogrid.atlassian.net/jira/software/c/projects/NPT/boards/2147/backlog?selectedIssue=NPT-38',
   );
+  assert.equal(backlogBoard?.viewPath, '/backlog');
+  assert.equal(backlogBoard?.selectedIssueKey, 'NPT-38');
+  assert.equal(isJiraBoardRoute(backlogBoard), true);
+  for (const unsupportedViewPath of ['/timeline', '/calendar', '/reports', '/backlog/extra']) {
+    assert.equal(
+      isJiraBoardRoute(parseJiraBoardUrl(
+        `https://pms-innogrid.atlassian.net/jira/software/c/projects/NPT/boards/2147${unsupportedViewPath}?selectedIssue=NPT-38`,
+      )),
+      false,
+      `${unsupportedViewPath}는 지원 범위가 아니다`,
+    );
+  }
   assert.equal(parseJiraBoardUrl('https://example.com/jira/software/c/projects/NPT/boards/2146'), null);
 });
 
@@ -554,4 +584,191 @@ test('Confluence 고정 헤더용 단일행 표만 실제 표 앞에서 중복�
     ),
     false,
   );
+});
+
+function createFakeTimerHost() {
+  let currentTime = 0;
+  let nextHandle = 1;
+  const timers = new Map<number, { firesAt: number; handler: () => void }>();
+
+  return {
+    now: () => currentTime,
+    setTimer(handler: () => void, delayMs: number) {
+      const handle = nextHandle++;
+      timers.set(handle, { firesAt: currentTime + delayMs, handler });
+      return handle;
+    },
+    clearTimer(handle: number) {
+      timers.delete(handle);
+    },
+    advance(ms: number) {
+      const target = currentTime + ms;
+      // 예약 시각 순서대로 발화시킨다.
+      for (;;) {
+        const due = [...timers.entries()]
+          .filter(([, timer]) => timer.firesAt <= target)
+          .sort((left, right) => left[1].firesAt - right[1].firesAt)[0];
+        if (!due) break;
+        const [handle, timer] = due;
+        timers.delete(handle);
+        currentTime = timer.firesAt;
+        timer.handler();
+      }
+      currentTime = target;
+    },
+    pendingCount: () => timers.size,
+  };
+}
+
+function createSchedulerHarness(debounceMs: number, maxWaitMs: number) {
+  const host = createFakeTimerHost();
+  let runCount = 0;
+  const scheduler = createUpdateScheduler({
+    debounceMs,
+    maxWaitMs,
+    run: () => { runCount += 1; },
+    now: host.now,
+    setTimer: host.setTimer,
+    clearTimer: host.clearTimer,
+  });
+  return { host, scheduler, getRunCount: () => runCount };
+}
+
+test('update scheduler는 조용해질 때까지 trailing debounce로 실행을 미룬다', () => {
+  const { host, scheduler, getRunCount } = createSchedulerHarness(120, 1000);
+
+  scheduler.schedule();
+  host.advance(100);
+  scheduler.schedule();
+  host.advance(100);
+  assert.equal(getRunCount(), 0, '연속 예약 중에는 실행되지 않는다');
+
+  host.advance(120);
+  assert.equal(getRunCount(), 1);
+  assert.equal(scheduler.isPending(), false);
+});
+
+test('update scheduler는 maxWait를 넘기면 연속 mutation에도 반드시 실행된다', () => {
+  const { host, scheduler, getRunCount } = createSchedulerHarness(120, 500);
+
+  // debounce보다 짧은 간격으로 계속 예약해 trailing debounce를 굶긴다.
+  scheduler.schedule();
+  for (let elapsed = 0; elapsed < 2000; elapsed += 50) {
+    host.advance(50);
+    scheduler.schedule();
+  }
+
+  assert.ok(getRunCount() >= 1, 'maxWait 이후에는 예약된 실행이 발화한다');
+  assert.ok(getRunCount() <= 5, 'maxWait 주기보다 과도하게 자주 실행되지 않는다');
+});
+
+test('update scheduler의 runNow는 예약을 취소하고 즉시 한 번만 실행한다', () => {
+  const { host, scheduler, getRunCount } = createSchedulerHarness(120, 1000);
+
+  scheduler.schedule();
+  scheduler.runNow();
+  assert.equal(getRunCount(), 1);
+  assert.equal(scheduler.isPending(), false);
+
+  host.advance(500);
+  assert.equal(getRunCount(), 1, '취소된 debounce timer가 다시 실행되지 않는다');
+});
+
+test('update scheduler의 cancel은 예약된 실행을 없앤다', () => {
+  const { host, scheduler, getRunCount } = createSchedulerHarness(120, 1000);
+
+  scheduler.schedule();
+  scheduler.cancel();
+  host.advance(500);
+
+  assert.equal(getRunCount(), 0);
+  assert.equal(host.pendingCount(), 0);
+});
+
+test('Jira 보드 업무 scope는 breadcrumb link를 선택하면 current-issue-link로 보고한다', () => {
+  const panel = createFakeIssueScope(['/browse/NPT-144']);
+  const target = findBoardIssueScope(createFakeIssueDocument({ panel }), 'NPT-144');
+
+  assert.equal(target?.issueLinkKind, 'current-issue-link');
+});
+
+test('Jira 보드 업무 scope는 breadcrumb이 없으면 일반 anchor를 issue-anchor로 보고한다', () => {
+  // preview panel 헤더의 `Open in new tab` 링크만 존재하는 초기 렌더 상태
+  const panel = createFakeScopeWithoutBreadcrumb(['/browse/NPT-144']);
+  const target = findBoardIssueScope(createFakeIssueDocument({ panel }), 'NPT-144');
+
+  assert.equal(target?.mountKind, 'board-panel-link');
+  assert.equal(target?.issueLinkKind, 'issue-anchor');
+  assert.equal(target?.issueLink.getAttribute('href'), '/browse/NPT-144');
+});
+
+function createFakeAnchor(name: string): Element {
+  return { nodeName: name } as unknown as Element;
+}
+
+function createFakeMountedHost(
+  issueKey: string,
+  mountKind: string,
+  previousElementSibling: Element | null,
+): HTMLSpanElement {
+  return {
+    isConnected: true,
+    dataset: { issueKey, mountKind },
+    previousElementSibling,
+  } as unknown as HTMLSpanElement;
+}
+
+function createFakeTarget(
+  issueKey: string,
+  mountKind: string,
+  anchor: Element,
+): IssueViewTarget {
+  return {
+    issueKey,
+    issueTitle: null,
+    mountKind,
+    mountAnchorKind: 'current-issue-link',
+    isMountedAt(host: HTMLSpanElement) {
+      return host.previousElementSibling === anchor;
+    },
+    mountHost() {},
+  } as unknown as IssueViewTarget;
+}
+
+test('Jira host 판정은 업무 번호와 mountKind가 같아도 기준 요소가 다르면 재마운트를 요구한다', () => {
+  // 실제 재현 상황: panel 헤더 anchor에 붙은 host와 breadcrumb를 가리키는 새 target.
+  // 둘 다 board-panel-link이므로 기준 요소를 비교하지 않으면 오배치가 영구히 고정된다.
+  const headerAnchor = createFakeAnchor('header-new-tab-link');
+  const breadcrumbAnchor = createFakeAnchor('breadcrumb-current-issue');
+  const host = createFakeMountedHost('NPT-143', 'board-panel-link', headerAnchor);
+  const target = createFakeTarget('NPT-143', 'board-panel-link', breadcrumbAnchor);
+
+  assert.equal(isIssueHostCurrent(host, target), false);
+});
+
+test('Jira host 판정은 업무 번호, mountKind, 기준 요소가 모두 같으면 유지한다', () => {
+  const anchor = createFakeAnchor('breadcrumb-current-issue');
+  const host = createFakeMountedHost('NPT-143', 'board-panel-link', anchor);
+
+  assert.equal(isIssueHostCurrent(host, createFakeTarget('NPT-143', 'board-panel-link', anchor)), true);
+});
+
+test('Jira host 판정은 업무 번호가 바뀌거나 host가 분리되면 재마운트를 요구한다', () => {
+  const anchor = createFakeAnchor('breadcrumb-current-issue');
+  const target = createFakeTarget('NPT-143', 'board-panel-link', anchor);
+
+  assert.equal(
+    isIssueHostCurrent(createFakeMountedHost('NPT-166', 'board-panel-link', anchor), target),
+    false,
+    '다른 업무로 전환되면 재마운트한다',
+  );
+  assert.equal(
+    isIssueHostCurrent(createFakeMountedHost('NPT-143', 'direct-link', anchor), target),
+    false,
+    'mountKind가 바뀌면 재마운트한다',
+  );
+  assert.equal(isIssueHostCurrent(null, target), false, 'host가 없으면 재마운트한다');
+
+  const detached = { isConnected: false, dataset: { issueKey: 'NPT-143', mountKind: 'board-panel-link' }, previousElementSibling: anchor } as unknown as HTMLSpanElement;
+  assert.equal(isIssueHostCurrent(detached, target), false, '분리된 host는 재마운트한다');
 });

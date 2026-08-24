@@ -2,6 +2,7 @@ import type { FeatureId } from '../../catalog/types';
 import { getSettings, SETTINGS_STORAGE_KEY } from '../settings/repository';
 import type { ExtensionSettingsV1 } from '../settings/types';
 import type { SiteRuntime, SiteRuntimeOptions, SiteRuntimeStatus } from './types';
+import { createUpdateScheduler } from './updateScheduler';
 
 const GET_SITE_STATUS = 'GET_SITE_STATUS';
 const RESCAN_SITE = 'RESCAN_SITE';
@@ -15,9 +16,10 @@ function waitForDocumentBody(): Promise<void> {
 
 export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
   const debounceMs = options.debounceMs ?? 120;
+  const maxWaitMs = options.maxWaitMs ?? 1000;
   let settings: ExtensionSettingsV1 | null = null;
   let observer: MutationObserver | null = null;
-  let scheduledUpdate: number | null = null;
+  let lastReconciledUrl: string | null = null;
   let started = false;
   let reconciling = false;
   let rerunRequested = false;
@@ -62,6 +64,7 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
       settings = await getSettings();
       options.onSettingsLoaded?.(settings);
       const siteSettings = settings.sites[options.siteId];
+      lastReconciledUrl = window.location.href;
 
       if (!siteSettings.enabled) {
         disconnectObserver();
@@ -70,7 +73,7 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
       }
 
       ensureObserver();
-      const context = { url: new URL(window.location.href), document };
+      const context = { url: new URL(lastReconciledUrl), document };
       const nextActiveFeatureIds: FeatureId[] = [];
 
       for (const feature of options.features) {
@@ -97,13 +100,28 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
     }
   }
 
+  const scheduler = createUpdateScheduler({
+    debounceMs,
+    maxWaitMs,
+    run: () => void reconcileNow(),
+  });
+
   function scheduleUpdate(): void {
     if (!started) return;
-    if (scheduledUpdate !== null) window.clearTimeout(scheduledUpdate);
-    scheduledUpdate = window.setTimeout(() => {
-      scheduledUpdate = null;
-      void reconcileNow();
-    }, debounceMs);
+
+    // SPA는 pushState로 이동하므로 hashchange/popstate 없이 route가 바뀔 수 있다.
+    // route가 바뀐 것을 확인하면 debounce를 거치지 않고 바로 reconcile한다.
+    if (lastReconciledUrl !== null && window.location.href !== lastReconciledUrl) {
+      reconcileImmediately();
+      return;
+    }
+
+    scheduler.schedule();
+  }
+
+  function reconcileImmediately(): void {
+    if (!started) return;
+    scheduler.runNow();
   }
 
   const handleStorageChange = (
@@ -115,7 +133,7 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
     }
   };
 
-  const handleNavigation = (): void => scheduleUpdate();
+  const handleNavigation = (): void => reconcileImmediately();
 
   const handleMessage = (
     message: unknown,
@@ -152,8 +170,7 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
 
     stop(): void {
       started = false;
-      if (scheduledUpdate !== null) window.clearTimeout(scheduledUpdate);
-      scheduledUpdate = null;
+      scheduler.cancel();
       disconnectObserver();
       disposeAllFeatures();
       chrome.storage.onChanged.removeListener(handleStorageChange);
