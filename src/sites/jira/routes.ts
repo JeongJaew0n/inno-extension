@@ -92,6 +92,8 @@ function compareIssueKeys(left: string, right: string): number {
   return projectComparison || leftNumber - rightNumber;
 }
 
+const SUPPORTED_BOARD_VIEW_PATHS = new Set(['', '/backlog']);
+
 export function isJiraBoardRoute(route: JiraBoardRoute | null): route is JiraBoardRoute {
-  return route !== null && route.viewPath === '';
+  return route !== null && SUPPORTED_BOARD_VIEW_PATHS.has(route.viewPath);
 }

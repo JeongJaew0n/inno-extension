@@ -15,15 +15,34 @@ import {
 } from '../../routes';
 import { buildIssueClipboardContent, writeIssueClipboardContent } from './clipboard';
 
-interface IssueViewTarget {
+/**
+ * 업무 번호 링크를 어떤 근거로 찾았는지 구분한다.
+ *
+ * `current-issue-link`는 업무 상세의 breadcrumb 링크이고, `issue-anchor`는 같은 업무를 가리키는
+ * 임의의 앵커다. preview panel 헤더의 `Open in new tab` 링크가 후자에 해당한다.
+ * breadcrumb이 아직 렌더되지 않은 순간에는 후자만 존재할 수 있어, 어느 쪽에 붙었는지 구분해야
+ * 나중에 올바른 위치로 옮길 수 있다.
+ */
+type IssueLinkKind = 'current-issue-link' | 'issue-anchor';
+
+interface IssueLinkMatch {
+  kind: IssueLinkKind;
+  link: HTMLAnchorElement;
+}
+
+export interface IssueViewTarget {
   issueKey: string;
   issueTitle: string | null;
   mountKind: 'board-dialog-link' | 'board-panel-link' | 'direct-link' | 'direct-title';
+  mountAnchorKind: IssueLinkKind | 'summary-title';
+  /** 이미 존재하는 host가 이번에 결정된 기준 요소에 실제로 붙어 있는지 판정한다. */
+  isMountedAt(host: HTMLSpanElement): boolean;
   mountHost(host: HTMLSpanElement): void;
 }
 
 export interface BoardIssueScope {
   issueLink: HTMLAnchorElement;
+  issueLinkKind: IssueLinkKind;
   mountKind: 'board-dialog-link' | 'board-panel-link';
   scope: ParentNode;
 }
@@ -33,14 +52,16 @@ function normalizeText(text: string | null | undefined): string | null {
   return normalized || null;
 }
 
-function findIssueLink(scope: ParentNode, issueKey: string): HTMLAnchorElement | null {
+function findIssueLink(scope: ParentNode, issueKey: string): IssueLinkMatch | null {
   const preferred = scope.querySelector<HTMLAnchorElement>(CURRENT_ISSUE_LINK);
   if (preferred && extractIssueKeyFromHref(preferred.getAttribute('href')) === issueKey) {
-    return preferred;
+    return { kind: 'current-issue-link', link: preferred };
   }
 
   for (const link of scope.querySelectorAll<HTMLAnchorElement>('a[href]')) {
-    if (extractIssueKeyFromHref(link.getAttribute('href')) === issueKey) return link;
+    if (extractIssueKeyFromHref(link.getAttribute('href')) === issueKey) {
+      return { kind: 'issue-anchor', link };
+    }
   }
   return null;
 }
@@ -68,10 +89,11 @@ export function findBoardIssueScope(document: Document, issueKey: string): Board
   for (const candidate of candidates) {
     if (!candidate.scope || visited.has(candidate.scope)) continue;
     visited.add(candidate.scope);
-    const issueLink = findIssueLink(candidate.scope, issueKey);
-    if (issueLink) {
+    const match = findIssueLink(candidate.scope, issueKey);
+    if (match) {
       return {
-        issueLink,
+        issueLink: match.link,
+        issueLinkKind: match.kind,
         mountKind: candidate.mountKind,
         scope: candidate.scope,
       };
@@ -114,12 +136,17 @@ function resolveIssueViewTarget(context: PageContext): IssueViewTarget | null {
     if (!boardIssueScope) return null;
 
     const titleElement = boardIssueScope.scope.querySelector<HTMLElement>(CURRENT_ISSUE_TITLE);
+    const issueLink = boardIssueScope.issueLink;
     return {
       issueKey: boardRoute.selectedIssueKey,
       issueTitle: readIssueTitle(titleElement),
       mountKind: boardIssueScope.mountKind,
+      mountAnchorKind: boardIssueScope.issueLinkKind,
+      isMountedAt(host) {
+        return host.previousElementSibling === issueLink;
+      },
       mountHost(host) {
-        boardIssueScope.issueLink.insertAdjacentElement('afterend', host);
+        issueLink.insertAdjacentElement('afterend', host);
       },
     };
   }
@@ -127,16 +154,21 @@ function resolveIssueViewTarget(context: PageContext): IssueViewTarget | null {
   const issueKey = parseJiraIssueUrl(context.url.href)?.issueKey ?? null;
   if (!issueKey) return null;
 
-  const issueLink = findIssueLink(context.document, issueKey);
+  const match = findIssueLink(context.document, issueKey);
   const titleElement = context.document.querySelector<HTMLElement>(CURRENT_ISSUE_TITLE)
     ?? findFallbackIssueHeading(context);
   const issueTitle = readIssueTitle(titleElement);
 
-  if (issueLink) {
+  if (match) {
+    const issueLink = match.link;
     return {
       issueKey,
       issueTitle,
       mountKind: 'direct-link',
+      mountAnchorKind: match.kind,
+      isMountedAt(host) {
+        return host.previousElementSibling === issueLink;
+      },
       mountHost(host) {
         issueLink.insertAdjacentElement('afterend', host);
       },
@@ -144,14 +176,37 @@ function resolveIssueViewTarget(context: PageContext): IssueViewTarget | null {
   }
 
   if (!titleElement) return null;
+  const titleHost = titleElement;
   return {
     issueKey,
     issueTitle,
     mountKind: 'direct-title',
+    mountAnchorKind: 'summary-title',
+    isMountedAt(host) {
+      return host.parentElement === titleHost;
+    },
     mountHost(host) {
-      titleElement.appendChild(host);
+      titleHost.appendChild(host);
     },
   };
+}
+
+/**
+ * 이미 붙어 있는 host를 그대로 둬도 되는지 판정한다.
+ *
+ * 업무 번호와 mountKind만 비교하면 같은 preview panel 안에서 기준 요소가 달라진 경우를 구분하지
+ * 못한다. 실제로 breadcrumb이 렌더되기 전에는 panel 헤더의 `Open in new tab` 링크가 선택되는데,
+ * 두 경우 모두 mountKind가 `board-panel-link`라서 오배치가 영구히 고정된다.
+ * 그래서 기준 요소 자체의 동일성까지 확인한다.
+ */
+export function isIssueHostCurrent(
+  host: HTMLSpanElement | null,
+  target: IssueViewTarget,
+): boolean {
+  if (!host?.isConnected) return false;
+  return host.dataset.issueKey === target.issueKey
+    && host.dataset.mountKind === target.mountKind
+    && target.isMountedAt(host);
 }
 
 export function createIssueLinkCopyRuntime(): FeatureRuntime {
@@ -173,6 +228,7 @@ export function createIssueLinkCopyRuntime(): FeatureRuntime {
     nextHost.setAttribute(FEATURE_ROOT_ATTRIBUTE, ISSUE_LINK_COPY_ROOT);
     nextHost.dataset.issueKey = target.issueKey;
     nextHost.dataset.mountKind = target.mountKind;
+    nextHost.dataset.mountAnchor = target.mountAnchorKind;
     nextHost.style.all = 'initial';
     nextHost.style.display = 'inline-flex';
     nextHost.style.gap = '2px';
@@ -249,9 +305,7 @@ export function createIssueLinkCopyRuntime(): FeatureRuntime {
         return;
       }
 
-      if (host?.isConnected
-        && host.dataset.issueKey === target.issueKey
-        && host.dataset.mountKind === target.mountKind) return;
+      if (isIssueHostCurrent(host, target)) return;
       dispose();
       host = createButtonHost(context, target);
     },

@@ -45,18 +45,19 @@ Jira 보드에서 선택한 업무 번호 옆에 복사 버튼을 제공해, 업
 - Jira 서비스 전체 기능이 ON이다.
 - `업무 링크 복사` 기능이 ON이다.
 - 대상 origin이 `https://pms-innogrid.atlassian.net`이다.
-- Jira software board의 기본 화면이며 URL에 선택 업무가 존재하거나, URL이 `/browse/{업무번호}` 또는 `/issues/{업무번호}` 직접 업무 조회 주소다.
+- Jira software board의 기본 화면 또는 `backlog` 화면이며 URL에 선택 업무가 존재하거나, URL이 `/browse/{업무번호}` 또는 `/issues/{업무번호}` 직접 업무 조회 주소다.
 - 선택 업무 상세 modal 또는 우측 preview panel에서 현재 업무 번호 링크를 찾을 수 있다.
 
 지원 URL의 개념적 형식은 다음과 같다.
 
 ```text
 /jira/software/c/projects/{projectKey}/boards/{boardId}?selectedIssue={issueKey}
+/jira/software/c/projects/{projectKey}/boards/{boardId}/backlog?selectedIssue={issueKey}
 ```
 
 프로젝트 키와 보드 ID는 제한하지 않는다. 초기 버전의 `NPT / 2146` 제한은 제거되었다.
 
-현재 backlog, timeline, calendar, reports 같은 보드 하위 view path는 업무 링크 복사 적용 범위에 포함하지 않는다. 직접 업무 조회 화면은 보드 하위 view와 별개로 지원한다.
+보드 하위 view path 중에서는 `backlog`만 지원한다. `timeline`, `calendar`, `reports`는 적용 범위에 포함하지 않는다. `backlog`는 선택 업무를 우측 preview panel에 표시하며 이 panel 구조가 보드 기본 화면과 같아 공통 탐색 로직을 그대로 재사용한다. 직접 업무 조회 화면은 보드 하위 view와 별개로 지원한다.
 
 ## 사용자 경험
 
@@ -195,7 +196,7 @@ Jira 보드는 같은 `selectedIssue`를 modal과 우측 preview panel 두 방�
 - 제목이 아직 로딩 중인 순간 사용자가 제목 포함 버튼을 누르면 실패할 수 있다.
 - 두 버튼이 Jira breadcrumb 영역의 가용 폭을 초과하는 화면 크기가 있는지 실제 사용 관찰이 필요하다.
 - rich text 편집기마다 HTML clipboard 해석 방식이 달라 링크와 공백 표현이 다를 수 있다.
-- backlog 등 보드 하위 view에서의 selectedIssue 지원을 향후 포함할지 결정이 필요하다.
+- `timeline`, `calendar`, `reports` 하위 view의 selectedIssue 지원 여부는 아직 결정하지 않았다. 각 화면의 업무 표시 구조를 실측한 뒤 판단한다.
 - 현재 브라우저에 이전 content script가 남아 있으면 새 build와 다른 동작을 보일 수 있으므로 E2E 전에 확장 재로드와 페이지 새로고침이 필요하다.
 
 ## 변경 이력
@@ -206,6 +207,7 @@ Jira 보드는 같은 `selectedIssue`를 modal과 우측 preview panel 두 방�
 - 2026-08-14: 보드의 선택 업무가 우측 preview panel로 표시될 때도 같은 두 복사 버튼을 제공하도록 범위를 확장했다.
 - 2026-08-04: 사용자 표시 명칭을 `이슈 링크 복사`에서 `업무 링크 복사`로 변경했다.
 - 2026-08-04: `업무 링크 복사(제목포함)` 버튼을 추가하고 현재 dialog 제목을 링크 뒤에 포함하는 clipboard 계약을 정의했다.
+- 2026-08-24: 보드 하위 view 중 `backlog`를 지원 route에 포함해 backlog에서 선택한 업무의 preview panel에서도 두 복사 동작을 사용할 수 있게 했다.
 
 ## 관련 자료
 

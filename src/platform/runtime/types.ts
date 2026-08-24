@@ -30,5 +30,6 @@ export interface SiteRuntimeOptions {
   siteId: SiteId;
   features: readonly FeatureRuntime[];
   debounceMs?: number;
+  maxWaitMs?: number;
   onSettingsLoaded?: (settings: ExtensionSettingsV1) => void;
 }
