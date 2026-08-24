@@ -128,7 +128,7 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
     changes: Record<string, chrome.storage.StorageChange>,
     areaName: string,
   ): void => {
-    if (areaName === 'sync' && (changes[SETTINGS_STORAGE_KEY] || changes.overlayEnabled)) {
+    if (areaName === 'sync' && changes[SETTINGS_STORAGE_KEY]) {
       scheduleUpdate();
     }
   };

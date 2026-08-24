@@ -6,7 +6,6 @@ export const FEATURE_IDS = [
   'titleAutofill',
   'notificationTools',
   'issueLinkCopy',
-  'boardInspector',
   'pageMarkdownCopy',
   'pageMarkdownAppend',
 ] as const;

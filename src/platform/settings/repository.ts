@@ -4,14 +4,10 @@ import { normalizeSettings } from './schema';
 import type { ExtensionSettingsV1 } from './types';
 
 export const SETTINGS_STORAGE_KEY = 'extensionSettings';
-const LEGACY_OVERLAY_KEY = 'overlayEnabled';
 
 export async function getSettings(): Promise<ExtensionSettingsV1> {
-  const stored = await chrome.storage.sync.get([SETTINGS_STORAGE_KEY, LEGACY_OVERLAY_KEY]);
-  const settings = normalizeSettings(
-    stored[SETTINGS_STORAGE_KEY],
-    typeof stored[LEGACY_OVERLAY_KEY] === 'boolean' ? stored[LEGACY_OVERLAY_KEY] : undefined,
-  );
+  const stored = await chrome.storage.sync.get(SETTINGS_STORAGE_KEY);
+  const settings = normalizeSettings(stored[SETTINGS_STORAGE_KEY]);
 
   if (JSON.stringify(stored[SETTINGS_STORAGE_KEY]) !== JSON.stringify(settings)) {
     await chrome.storage.sync.set({ [SETTINGS_STORAGE_KEY]: settings });

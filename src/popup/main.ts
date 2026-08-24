@@ -221,32 +221,7 @@ function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
     `;
   }
 
-  if (siteId !== 'jira' || featureId !== 'boardInspector') {
-    return '<p class="empty-options">이 기능에는 별도의 추가 옵션이 없습니다.</p>';
-  }
-
-  const options = settings.sites.jira.features.boardInspector?.options ?? {};
-  const projectKeys = Array.isArray(options.supportedProjectKeys)
-    ? options.supportedProjectKeys.filter((value): value is string => typeof value === 'string')
-    : [];
-  const boardIds = Array.isArray(options.supportedBoardIds)
-    ? options.supportedBoardIds.filter((value): value is string => typeof value === 'string')
-    : [];
-
-  return `
-    <div class="option-fields" data-options-form data-site-id="jira" data-feature-id="boardInspector">
-      <label>
-        <span>프로젝트 키</span>
-        <input type="text" data-option="supportedProjectKeys" value="${escapeHtml(projectKeys.join(', '))}" placeholder="NPT" />
-        <small>쉼표로 여러 값을 구분합니다.</small>
-      </label>
-      <label>
-        <span>보드 ID</span>
-        <input type="text" data-option="supportedBoardIds" value="${escapeHtml(boardIds.join(', '))}" placeholder="2146" />
-        <small>Jira 보드 URL의 숫자 ID입니다.</small>
-      </label>
-    </div>
-  `;
+  return '<p class="empty-options">이 기능에는 별도의 추가 옵션이 없습니다.</p>';
 }
 
 function renderFeatureDetail(siteId: SiteId, featureId: FeatureId): string {
