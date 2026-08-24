@@ -46,7 +46,7 @@ npm run build
 | 서비스 | 기본 활성 기능 | 기본 비활성 기능 | 적용 사이트 |
 | --- | --- | --- | --- |
 | 아마란스 | 헤더 출퇴근 버튼, 신청서 제목 자동채움, 통합알림 도구 | 없음 | `gw.innogrid.com` |
-| Jira | 업무 링크 복사 | NPT 보드 정보 패널 | `pms-innogrid.atlassian.net`의 Jira 화면 |
+| Jira | 업무 링크 복사 | 없음 | `pms-innogrid.atlassian.net`의 Jira 화면 |
 | Confluence | 본문 Markdown 복사 | Markdown → ADF 변환 | `pms-innogrid.atlassian.net/wiki` |
 
 ### 아마란스
@@ -82,12 +82,6 @@ npm run build
 | **업무 링크 복사(제목포함)** | `NPT-38 현재 업무 제목` |
 
 클립보드의 HTML 형식을 지원하는 곳에 붙여넣으면 업무 번호가 해당 Jira 업무로 연결되는 링크를 유지한다.
-
-#### NPT 보드 정보 패널
-
-- 현재 보드, 화면에 표시된 업무 수, 선택 업무를 보조 패널로 보여준다.
-- 기본값은 OFF다.
-- Popup에서 대상 프로젝트 키와 보드 ID를 설정할 수 있다.
 
 ### Confluence
 
@@ -181,7 +175,7 @@ src/
 ├── popup/            서비스 목록·상세·기능 설정 UI
 └── sites/
     ├── amaranth/     출퇴근, 제목 자동채움, 통합알림
-    ├── jira/         업무 링크 복사, 보드 정보 패널
+    ├── jira/         업무 링크 복사
     └── confluence/   본문 Markdown 복사, ADF 변환
 ```
 

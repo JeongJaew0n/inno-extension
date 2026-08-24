@@ -30,13 +30,6 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
             enabled: true,
             options: {},
           },
-          boardInspector: {
-            enabled: false,
-            options: {
-              supportedProjectKeys: ['NPT'],
-              supportedBoardIds: ['2146'],
-            },
-          },
         },
       },
       confluence: {

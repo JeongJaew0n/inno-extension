@@ -74,24 +74,6 @@ export function extractIssueKeyFromHref(href: string | null): string | null {
   return url.pathname.match(ISSUE_PATH_PATTERN)?.[1] ?? null;
 }
 
-export function uniqueIssueKeys(hrefs: Iterable<string | null>): string[] {
-  const keys = new Set<string>();
-  for (const href of hrefs) {
-    const key = extractIssueKeyFromHref(href);
-    if (key) keys.add(key);
-  }
-  return [...keys].sort(compareIssueKeys);
-}
-
-function compareIssueKeys(left: string, right: string): number {
-  const leftParts = left.split('-');
-  const rightParts = right.split('-');
-  const leftNumber = Number(leftParts.pop());
-  const rightNumber = Number(rightParts.pop());
-  const projectComparison = leftParts.join('-').localeCompare(rightParts.join('-'));
-  return projectComparison || leftNumber - rightNumber;
-}
-
 const SUPPORTED_BOARD_VIEW_PATHS = new Set(['', '/backlog']);
 
 export function isJiraBoardRoute(route: JiraBoardRoute | null): route is JiraBoardRoute {

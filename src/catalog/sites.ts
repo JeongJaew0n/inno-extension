@@ -55,14 +55,6 @@ export const SITES = [
         defaultEnabled: true,
         hasDetails: true,
       },
-      {
-        id: 'boardInspector',
-        name: 'NPT 보드 정보 패널',
-        description: '현재 보드와 화면에 표시된 이슈 정보를 작은 패널로 보여줍니다.',
-        routeSummary: '설정한 Jira 프로젝트와 보드',
-        defaultEnabled: false,
-        hasDetails: true,
-      },
     ],
   },
   {

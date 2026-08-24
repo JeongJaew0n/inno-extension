@@ -21,17 +21,9 @@ function normalizeFeatureSettings(
   };
 }
 
-export function normalizeSettings(
-  candidate: unknown,
-  legacyOverlayEnabled?: boolean,
-): ExtensionSettingsV1 {
+export function normalizeSettings(candidate: unknown): ExtensionSettingsV1 {
   const defaults = createDefaultSettings();
-  if (!isRecord(candidate) || !isRecord(candidate.sites)) {
-    if (typeof legacyOverlayEnabled === 'boolean') {
-      defaults.sites.jira.features.boardInspector!.enabled = legacyOverlayEnabled;
-    }
-    return defaults;
-  }
+  if (!isRecord(candidate) || !isRecord(candidate.sites)) return defaults;
 
   for (const site of SITES) {
     const siteId = site.id as SiteId;
@@ -53,14 +45,6 @@ export function normalizeSettings(
         defaultFeature,
       );
     }
-  }
-
-  const candidateBoardInspector = isRecord(candidate.sites.jira)
-    && isRecord(candidate.sites.jira.features)
-    ? candidate.sites.jira.features.boardInspector
-    : undefined;
-  if (!isRecord(candidateBoardInspector) && typeof legacyOverlayEnabled === 'boolean') {
-    defaults.sites.jira.features.boardInspector!.enabled = legacyOverlayEnabled;
   }
 
   return defaults;

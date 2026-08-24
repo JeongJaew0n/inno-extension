@@ -48,7 +48,6 @@ import {
   isJiraBoardRoute,
   parseJiraBoardUrl,
   parseJiraIssueUrl,
-  uniqueIssueKeys,
 } from '../src/sites/jira/routes';
 import {
   CURRENT_ISSUE_LINK,
@@ -194,18 +193,32 @@ test('부분 설정을 기본값과 병합하고 알 수 없는 값을 무시한
 
   assert.equal(settings.sites.jira.enabled, false);
   assert.equal(settings.sites.jira.features.issueLinkCopy?.enabled, false);
-  assert.deepEqual(settings.sites.jira.features.boardInspector?.options, {
-    supportedProjectKeys: ['NPT'],
-    supportedBoardIds: ['2146'],
-  });
+  assert.equal(
+    'boardInspector' in settings.sites.jira.features,
+    false,
+    '제거된 기능은 정규화 결과에 남지 않는다',
+  );
   assert.equal(settings.sites.amaranth.features.attendanceHeader?.enabled, true);
   assert.equal(settings.sites.confluence.features.pageMarkdownCopy?.enabled, true);
   assert.equal(settings.sites.confluence.features.pageMarkdownAppend?.enabled, false);
 });
 
-test('과거 overlayEnabled 설정을 boardInspector로 이관한다', () => {
-  const settings = normalizeSettings(undefined, true);
-  assert.equal(settings.sites.jira.features.boardInspector?.enabled, true);
+test('제거된 기능이 저장된 설정에 남아 있어도 무시하고 정규화한다', () => {
+  const settings = normalizeSettings({
+    schemaVersion: 1,
+    sites: {
+      jira: {
+        enabled: true,
+        features: {
+          issueLinkCopy: { enabled: true, options: {} },
+          boardInspector: { enabled: true, options: { supportedBoardIds: ['2146'] } },
+        },
+      },
+    },
+  });
+
+  assert.equal('boardInspector' in settings.sites.jira.features, false);
+  assert.equal(settings.sites.jira.features.issueLinkCopy?.enabled, true);
 });
 
 test('아마란스 신청서 제목 자동채움은 대상 화면과 입력 길이를 제한한다', () => {
@@ -317,13 +330,9 @@ test('Jira board URL과 selectedIssue를 파싱한다', () => {
   assert.equal(parseJiraBoardUrl('https://example.com/jira/software/c/projects/NPT/boards/2146'), null);
 });
 
-test('Jira issue 링크 추출과 정렬을 유지한다', () => {
+test('Jira issue 링크에서 업무 번호를 추출한다', () => {
   assert.equal(extractIssueKeyFromHref('/browse/NPT-25'), 'NPT-25');
   assert.equal(extractIssueKeyFromHref('https://example.com/browse/NPT-25'), null);
-  assert.deepEqual(
-    uniqueIssueKeys(['/browse/NPT-25', '/browse/NPT-2', '/browse/NPT-25', '/browse/NPT-8']),
-    ['NPT-2', 'NPT-8', 'NPT-25'],
-  );
 });
 
 test('Jira 직접 업무 조회 URL을 파싱한다', () => {

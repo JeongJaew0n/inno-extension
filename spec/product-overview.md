@@ -37,7 +37,6 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 | 아마란스 | 헤더 출퇴근 버튼 | ON | 원본 출퇴근 버튼을 헤더 가까이에 제공하고 현재 시각의 출근 인사말을 복사 |
 | 아마란스 | 신청서 제목 자동채움 | ON | 근태신청서의 제목을 Popup에 저장한 문구로 입력 |
 | Jira | 업무 링크 복사 | ON | Jira 보드 선택 업무와 직접 업무 조회 화면에서 링크 또는 링크+제목 복사 |
-| Jira | NPT 보드 정보 패널 | OFF | 설정된 프로젝트·보드의 현재 화면 정보를 보조 패널로 표시 |
 | Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
 | Confluence | Markdown -> ADF 변환 | OFF | Popup 변환, `edit-v2` 코드블럭 -> ADF 변환 |
 
@@ -162,6 +161,7 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - 2026-08-12: Confluence 편집기의 본문 전체 Markdown 변환 버튼을 제거하고, 코드블럭의 Markdown만 원위치 ADF 콘텐츠로 교체하는 `코드블럭 -> ADF`로 통합했다. Mermaid component가 참조하는 접힌 원본은 변환 대상에서 제외한다.
 - 2026-08-13: 아마란스 헤더 출근 버튼 아래에 현재 시각을 `n시 n분 출근입니다.` 형식으로 복사하는 `인사말 복사` 버튼을 추가했다.
 - 2026-08-14: 프로젝트 릴리즈를 재현 가능한 절차로 관리하기 위해 `$extension-release` Skill과 Semantic Versioning 정책을 추가했다. `0.x.x` 버전 결정, 패키징 검증, annotated tag, GitHub Release 발행, 공개 버전 불변 원칙을 릴리즈 계약으로 확정했다.
+- 2026-08-24: `NPT 보드 정보 패널` 기능을 제거했다. 기본 비활성 상태로 유지되던 보조 정보 표시 기능이며, 실사용 근거가 없어 catalog, 기본 설정, Popup 옵션, 전용 selector와 함께 삭제했다. 저장된 설정에 남은 값은 정규화 과정에서 무시된다. 이 기능만을 위해 존재하던 `overlayEnabled` 레거시 설정 이관도 함께 제거했다.
 
 ## 관련 문서
 
