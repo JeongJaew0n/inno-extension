@@ -15,6 +15,8 @@ Inno Extension의 재현 가능하고 검증된 릴리즈를 만든다. 상세 �
 - force push, 기존 태그 이동, 기존 Release 자산 덮어쓰기를 하지 않는다.
 - 테스트, 빌드, ZIP 무결성, 업로드 중 하나라도 실패하면 공개 발행하지 않는다.
 - 사용자의 기존 작업을 삭제·되돌리거나 릴리즈와 무관한 변경을 포함하지 않는다.
+- GitHub 발행 경로와 인증 상태를 버전 변경보다 먼저 확인한다. 인증·브라우저 문제를 tag push 이후에 처음 발견하지 않는다.
+- 같은 실패를 반복하지 않는다. 동일한 인증, 파일 선택, 탭 포커스 오류가 두 번 발생하면 정해진 fallback 또는 재개 체크포인트로 이동한다.
 
 ## 1. 상태 확인
 
@@ -27,12 +29,15 @@ git tag --sort=-v:refname
 git log --oneline --decorate <latest-tag>..HEAD
 git diff --stat <latest-tag>..HEAD
 node -p "require('./package.json').version"
+gh auth status --hostname github.com
 ```
 
 - `package.json`, `package-lock.json`, `manifest.json`의 현재 버전을 확인한다.
 - 원격 `develop`과 로컬 `develop`을 비교한다. HTTPS 인증이 없으면 원격 설정을 바꾸지 말고 SSH URL `git@github.com:JeongJaew0n/inno-extension.git`을 사용한다.
 - 작업 트리가 더러우면 변경 내용을 검토해 이번 릴리즈에 포함하라는 사용자 의도가 명확한 파일만 다룬다.
 - 최신 태그 이후 변경 중 가장 영향도가 큰 항목으로 버전을 결정한다.
+- `gh`가 GitHub.com에 인증되어 있는지 확인하고, 인증되지 않았다면 로그인된 Chrome과 Computer Use 사용 가능 여부를 미리 확인한다.
+- `gh` 인증 실패는 엔터프라이즈 호스트 상태와 섞지 않는다. 반드시 `--hostname github.com`으로 확인한다.
 
 ## 2. 버전 결정
 
@@ -107,6 +112,8 @@ git push git@github.com:JeongJaew0n/inno-extension.git v<version>
 
 ## 6. GitHub Release 발행
 
+`gh` 인증이 없거나 브라우저 발행이 필요하면 작업을 시작하기 전에 [references/release-publish-recovery.md](references/release-publish-recovery.md)를 끝까지 읽는다.
+
 제목은 `Inno Extension v<version>`으로 한다. 본문은 다음 구조를 사용한다.
 
 ```markdown
@@ -126,13 +133,29 @@ git push git@github.com:JeongJaew0n/inno-extension.git v<version>
 SHA-256: `<sha256>`
 ```
 
-1. 인증된 `gh`가 있으면 CLI를 우선 사용한다.
-2. CLI 인증이 없고 사용자의 로그인된 Chrome 세션이 있으면 GitHub Release 화면을 사용한다.
-3. ZIP 업로드는 완료 상태와 파일명·크기를 확인한 뒤에만 `Publish release`를 실행한다.
-4. Chrome 자동화에서 `fileChooser.setFiles`가 `Not allowed`로 실패하면 Computer Use로 macOS 파일 선택창을 연다. `Cmd+Shift+G`로 ZIP 절대 경로를 입력하고 선택한다.
-5. 공개 URL `https://github.com/JeongJaew0n/inno-extension/releases/tag/v<version>`과 실제 ZIP 다운로드 링크를 확인한다.
+1. `gh auth status --hostname github.com`이 성공하면 CLI를 우선 사용한다.
+2. `gh` 인증이 없으면 로그인된 Chrome을 사용하되, 파일 업로드가 필요한 전체 Release form은 한 가지 UI surface가 소유하게 한다.
+3. 현재 Chrome backend에서 `fileChooser.setFiles`가 이미 `Not allowed`로 확인됐다면 같은 호출을 반복하지 않고 처음부터 Computer Use 경로를 사용한다.
+4. Browser로 form을 이미 작성했다면 Computer Use로 즉시 이어 붙이지 않는다. 먼저 draft로 저장해 안정적인 URL을 만든 뒤 전환하거나, Computer Use의 새 탭에서 form 전체를 다시 작성한다.
+5. Computer Use에서는 매 변경 전에 최신 `get_app_state({ disableDiff: true })`를 읽고 한 번의 변경만 수행한다. 변경 뒤에는 다시 state를 읽으며 이전 element index를 재사용하지 않는다.
+6. Chrome 선택 탭이 바뀌거나 `The user changed ...`가 두 번 반복되면 자동 재시도를 중단하고 사용자가 Chrome 조작을 잠시 멈출 때까지 기다린다.
+7. ZIP 업로드 완료 상태, 파일명 `inno-extension-<version>.zip`, 파일 크기를 확인한 뒤에만 `Publish release`를 실행한다.
+8. 공개 URL `https://github.com/JeongJaew0n/inno-extension/releases/tag/v<version>`과 실제 ZIP 다운로드 링크를 확인한다.
 
 브라우저 도구를 사용하면 해당 도구 스킬의 탭 정리·finalize 계약을 따른다.
+
+### 발행 중단 체크포인트
+
+commit과 tag push는 끝났지만 GitHub Release가 발행되지 않았다면 새 버전을 만들거나 tag를 다시 만들지 않는다. 상태를 `tag-pushed-release-unpublished`로 보고하고 다음 값들을 남긴다.
+
+- version, commit, annotated tag
+- 원격 `develop`과 tag target
+- ZIP 절대 경로, 크기, SHA-256
+- 준비한 Release 제목과 본문
+- 실패한 발행 surface와 정확한 오류
+- 재개 URL 또는 draft URL
+
+재개 시 같은 tag와 같은 ZIP을 사용해 Release 발행 단계만 계속한다.
 
 ## 7. 완료 검증과 보고
 
