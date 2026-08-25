@@ -30,7 +30,7 @@ Inno Extension은 여러 업무 사이트의 편의 기능을 하나의 확장 �
 5. **압축해제된 확장 프로그램을 로드합니다**를 누르고 압축 해제한 폴더를 선택한다.
 6. 기존에 열려 있던 아마란스·Jira·Confluence 탭을 새로고침한다.
 
-현재 배포 버전은 [v0.4.0](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.4.0)이며, 배포 ZIP은 릴리즈 페이지에서 받을 수 있다.
+현재 배포 버전은 [v0.4.1](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.4.1)이며, 배포 ZIP은 릴리즈 페이지에서 받을 수 있다.
 
 ### 소스에서 설치
 
@@ -221,4 +221,4 @@ src/
 3. 변경 사항을 커밋하고 버전 태그를 푸시한다.
 4. GitHub Release에 `release/inno-extension-<version>.zip`과 변경 내역을 게시한다.
 
-현재 릴리즈: [Inno Extension v0.4.0](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.4.0)
+현재 릴리즈: [Inno Extension v0.4.1](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.4.1)
