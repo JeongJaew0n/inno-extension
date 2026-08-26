@@ -1,4 +1,4 @@
-export const SITE_IDS = ['amaranth', 'jira', 'confluence', 'githubEnterprise'] as const;
+export const SITE_IDS = ['amaranth', 'jira', 'confluence', 'githubEnterprise', 'gitlab'] as const;
 export type SiteId = (typeof SITE_IDS)[number];
 
 export const FEATURE_IDS = [
@@ -9,6 +9,7 @@ export const FEATURE_IDS = [
   'pageMarkdownCopy',
   'pageMarkdownAppend',
   'pullRequestTitleCopy',
+  'commitShaCopy',
 ] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 

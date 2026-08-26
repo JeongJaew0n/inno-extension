@@ -41,6 +41,15 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
           },
         },
       },
+      gitlab: {
+        enabled: true,
+        features: {
+          commitShaCopy: {
+            enabled: true,
+            options: {},
+          },
+        },
+      },
       confluence: {
         enabled: true,
         features: {

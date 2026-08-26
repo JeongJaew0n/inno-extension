@@ -40,6 +40,7 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 | Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
 | Confluence | Markdown -> ADF 변환 | OFF | Popup 변환, `edit-v2` 코드블럭 -> ADF 변환 |
 | GitHub Enterprise | PR 제목 링크 복사 | ON | 저장소 PR 목록과 PR 상세에서 제목을 Markdown 링크로 복사 |
+| GitLab | 커밋 번호 복사 | ON | Merge Request 개요 탭의 커밋 목록에서 전체 SHA를 복사 |
 
 기능별 상세 계약은 `spec/features/` 문서에서 관리한다.
 
@@ -165,6 +166,7 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - 2026-08-24: `NPT 보드 정보 패널` 기능을 제거했다. 기본 비활성 상태로 유지되던 보조 정보 표시 기능이며, 실사용 근거가 없어 catalog, 기본 설정, Popup 옵션, 전용 selector와 함께 삭제했다. 저장된 설정에 남은 값은 정규화 과정에서 무시된다. 이 기능만을 위해 존재하던 `overlayEnabled` 레거시 설정 이관도 함께 제거했다.
 - 2026-08-25: GitHub Enterprise(`github.nhnent.com`)를 네 번째 지원 사이트로 추가하고 `PR 제목 링크 복사` 기능을 도입했다. 저장소 PR 목록과 PR 상세에서 제목을 `[제목](URL)` Markdown 링크로 복사한다. 전역 PR 대시보드 `/pulls`는 DOM 구조가 같지만 적용 범위에서 제외했다.
 - 2026-08-26: 아마란스 인사말 복사의 시각 기준을 클릭 순간의 브라우저 시간에서 근무시간 위젯에 기록된 오늘 출근 시각으로 바꿨다. 출근 처리와 복사 사이의 시간차로 실제 근태와 다른 문구가 만들어지던 문제를 없앴다.
+- 2026-08-26: GitLab(`rnd-app.innogrid.com`)을 다섯 번째 지원 사이트로 추가하고 `커밋 번호 복사` 기능을 도입했다. Merge Request 개요 탭의 `added N commits` 목록에서 커밋 번호 오른쪽 버튼으로 40자 전체 SHA를 복사한다. 같은 클래스가 사용자 댓글의 커밋 참조에도 쓰이므로 시스템 노트로 범위를 한정했다.
 
 ## 관련 문서
 
