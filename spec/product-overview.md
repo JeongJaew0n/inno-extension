@@ -39,6 +39,7 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 | Jira | 업무 링크 복사 | ON | Jira 보드 선택 업무와 직접 업무 조회 화면에서 링크 또는 링크+제목 복사 |
 | Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
 | Confluence | Markdown -> ADF 변환 | OFF | Popup 변환, `edit-v2` 코드블럭 -> ADF 변환 |
+| GitHub Enterprise | PR 제목 링크 복사 | ON | 저장소 PR 목록과 PR 상세에서 제목을 Markdown 링크로 복사 |
 
 기능별 상세 계약은 `spec/features/` 문서에서 관리한다.
 
@@ -173,4 +174,5 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - [멀티 사이트 통합 계획](../docs/plans/inno-extension-multi-site/spec.md)
 - [아마란스 출퇴근 기능 계획](../docs/plans/gw-checkin-header-buttons/spec.md)
 - [Jira 보드 분석](../docs/jira-board-2146-chrome-extension-analysis.md)
+- 2026-08-25: GitHub Enterprise(`github.nhnent.com`)를 네 번째 지원 사이트로 추가하고 `PR 제목 링크 복사` 기능을 도입했다. 저장소 PR 목록과 PR 상세에서 제목을 `[제목](URL)` Markdown 링크로 복사한다. 전역 PR 대시보드 `/pulls`는 DOM 구조가 같지만 적용 범위에서 제외했다.
 - 2026-08-26: 아마란스 인사말 복사의 시각 기준을 클릭 순간의 브라우저 시간에서 근무시간 위젯에 기록된 오늘 출근 시각으로 바꿨다. 출근 처리와 복사 사이의 시간차로 실제 근태와 다른 문구가 만들어지던 문제를 없앴다.

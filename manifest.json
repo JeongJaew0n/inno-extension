@@ -36,6 +36,11 @@
       "run_at": "document_idle"
     },
     {
+      "matches": ["https://github.nhnent.com/*"],
+      "js": ["src/sites/githubEnterprise/content.ts"],
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["https://pms-innogrid.atlassian.net/wiki/*"],
       "js": ["src/sites/confluence/main.ts"],
       "run_at": "document_start",
