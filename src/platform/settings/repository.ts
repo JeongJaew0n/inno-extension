@@ -5,15 +5,21 @@ import type { ExtensionSettingsV1 } from './types';
 
 export const SETTINGS_STORAGE_KEY = 'extensionSettings';
 
+/**
+ * 저장된 설정을 읽어 정규화한다.
+ *
+ * 정규화 결과를 다시 저장하지 않는다. 이 함수는 매 reconcile마다 호출되는데,
+ * 저장하면 `chrome.storage.onChanged`가 다시 reconcile을 부르는 순환이 생긴다.
+ * 저장된 값이 정규화 결과와 계속 다르면(기능 추가·삭제 직후가 그렇다) 이 순환이
+ * 멈추지 않아 `MAX_WRITE_OPERATIONS_PER_HOUR` 할당량을 소진하고, 그 뒤에는 모든
+ * 쓰기가 실패해 설정을 아예 읽지 못하는 상태로 굳는다.
+ *
+ * 정규화는 결정적이므로 저장하지 않아도 동작에 차이가 없다. 저장소에 남은 옛 키는
+ * 읽을 때마다 무시되고, 사용자가 설정을 바꾸는 순간 `saveSettings()`가 정리한다.
+ */
 export async function getSettings(): Promise<ExtensionSettingsV1> {
   const stored = await chrome.storage.sync.get(SETTINGS_STORAGE_KEY);
-  const settings = normalizeSettings(stored[SETTINGS_STORAGE_KEY]);
-
-  if (JSON.stringify(stored[SETTINGS_STORAGE_KEY]) !== JSON.stringify(settings)) {
-    await chrome.storage.sync.set({ [SETTINGS_STORAGE_KEY]: settings });
-  }
-
-  return settings;
+  return normalizeSettings(stored[SETTINGS_STORAGE_KEY]);
 }
 
 export async function saveSettings(settings: ExtensionSettingsV1): Promise<void> {
