@@ -61,7 +61,13 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
 
     reconciling = true;
     try {
-      settings = await getSettings();
+      try {
+        settings = await getSettings();
+      } catch (error) {
+        // 저장소 오류로 설정을 읽지 못해도 이미 붙은 기능을 통째로 잃지 않는다.
+        console.error(`[Inno Extension] ${options.siteId} 설정을 읽지 못했습니다`, error);
+        if (!settings) return;
+      }
       options.onSettingsLoaded?.(settings);
       const siteSettings = settings.sites[options.siteId];
       lastReconciledUrl = window.location.href;

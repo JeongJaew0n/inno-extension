@@ -4,6 +4,7 @@ import test from 'node:test';
 import { findFeatureDescriptor, SITES } from '../src/catalog/sites';
 import { createUpdateScheduler } from '../src/platform/runtime/updateScheduler';
 import { createDefaultSettings } from '../src/platform/settings/defaults';
+import { getSettings, saveSettings } from '../src/platform/settings/repository';
 import { isFeatureEffectivelyEnabled, normalizeSettings } from '../src/platform/settings/schema';
 import {
   isTitleAutofillRoute,
@@ -871,4 +872,77 @@ test('변환 실패 원인 요약은 각 실패 분기를 서로 다른 문구�
   for (const [message, expected] of cases) {
     assert.equal(summarizeConversionFailure(message), expected, message);
   }
+});
+
+interface FakeStorageLog {
+  gets: number;
+  sets: number;
+}
+
+/** chrome.storage.sync의 최소 동작만 흉내낸다. */
+function installFakeChromeStorage(initial: unknown): FakeStorageLog {
+  const log: FakeStorageLog = { gets: 0, sets: 0 };
+  let store: Record<string, unknown> = initial === undefined
+    ? {}
+    : { extensionSettings: initial };
+
+  (globalThis as unknown as { chrome: unknown }).chrome = {
+    storage: {
+      sync: {
+        async get(key: string) {
+          log.gets += 1;
+          return key in store ? { [key]: store[key] } : {};
+        },
+        async set(items: Record<string, unknown>) {
+          log.sets += 1;
+          store = { ...store, ...items };
+        },
+      },
+    },
+  };
+
+  return log;
+}
+
+test('설정 읽기는 저장소에 쓰지 않는다', async () => {
+  // 저장된 값에 제거된 기능이 남아 있어 정규화 결과와 다른 상황.
+  // 여기서 쓰기가 발생하면 storage.onChanged -> reconcile -> 다시 쓰기 순환이 생겨
+  // MAX_WRITE_OPERATIONS_PER_HOUR 할당량을 소진한다.
+  const log = installFakeChromeStorage({
+    schemaVersion: 1,
+    sites: {
+      jira: {
+        enabled: true,
+        features: {
+          issueLinkCopy: { enabled: false, options: {} },
+          boardInspector: { enabled: true, options: {} },
+        },
+      },
+    },
+  });
+
+  const first = await getSettings();
+  const second = await getSettings();
+  const third = await getSettings();
+
+  assert.equal(log.sets, 0, '읽기만으로는 저장하지 않는다');
+  assert.equal(log.gets, 3);
+  assert.equal(first.sites.jira.features.issueLinkCopy?.enabled, false, '저장된 값을 반영한다');
+  assert.equal('boardInspector' in second.sites.jira.features, false, '제거된 기능은 무시한다');
+  assert.deepEqual(third, first, '정규화 결과는 결정적이다');
+});
+
+test('설정 읽기는 저장된 값이 없어도 기본값을 돌려준다', async () => {
+  const log = installFakeChromeStorage(undefined);
+  const settings = await getSettings();
+
+  assert.equal(log.sets, 0);
+  assert.deepEqual(settings, createDefaultSettings());
+});
+
+test('설정 저장은 명시적으로 요청할 때만 쓴다', async () => {
+  const log = installFakeChromeStorage(undefined);
+  await saveSettings(createDefaultSettings());
+
+  assert.equal(log.sets, 1);
 });
