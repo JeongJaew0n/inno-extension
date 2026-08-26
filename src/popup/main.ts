@@ -44,6 +44,7 @@ const SITE_ICON_URLS: Record<SiteId, string> = {
   jira: new URL('./assets/jira-favicon.png', import.meta.url).href,
   confluence: new URL('./assets/confluence-favicon.png', import.meta.url).href,
   githubEnterprise: new URL('./assets/github-enterprise-favicon.png', import.meta.url).href,
+  gitlab: new URL('./assets/gitlab-favicon.png', import.meta.url).href,
 };
 
 function escapeHtml(value: string): string {

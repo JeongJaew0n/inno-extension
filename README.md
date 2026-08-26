@@ -49,6 +49,7 @@ npm run build
 | Jira | 업무 링크 복사 | 없음 | `pms-innogrid.atlassian.net`의 Jira 화면 |
 | Confluence | 본문 Markdown 복사 | Markdown → ADF 변환 | `pms-innogrid.atlassian.net/wiki` |
 | GitHub Enterprise | PR 제목 링크 복사 | 없음 | `github.nhnent.com` |
+| GitLab | 커밋 번호 복사 | 없음 | `rnd-app.innogrid.com` |
 
 ### 아마란스
 
@@ -178,7 +179,8 @@ src/
     ├── amaranth/     출퇴근, 제목 자동채움, 통합알림
     ├── jira/         업무 링크 복사
     ├── confluence/   본문 Markdown 복사, ADF 변환
-    └── githubEnterprise/  PR 제목 링크 복사
+    ├── githubEnterprise/  PR 제목 링크 복사
+    └── gitlab/       커밋 번호 복사
 ```
 
 사이트별 runtime은 하나의 `MutationObserver`로 활성 기능의 `reconcile()`을 호출한다. 서비스나 기능이 꺼지면 각 기능의 `dispose()`가 자신이 만든 DOM, style, timer, listener를 정리한다.

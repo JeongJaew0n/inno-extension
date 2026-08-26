@@ -42,6 +42,11 @@ import {
   CONFLUENCE_MERMAID_EXTENSION_KEY,
   isMermaidCodeBlockSource,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
+import { resolveCopyTargets } from '../src/sites/gitlab/features/commitShaCopy/runtime';
+import {
+  normalizeCommitSha,
+  parseMergeRequestOverviewUrl,
+} from '../src/sites/gitlab/routes';
 import { buildPullRequestClipboardContent } from '../src/sites/githubEnterprise/features/pullRequestTitleCopy/clipboard';
 import {
   buildPullRequestUrl,
@@ -1116,4 +1121,122 @@ test('설정 저장은 명시적으로 요청할 때만 쓴다', async () => {
   await saveSettings(createDefaultSettings());
 
   assert.equal(log.sets, 1);
+});
+
+test('GitLab MR 개요 route는 중첩 namespace 깊이를 제한하지 않는다', () => {
+  // 실측 대상은 3단이다. 중첩 그룹 때문에 깊이가 가변이므로 세그먼트 수를 고정하면 안 된다.
+  assert.deepEqual(
+    parseMergeRequestOverviewUrl('https://rnd-app.innogrid.com/group/sub/repo/-/merge_requests/1'),
+    { namespacePath: 'group/sub/repo', mergeRequestIid: '1' },
+  );
+  assert.deepEqual(
+    parseMergeRequestOverviewUrl('https://rnd-app.innogrid.com/group/repo/-/merge_requests/42'),
+    { namespacePath: 'group/repo', mergeRequestIid: '42' },
+  );
+  assert.deepEqual(
+    parseMergeRequestOverviewUrl('https://rnd-app.innogrid.com/a/b/c/d/-/merge_requests/7'),
+    { namespacePath: 'a/b/c/d', mergeRequestIid: '7' },
+  );
+  // 끝 슬래시 허용
+  assert.equal(
+    parseMergeRequestOverviewUrl('https://rnd-app.innogrid.com/group/repo/-/merge_requests/1/')?.mergeRequestIid,
+    '1',
+  );
+});
+
+test('GitLab MR 개요 route는 개요 탭 외의 화면을 제외한다', () => {
+  const base = 'https://rnd-app.innogrid.com/group/repo/-/merge_requests/1';
+  for (const tab of ['/commits', '/diffs', '/pipelines', '/reports']) {
+    assert.equal(parseMergeRequestOverviewUrl(base + tab), null, `${tab}는 대상이 아니다`);
+  }
+  assert.equal(parseMergeRequestOverviewUrl('https://rnd-app.innogrid.com/group/repo/-/merge_requests'), null);
+  assert.equal(parseMergeRequestOverviewUrl('https://rnd-app.innogrid.com/group/repo/-/issues/1'), null);
+  assert.equal(parseMergeRequestOverviewUrl('https://rnd-app.innogrid.com/group/repo/-/merge_requests/abc'), null);
+  // 다른 호스트는 대상이 아니다.
+  assert.equal(parseMergeRequestOverviewUrl('https://gitlab.com/group/repo/-/merge_requests/1'), null);
+});
+
+test('GitLab 커밋 번호는 40자 전체 SHA만 사용한다', () => {
+  const full = 'a'.repeat(40);
+  assert.equal(normalizeCommitSha(full), full);
+  assert.equal(normalizeCommitSha('  ' + full.toUpperCase() + '  '), full, '대소문자와 공백을 정규화한다');
+  assert.equal(normalizeCommitSha('7b2946c5'), null, '화면에 보이는 8자 단축 SHA는 복사 대상이 아니다');
+  assert.equal(normalizeCommitSha('a'.repeat(39)), null);
+  assert.equal(normalizeCommitSha('a'.repeat(41)), null);
+  assert.equal(normalizeCommitSha('g'.repeat(40)), null, '16진수가 아니면 거부한다');
+  assert.equal(normalizeCommitSha(''), null);
+  assert.equal(normalizeCommitSha(null), null);
+  assert.equal(normalizeCommitSha(undefined), null);
+});
+
+/**
+ * GitLab 개요 탭을 흉내낸다.
+ * 커밋 참조 링크는 시스템 노트와 사용자 댓글 양쪽에 같은 클래스로 존재한다.
+ */
+function createFakeGitlabDocument(options: {
+  systemNoteShas: string[];
+  commentShas: string[];
+}): Document {
+  const makeAnchor = (sha: string) => ({
+    getAttribute(name: string) {
+      return name === 'data-commit' ? sha : null;
+    },
+  });
+
+  const systemNotes = [{
+    querySelectorAll(selector: string) {
+      return selector === 'a.gfm.gfm-commit'
+        ? options.systemNoteShas.map(makeAnchor)
+        : [];
+    },
+  }];
+
+  return {
+    querySelectorAll(selector: string) {
+      if (selector === '.system-note') return systemNotes;
+      // 댓글 링크는 문서 전체 조회로만 잡히고 시스템 노트 조회에는 걸리지 않는다.
+      if (selector === 'a.gfm.gfm-commit') {
+        return [...options.systemNoteShas, ...options.commentShas].map(makeAnchor);
+      }
+      return [];
+    },
+  } as unknown as Document;
+}
+
+test('GitLab 커밋 복사 대상은 시스템 노트로 한정하고 댓글은 제외한다', () => {
+  // 실측: 개요 탭 커밋 참조 12개 중 6개가 댓글 안이었다.
+  const systemNoteShas = ['a'.repeat(40), 'b'.repeat(40)];
+  const commentShas = ['c'.repeat(40), 'd'.repeat(40)];
+  const context = {
+    url: new URL('https://rnd-app.innogrid.com/group/sub/repo/-/merge_requests/1'),
+    document: createFakeGitlabDocument({ systemNoteShas, commentShas }),
+  };
+
+  const targets = resolveCopyTargets(context);
+
+  assert.deepEqual(targets.map((t) => t.sha), systemNoteShas);
+  assert.equal(targets.length, 2, '댓글 커밋 참조는 대상이 아니다');
+});
+
+test('GitLab 커밋 복사 대상은 개요 탭이 아니면 비어 있다', () => {
+  const document = createFakeGitlabDocument({ systemNoteShas: ['a'.repeat(40)], commentShas: [] });
+
+  for (const url of [
+    'https://rnd-app.innogrid.com/group/repo/-/merge_requests/1/commits',
+    'https://rnd-app.innogrid.com/group/repo/-/issues/1',
+  ]) {
+    assert.deepEqual(resolveCopyTargets({ url: new URL(url), document }), [], url);
+  }
+});
+
+test('GitLab 커밋 복사 대상은 전체 SHA가 아닌 항목을 건너뛴다', () => {
+  const context = {
+    url: new URL('https://rnd-app.innogrid.com/group/repo/-/merge_requests/1'),
+    document: createFakeGitlabDocument({
+      systemNoteShas: ['a'.repeat(40), '7b2946c5', '', 'b'.repeat(40)],
+      commentShas: [],
+    }),
+  };
+
+  assert.deepEqual(resolveCopyTargets(context).map((t) => t.sha), ['a'.repeat(40), 'b'.repeat(40)]);
 });

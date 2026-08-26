@@ -101,6 +101,24 @@ export const SITES = [
       },
     ],
   },
+  {
+    id: 'gitlab',
+    name: 'GitLab',
+    hostLabel: 'rnd-app.innogrid.com',
+    origin: 'https://rnd-app.innogrid.com',
+    contentMatches: ['https://rnd-app.innogrid.com/*'],
+    color: '#fc6d26',
+    features: [
+      {
+        id: 'commitShaCopy',
+        name: '커밋 번호 복사',
+        description: 'Merge Request 개요 화면의 커밋 번호를 전체 SHA로 복사합니다.',
+        routeSummary: 'Merge Request 개요 탭의 커밋 목록',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
+    ],
+  },
 ] as const satisfies readonly SiteDescriptor[];
 
 export function findSiteDescriptor(siteId: SiteId): SiteDescriptor {
