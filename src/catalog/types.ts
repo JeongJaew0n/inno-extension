@@ -10,6 +10,7 @@ export const FEATURE_IDS = [
   'pageMarkdownAppend',
   'pullRequestTitleCopy',
   'commitShaCopy',
+  'githubCommitShaCopy',
 ] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 

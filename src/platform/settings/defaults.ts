@@ -39,6 +39,10 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
             enabled: true,
             options: {},
           },
+          githubCommitShaCopy: {
+            enabled: true,
+            options: {},
+          },
         },
       },
       gitlab: {

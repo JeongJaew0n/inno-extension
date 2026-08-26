@@ -99,6 +99,14 @@ export const SITES = [
         defaultEnabled: true,
         hasDetails: true,
       },
+      {
+        id: 'githubCommitShaCopy',
+        name: '커밋 번호 복사',
+        description: 'PR Conversation 탭의 커밋 번호를 전체 SHA로 복사합니다.',
+        routeSummary: 'PR Conversation 탭의 타임라인 커밋 행',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
     ],
   },
   {
