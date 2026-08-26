@@ -11,6 +11,10 @@ import {
   normalizeTitleAutofillText,
   TITLE_AUTOFILL_MAX_LENGTH,
 } from '../src/sites/amaranth/features/titleAutofill/contracts';
+import {
+  parseAttendanceTimeText,
+  readTodayCheckinTime,
+} from '../src/sites/amaranth/features/attendanceHeader/checkinTime';
 import { formatCheckinGreeting } from '../src/sites/amaranth/features/attendanceHeader/greeting';
 import {
   extractVerificationCode,
@@ -240,8 +244,9 @@ test('아마란스 신청서 제목 자동채움은 대상 화면과 입력 길�
 });
 
 test('아마란스 출근 인사말은 클릭 시각의 시와 분을 자연어로 만든다', () => {
-  assert.equal(formatCheckinGreeting(new Date(2026, 7, 13, 9, 5)), '9시 5분 출근입니다.');
-  assert.equal(formatCheckinGreeting(new Date(2026, 7, 13, 18, 0)), '18시 0분 출근입니다.');
+  assert.equal(formatCheckinGreeting({ hours: 9, minutes: 5 }), '9시 5분 출근입니다.');
+  assert.equal(formatCheckinGreeting({ hours: 18, minutes: 0 }), '18시 0분 출근입니다.');
+  assert.equal(formatCheckinGreeting({ hours: 8, minutes: 58 }), '8시 58분 출근입니다.');
 });
 
 test('아마란스 인증번호는 독립된 4~6자리 문자열만 추출한다', () => {
@@ -872,6 +877,107 @@ test('변환 실패 원인 요약은 각 실패 분기를 서로 다른 문구�
   for (const [message, expected] of cases) {
     assert.equal(summarizeConversionFailure(message), expected, message);
   }
+});
+
+test('아마란스 근태 시각 표기에서 확정 시각만 읽는다', () => {
+  assert.deepEqual(parseAttendanceTimeText('08:58'), { hours: 8, minutes: 58 });
+  assert.deepEqual(parseAttendanceTimeText(' 9:05 '), { hours: 9, minutes: 5 });
+  // 지난 날짜 행은 09:56(09:56) 형태로 표시된다. 앞쪽 확정 시각을 사용한다.
+  assert.deepEqual(parseAttendanceTimeText('09:56(09:56)'), { hours: 9, minutes: 56 });
+  assert.deepEqual(parseAttendanceTimeText('18:00(18:58)'), { hours: 18, minutes: 0 });
+  assert.deepEqual(parseAttendanceTimeText('23:59'), { hours: 23, minutes: 59 });
+
+  assert.equal(parseAttendanceTimeText('미등록'), null);
+  assert.equal(parseAttendanceTimeText(''), null);
+  assert.equal(parseAttendanceTimeText(null), null);
+  assert.equal(parseAttendanceTimeText(undefined), null);
+  assert.equal(parseAttendanceTimeText('24:00'), null, '24시는 유효한 시각이 아니다');
+  assert.equal(parseAttendanceTimeText('08:60'), null, '60분은 유효한 시각이 아니다');
+});
+
+interface FakeRow {
+  badge: string | null;
+  entries: Array<{ label: string; value: string }>;
+}
+
+/**
+ * 근무시간 위젯을 흉내낸다.
+ * readTodayCheckinTime()이 실제로 호출하는 조회만 구현한다.
+ */
+function createFakeWorkTimeDocument(rows: FakeRow[]): Document {
+  const dateElements = rows.map((row) => {
+    const entries = row.entries.map(({ label, value }) => ({
+      querySelector(selector: string) {
+        if (selector === 'dt') return { textContent: label };
+        if (selector === 'dd') return { textContent: value };
+        return null;
+      },
+    }));
+
+    const rowElement = {
+      querySelectorAll(selector: string) {
+        return selector === '.myWork-time dl' ? entries : [];
+      },
+    };
+
+    return {
+      parentElement: rowElement,
+      querySelector(selector: string) {
+        return selector === '.badge' && row.badge !== null ? { textContent: row.badge } : null;
+      },
+    };
+  });
+
+  const widget = {
+    querySelectorAll(selector: string) {
+      return selector === '.myWork-date' ? dateElements : [];
+    },
+  };
+
+  return {
+    querySelector(selector: string) {
+      return selector === '.myWorkTime' ? widget : null;
+    },
+  } as unknown as Document;
+}
+
+test('아마란스 출근 시각은 오늘 배지가 붙은 행에서만 읽는다', () => {
+  // 실측 구조: 오늘 행이 먼저, 지난 날짜 행이 뒤따른다.
+  const document = createFakeWorkTimeDocument([
+    { badge: '오늘', entries: [{ label: '출근', value: '08:58' }, { label: '퇴근', value: '미등록' }] },
+    { badge: null, entries: [{ label: '출근', value: '09:56(09:56)' }, { label: '퇴근', value: '18:00(18:58)' }] },
+  ]);
+  assert.deepEqual(readTodayCheckinTime(document), { hours: 8, minutes: 58 });
+});
+
+test('아마란스 출근 시각은 오늘 행이 없으면 지난 날짜로 대체하지 않는다', () => {
+  // 배지 없는 행만 있을 때 첫 행을 쓰면 어제 시각을 오늘로 복사하게 된다.
+  const document = createFakeWorkTimeDocument([
+    { badge: null, entries: [{ label: '출근', value: '09:56(09:56)' }] },
+  ]);
+  assert.equal(readTodayCheckinTime(document), null);
+});
+
+test('아마란스 출근 시각은 아직 출근 전이면 없음으로 판정한다', () => {
+  const document = createFakeWorkTimeDocument([
+    { badge: '오늘', entries: [{ label: '출근', value: '미등록' }, { label: '퇴근', value: '미등록' }] },
+  ]);
+  assert.equal(readTodayCheckinTime(document), null);
+});
+
+test('아마란스 출근 시각은 퇴근 값을 출근으로 잘못 읽지 않는다', () => {
+  const document = createFakeWorkTimeDocument([
+    { badge: '오늘', entries: [{ label: '퇴근', value: '18:00' }] },
+  ]);
+  assert.equal(readTodayCheckinTime(document), null);
+});
+
+test('아마란스 출근 시각은 위젯이 없으면 만들어내지 않는다', () => {
+  const emptyDocument = {
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  } as unknown as Document;
+  assert.equal(readTodayCheckinTime(emptyDocument), null);
 });
 
 interface FakeStorageLog {

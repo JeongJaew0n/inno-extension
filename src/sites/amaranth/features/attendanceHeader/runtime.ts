@@ -10,6 +10,7 @@ import {
   NOTI_DETAILS,
   type AttendanceKind,
 } from '../../selectors';
+import { readTodayCheckinTime } from './checkinTime';
 import { formatCheckinGreeting } from './greeting';
 import { ensureAttendanceStyles, removeAttendanceStyles } from './styles';
 
@@ -65,15 +66,30 @@ export function createAttendanceHeaderRuntime(): FeatureRuntime {
     button.type = 'button';
     button.className = 'inno-amaranth-attendance-greeting-copy';
     button.textContent = GREETING_COPY_LABEL;
-    button.setAttribute('aria-label', '현재 시각으로 출근 인사말 복사');
-    button.title = "현재 시각으로 'n시 n분 출근입니다.'를 복사합니다.";
+    button.setAttribute('aria-label', '기록된 출근 시각으로 인사말 복사');
+    button.title = "근무시간 위젯의 오늘 출근 시각으로 'n시 n분 출근입니다.'를 복사합니다.";
     button.addEventListener('click', async (event) => {
       event.preventDefault();
       event.stopPropagation();
       button.disabled = true;
 
+      // 기록된 출근 시각이 없으면 현재 시각으로 대체하지 않는다.
+      // 대체하면 실제 근태와 다른 문구를 사용자가 눈치채지 못한 채 공유하게 된다.
+      const checkinTime = readTodayCheckinTime(document);
+      if (!checkinTime) {
+        button.textContent = '출근 기록 없음';
+        button.dataset.state = 'error';
+        document.defaultView?.setTimeout(() => {
+          if (!button.isConnected) return;
+          button.textContent = GREETING_COPY_LABEL;
+          delete button.dataset.state;
+          button.disabled = false;
+        }, GREETING_FEEDBACK_DURATION_MS);
+        return;
+      }
+
       try {
-        await writePlainText(formatCheckinGreeting(new Date()));
+        await writePlainText(formatCheckinGreeting(checkinTime));
         button.textContent = '복사됨';
         button.dataset.state = 'success';
       } catch (error) {
