@@ -32,6 +32,15 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
           },
         },
       },
+      githubEnterprise: {
+        enabled: true,
+        features: {
+          pullRequestTitleCopy: {
+            enabled: true,
+            options: {},
+          },
+        },
+      },
       confluence: {
         enabled: true,
         features: {

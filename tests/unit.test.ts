@@ -42,6 +42,11 @@ import {
   CONFLUENCE_MERMAID_EXTENSION_KEY,
   isMermaidCodeBlockSource,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
+import { buildPullRequestClipboardContent } from '../src/sites/githubEnterprise/features/pullRequestTitleCopy/clipboard';
+import {
+  buildPullRequestUrl,
+  parseGithubEnterpriseRoute,
+} from '../src/sites/githubEnterprise/routes';
 import { buildIssueClipboardContent } from '../src/sites/jira/features/issueLinkCopy/clipboard';
 import type { IssueViewTarget } from '../src/sites/jira/features/issueLinkCopy/runtime';
 import {
@@ -877,6 +882,66 @@ test('변환 실패 원인 요약은 각 실패 분기를 서로 다른 문구�
   for (const [message, expected] of cases) {
     assert.equal(summarizeConversionFailure(message), expected, message);
   }
+});
+
+test('GitHub Enterprise route는 저장소 PR 목록과 PR 상세만 지원한다', () => {
+  assert.deepEqual(
+    parseGithubEnterpriseRoute('https://github.nhnent.com/inje/some-repo/pulls'),
+    { kind: 'list', owner: 'inje', repo: 'some-repo' },
+  );
+  assert.deepEqual(
+    parseGithubEnterpriseRoute('https://github.nhnent.com/inje/some-repo/pull/292'),
+    { kind: 'detail', owner: 'inje', repo: 'some-repo', pullNumber: '292' },
+  );
+  // 상세 하위 탭(files, commits)도 같은 PR로 취급한다.
+  assert.equal(
+    parseGithubEnterpriseRoute('https://github.nhnent.com/inje/some-repo/pull/292/files')?.kind,
+    'detail',
+  );
+
+  // 전역 대시보드는 DOM 구조가 같아도 적용 범위 밖이다.
+  assert.equal(parseGithubEnterpriseRoute('https://github.nhnent.com/pulls'), null);
+  assert.equal(parseGithubEnterpriseRoute('https://github.nhnent.com/inje/some-repo'), null);
+  assert.equal(parseGithubEnterpriseRoute('https://github.nhnent.com/inje/some-repo/issues'), null);
+  assert.equal(parseGithubEnterpriseRoute('https://github.com/inje/some-repo/pulls'), null);
+});
+
+test('GitHub Enterprise PR URL은 쿼리와 fragment를 제거해 정규화한다', () => {
+  assert.equal(
+    buildPullRequestUrl('/inje/some-repo/pull/292'),
+    'https://github.nhnent.com/inje/some-repo/pull/292',
+  );
+  assert.equal(
+    buildPullRequestUrl('/inje/some-repo/pull/292/files?diff=split#r12345'),
+    'https://github.nhnent.com/inje/some-repo/pull/292',
+  );
+  assert.equal(buildPullRequestUrl('/inje/some-repo/issues/292'), null);
+  assert.equal(buildPullRequestUrl('https://github.com/inje/some-repo/pull/292'), null);
+  assert.equal(buildPullRequestUrl(null), null);
+});
+
+test('GitHub Enterprise PR 제목은 Markdown 링크로 복사한다', () => {
+  const content = buildPullRequestClipboardContent(
+    'https://github.nhnent.com/inje/some-repo/pull/292',
+    '  기능   추가 ',
+  );
+  assert.equal(content?.markdown, '[기능 추가](https://github.nhnent.com/inje/some-repo/pull/292)');
+  assert.equal(content?.pullRequestUrl, 'https://github.nhnent.com/inje/some-repo/pull/292');
+
+  assert.equal(buildPullRequestClipboardContent('https://github.nhnent.com/a/b/pull/1', null), null);
+  assert.equal(buildPullRequestClipboardContent('https://github.nhnent.com/a/b/pull/1', '   '), null);
+});
+
+test('GitHub Enterprise PR 제목의 Markdown 구조 문자를 이스케이프한다', () => {
+  // GitHub PR 제목에는 [CloudStation] 같은 대괄호 접두사가 흔하다.
+  assert.equal(
+    buildPullRequestClipboardContent('https://github.nhnent.com/a/b/pull/1', '[CloudStation] 관리 기능')?.markdown,
+    '[\\[CloudStation\\] 관리 기능](https://github.nhnent.com/a/b/pull/1)',
+  );
+  assert.equal(
+    buildPullRequestClipboardContent('https://github.nhnent.com/a/b/pull/1', 'back\\slash')?.markdown,
+    '[back\\\\slash](https://github.nhnent.com/a/b/pull/1)',
+  );
 });
 
 test('아마란스 근태 시각 표기에서 확정 시각만 읽는다', () => {

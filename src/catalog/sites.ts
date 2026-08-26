@@ -83,6 +83,24 @@ export const SITES = [
       },
     ],
   },
+  {
+    id: 'githubEnterprise',
+    name: 'GitHub Enterprise',
+    hostLabel: 'github.nhnent.com',
+    origin: 'https://github.nhnent.com',
+    contentMatches: ['https://github.nhnent.com/*'],
+    color: '#1f2328',
+    features: [
+      {
+        id: 'pullRequestTitleCopy',
+        name: 'PR 제목 링크 복사',
+        description: 'PR 제목을 Markdown 링크 형식으로 복사합니다.',
+        routeSummary: '저장소 PR 목록과 PR 상세 화면',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
+    ],
+  },
 ] as const satisfies readonly SiteDescriptor[];
 
 export function findSiteDescriptor(siteId: SiteId): SiteDescriptor {
