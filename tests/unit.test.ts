@@ -47,6 +47,11 @@ import {
   normalizeCommitSha,
   parseMergeRequestOverviewUrl,
 } from '../src/sites/gitlab/routes';
+import { resolveCopyTargets as resolveGithubCommitTargets } from '../src/sites/githubEnterprise/features/commitShaCopy/runtime';
+import {
+  extractCommitShaFromHref,
+  parsePullRequestConversationUrl,
+} from '../src/sites/githubEnterprise/routes';
 import { buildPullRequestClipboardContent } from '../src/sites/githubEnterprise/features/pullRequestTitleCopy/clipboard';
 import {
   buildPullRequestUrl,
@@ -1239,4 +1244,112 @@ test('GitLab 커밋 복사 대상은 전체 SHA가 아닌 항목을 건너뛴다
   };
 
   assert.deepEqual(resolveCopyTargets(context).map((t) => t.sha), ['a'.repeat(40), 'b'.repeat(40)]);
+});
+
+test('GitHub PR Conversation route는 하위 탭을 제외한다', () => {
+  assert.deepEqual(
+    parsePullRequestConversationUrl('https://github.nhnent.com/inje/repo/pull/292'),
+    { owner: 'inje', repo: 'repo', pullNumber: '292' },
+  );
+  assert.equal(
+    parsePullRequestConversationUrl('https://github.nhnent.com/inje/repo/pull/292/')?.pullNumber,
+    '292',
+    '끝 슬래시를 허용한다',
+  );
+
+  // Commits 탭에는 GitHub 기본 `Copy full SHA` 버튼이 이미 있다. 여기 붙으면 중복이다.
+  for (const tab of ['/commits', '/files', '/checks']) {
+    assert.equal(
+      parsePullRequestConversationUrl('https://github.nhnent.com/inje/repo/pull/292' + tab),
+      null,
+      `${tab}는 대상이 아니다`,
+    );
+  }
+  assert.equal(parsePullRequestConversationUrl('https://github.nhnent.com/inje/repo/pulls'), null);
+  assert.equal(parsePullRequestConversationUrl('https://github.com/inje/repo/pull/292'), null);
+});
+
+test('기존 PR 상세 route는 하위 탭을 계속 포함한다', () => {
+  // 제목 복사는 모든 하위 탭에서 동작해야 하므로 기존 계약을 바꾸지 않는다.
+  assert.equal(
+    parseGithubEnterpriseRoute('https://github.nhnent.com/inje/repo/pull/292/commits')?.kind,
+    'detail',
+  );
+  assert.equal(
+    parseGithubEnterpriseRoute('https://github.nhnent.com/inje/repo/pull/292/files')?.kind,
+    'detail',
+  );
+});
+
+test('GitHub 커밋 SHA는 href에서 40자만 읽는다', () => {
+  const full = 'b'.repeat(40);
+  assert.equal(
+    extractCommitShaFromHref(`/inje/repo/pull/292/commits/${full}`),
+    full,
+  );
+  assert.equal(
+    extractCommitShaFromHref(`https://github.nhnent.com/inje/repo/pull/292/commits/${full.toUpperCase()}`),
+    full,
+    '대문자를 정규화한다',
+  );
+  assert.equal(extractCommitShaFromHref('/inje/repo/pull/292/commits/1bb0ce4'), null, '7자 단축본은 거부한다');
+  assert.equal(extractCommitShaFromHref('/inje/repo/pull/292'), null);
+  assert.equal(extractCommitShaFromHref(`https://github.com/inje/repo/pull/292/commits/${full}`), null);
+  assert.equal(extractCommitShaFromHref(null), null);
+  assert.equal(extractCommitShaFromHref(undefined), null);
+});
+
+/** Conversation 탭 타임라인 커밋 행을 흉내낸다. */
+function createFakeGithubTimelineDocument(shas: string[]): Document {
+  const cells = shas.map((sha) => {
+    const link = {
+      getAttribute(name: string) {
+        return name === 'href' ? `/inje/repo/pull/292/commits/${sha}` : null;
+      },
+      closest(selector: string) {
+        return selector === 'code' ? codeElement : null;
+      },
+    };
+    const codeElement = { _isCode: true, _sha: sha };
+    return {
+      querySelector(selector: string) {
+        return selector === 'a[href]' ? link : null;
+      },
+      _code: codeElement,
+    };
+  });
+
+  const timelineItems = [{
+    querySelectorAll(selector: string) {
+      return selector === '.text-right' ? cells : [];
+    },
+  }];
+
+  return {
+    querySelectorAll(selector: string) {
+      return selector === '.TimelineItem' ? timelineItems : [];
+    },
+  } as unknown as Document;
+}
+
+test('GitHub 커밋 복사 대상은 Conversation 탭에서만 잡힌다', () => {
+  const shas = ['c'.repeat(40), 'd'.repeat(40)];
+  const document = createFakeGithubTimelineDocument(shas);
+
+  assert.deepEqual(
+    resolveGithubCommitTargets({
+      url: new URL('https://github.nhnent.com/inje/repo/pull/292'),
+      document,
+    }).map((t) => t.sha),
+    shas,
+  );
+
+  // Commits 탭에서는 DOM이 같아도 route가 막는다. 기본 버튼과의 중복 방지.
+  assert.deepEqual(
+    resolveGithubCommitTargets({
+      url: new URL('https://github.nhnent.com/inje/repo/pull/292/commits'),
+      document,
+    }),
+    [],
+  );
 });

@@ -48,7 +48,7 @@ npm run build
 | 아마란스 | 헤더 출퇴근 버튼, 신청서 제목 자동채움, 통합알림 도구 | 없음 | `gw.innogrid.com` |
 | Jira | 업무 링크 복사 | 없음 | `pms-innogrid.atlassian.net`의 Jira 화면 |
 | Confluence | 본문 Markdown 복사 | Markdown → ADF 변환 | `pms-innogrid.atlassian.net/wiki` |
-| GitHub Enterprise | PR 제목 링크 복사 | 없음 | `github.nhnent.com` |
+| GitHub Enterprise | PR 제목 링크 복사, 커밋 번호 복사 | 없음 | `github.nhnent.com` |
 | GitLab | 커밋 번호 복사 | 없음 | `rnd-app.innogrid.com` |
 
 ### 아마란스
@@ -179,7 +179,7 @@ src/
     ├── amaranth/     출퇴근, 제목 자동채움, 통합알림
     ├── jira/         업무 링크 복사
     ├── confluence/   본문 Markdown 복사, ADF 변환
-    ├── githubEnterprise/  PR 제목 링크 복사
+    ├── githubEnterprise/  PR 제목 링크 복사, 커밋 번호 복사
     └── gitlab/       커밋 번호 복사
 ```
 

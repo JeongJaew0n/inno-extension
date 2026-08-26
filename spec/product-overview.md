@@ -40,6 +40,7 @@ Inno Extension은 사내 업무 사이트에서 반복적으로 수행하는 UI 
 | Confluence | 본문 Markdown 복사 | ON | 문서 조회 화면에서 제목·댓글을 제외한 본문을 Markdown으로 복사 |
 | Confluence | Markdown -> ADF 변환 | OFF | Popup 변환, `edit-v2` 코드블럭 -> ADF 변환 |
 | GitHub Enterprise | PR 제목 링크 복사 | ON | 저장소 PR 목록과 PR 상세에서 제목을 Markdown 링크로 복사 |
+| GitHub Enterprise | 커밋 번호 복사 | ON | PR Conversation 탭 타임라인의 커밋 번호를 전체 SHA로 복사 |
 | GitLab | 커밋 번호 복사 | ON | Merge Request 개요 탭의 커밋 목록에서 전체 SHA를 복사 |
 
 기능별 상세 계약은 `spec/features/` 문서에서 관리한다.
@@ -167,6 +168,7 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - 2026-08-25: GitHub Enterprise(`github.nhnent.com`)를 네 번째 지원 사이트로 추가하고 `PR 제목 링크 복사` 기능을 도입했다. 저장소 PR 목록과 PR 상세에서 제목을 `[제목](URL)` Markdown 링크로 복사한다. 전역 PR 대시보드 `/pulls`는 DOM 구조가 같지만 적용 범위에서 제외했다.
 - 2026-08-26: 아마란스 인사말 복사의 시각 기준을 클릭 순간의 브라우저 시간에서 근무시간 위젯에 기록된 오늘 출근 시각으로 바꿨다. 출근 처리와 복사 사이의 시간차로 실제 근태와 다른 문구가 만들어지던 문제를 없앴다.
 - 2026-08-26: GitLab(`rnd-app.innogrid.com`)을 다섯 번째 지원 사이트로 추가하고 `커밋 번호 복사` 기능을 도입했다. Merge Request 개요 탭의 `added N commits` 목록에서 커밋 번호 오른쪽 버튼으로 40자 전체 SHA를 복사한다. 같은 클래스가 사용자 댓글의 커밋 참조에도 쓰이므로 시스템 노트로 범위를 한정했다.
+- 2026-08-26: GitHub Enterprise에 `커밋 번호 복사` 기능을 추가했다. PR Conversation 탭 타임라인의 커밋 번호 오른쪽 버튼으로 40자 전체 SHA를 복사한다. Commits 탭에는 GitHub 기본 `Copy full SHA` 버튼이 이미 있어 route 판정과 타임라인 스코프로 이중 배제했다.
 
 ## 관련 문서
 
