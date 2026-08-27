@@ -3,21 +3,21 @@
 
   # Inno Extension
 
-  아마란스, Jira, Confluence에서 반복되는 사내 업무를 더 짧게 처리하는 Chrome 확장 프로그램
+  아마란스, Jira, Confluence, GitHub Enterprise, GitLab에서 반복되는 사내 업무를 더 짧게 처리하는 Chrome 확장 프로그램
 
   [최신 릴리즈](https://github.com/JeongJaew0n/inno-extension/releases/latest) · [제품 Spec](./spec/README.md) · [변경 이력](./spec/product-overview.md#변경-이력)
 </div>
 
 ## 소개
 
-Inno Extension은 여러 업무 사이트의 편의 기능을 하나의 확장 프로그램과 하나의 설정 화면으로 관리한다. 출퇴근 접근, 신청서 제목 입력, 인증번호 복사, Jira 업무 링크 공유, Confluence 문서 변환처럼 자주 반복하지만 사이트마다 흩어져 있는 동작을 현재 화면 가까이에 제공한다.
+Inno Extension은 여러 업무 사이트의 편의 기능을 하나의 확장 프로그램과 하나의 설정 화면으로 관리한다. 출퇴근 접근, 신청서 제목 입력, 인증번호 복사, Jira 업무 링크 공유, Confluence 문서 변환, PR·MR의 커밋 번호 복사처럼 자주 반복하지만 사이트마다 흩어져 있는 동작을 현재 화면 가까이에 제공한다.
 
 - 하나의 Popup에서 서비스와 기능별 활성 상태를 관리한다.
 - 사용자 클릭이 있어야 복사·변환·원본 버튼 실행이 일어난다.
 - 문서와 입력값을 별도 서버로 전송하지 않는다.
 - 기능이 실패해도 원본 사이트의 기본 동작은 그대로 사용할 수 있다.
 
-> 현재 지원 범위는 `gw.innogrid.com`과 `pms-innogrid.atlassian.net`이다. 외부 서비스의 화면 구조가 바뀌면 일부 기능을 다시 맞춰야 할 수 있다.
+> 현재 지원 범위는 `gw.innogrid.com`, `pms-innogrid.atlassian.net`, `github.nhnent.com`, `rnd-app.innogrid.com`이다. 외부 서비스의 화면 구조가 바뀌면 일부 기능을 다시 맞춰야 할 수 있다.
 
 ## 설치
 
@@ -28,7 +28,7 @@ Inno Extension은 여러 업무 사이트의 편의 기능을 하나의 확장 �
 3. Chrome 주소창에서 `chrome://extensions`를 연다.
 4. 우측 상단의 **개발자 모드**를 켠다.
 5. **압축해제된 확장 프로그램을 로드합니다**를 누르고 압축 해제한 폴더를 선택한다.
-6. 기존에 열려 있던 아마란스·Jira·Confluence 탭을 새로고침한다.
+6. 기존에 열려 있던 대상 사이트 탭을 새로고침한다.
 
 현재 배포 버전은 [v0.6.0](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.6.0)이며, 배포 ZIP은 릴리즈 페이지에서 받을 수 있다.
 
@@ -105,6 +105,32 @@ npm run build
 
 > 실제 소스 코드를 Markdown으로 해석할 가능성이 있으므로 `코드블럭 → ADF` 실행 전 대상 블록을 확인하고, 저장 전 결과를 검토해야 한다.
 
+### GitHub Enterprise
+
+#### PR 제목 링크 복사
+
+저장소 PR 목록과 PR 상세 화면에서 제목 옆의 버튼으로 `[제목](URL)` Markdown 링크를 복사한다.
+
+- 제목에 `[CloudStation]` 같은 대괄호가 있어도 링크 구조가 깨지지 않는다.
+- 주소에서 조회 상태(`?diff=split#r12345`)를 제거한 정규 URL을 사용한다.
+
+#### 커밋 번호 복사
+
+PR **Conversation** 탭 타임라인의 커밋 번호 오른쪽 버튼으로 40자 전체 SHA를 복사한다.
+
+- 화면에는 7자 단축 번호가 보이지만 GitHub 기본 버튼과 같은 전체 SHA를 복사한다.
+- Commits 탭에는 GitHub이 제공하는 `Copy full SHA` 버튼이 이미 있으므로 버튼을 추가하지 않는다.
+
+### GitLab
+
+#### 커밋 번호 복사
+
+Merge Request **개요** 탭의 `added N commits` 목록에서 커밋 번호 오른쪽 버튼으로 40자 전체 SHA를 복사한다.
+
+- 화면에는 8자 단축 번호가 보이지만 GitLab 기본 버튼과 같은 전체 SHA를 복사한다.
+- Commits 탭에는 GitLab이 제공하는 `Copy commit SHA` 버튼이 이미 있으므로 버튼을 추가하지 않는다.
+- 사용자 댓글에 언급된 커밋 번호에는 버튼을 붙이지 않는다.
+
 ## 설정 방식
 
 Chrome 도구 모음의 Inno Extension 아이콘을 누르면 서비스 목록이 열린다.
@@ -125,7 +151,7 @@ Chrome 도구 모음의 Inno Extension 아이콘을 누르면 서비스 목록�
 
 Manifest V3의 `storage` 권한만 사용한다. 별도 `host_permissions`, `scripting`, `downloads`, background service worker는 두지 않는다.
 
-- content script는 manifest에 선언된 아마란스, Jira, Confluence 주소에서만 실행된다.
+- content script는 manifest에 선언된 아마란스, Jira, Confluence, GitHub Enterprise, GitLab 주소에서만 실행된다.
 - 사이트의 로그인 쿠키, 인증 토큰, 비밀번호를 읽거나 저장하지 않는다.
 - 메일 알림, Confluence 본문, Markdown 입력은 기능 실행 중 현재 브라우저 안에서만 처리한다.
 - 클립보드 쓰기는 사용자가 해당 버튼을 직접 누른 경우에만 수행한다.
