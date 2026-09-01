@@ -7,7 +7,7 @@ import {
   EDITOR_MARKDOWN_TO_ADF_ROOT,
   EDITOR_PRIMARY_TOOLBAR,
 } from '../../selectors';
-import { codeBlockMarkdownToAdfPayload } from './code-block-to-adf';
+import type { CodeBlockAdfPayload } from './code-block-to-adf';
 import { readConfluenceCodeBlockText } from './code-block';
 import {
   buildConfluenceMermaidReplacementHtml,
@@ -16,6 +16,31 @@ import {
 } from './mermaid';
 
 const MERMAID_EXTENSION_INSERT_TIMEOUT_MS = 3000;
+
+/**
+ * Markdown -> ADF 변환기를 클릭 시점에 불러온다.
+ *
+ * 이 모듈은 `marked` 파서를 끌어오며 번들에서 47KB를 차지한다. 정적으로 import하면
+ * Confluence 모든 `/wiki/*` 페이지에서 파싱·평가되는데, 실제로 필요한 조건은
+ * `Markdown -> ADF` 기능이 켜져 있고(기본값 OFF) 사용자가 `edit-v2` 화면에서 변환
+ * 버튼을 누른 경우뿐이다. 문서를 읽기만 하는 사용자는 한 번도 쓰지 않는다.
+ *
+ * 모듈 평가는 한 번만 일어나고 이후 호출은 같은 Promise를 재사용한다.
+ */
+let codeBlockConverterPromise: Promise<
+  (markdown: string) => CodeBlockAdfPayload
+> | null = null;
+
+function loadCodeBlockConverter(): Promise<(markdown: string) => CodeBlockAdfPayload> {
+  codeBlockConverterPromise ??= import('./code-block-to-adf')
+    .then((module) => module.codeBlockMarkdownToAdfPayload)
+    .catch((error) => {
+      // 실패한 Promise를 남겨두면 이후 시도가 모두 같은 오류로 막힌다.
+      codeBlockConverterPromise = null;
+      throw error;
+    });
+  return codeBlockConverterPromise;
+}
 const PROSEMIRROR_SELECTION_TIMEOUT_MS = 1000;
 const PROSEMIRROR_SELECT_REQUEST_EVENT = 'inno-extension:confluence:select-prosemirror-node';
 const PROSEMIRROR_SELECT_RESPONSE_EVENT = 'inno-extension:confluence:select-prosemirror-node-result';
@@ -510,10 +535,11 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
           currentEditor,
           codeBlocks.filter(({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock)),
         );
+        const convertMarkdown = await loadCodeBlockConverter();
         const candidates = sources.map(({ index, localId, source }) => ({
           index,
           localId,
-          payload: codeBlockMarkdownToAdfPayload(source),
+          payload: convertMarkdown(source),
         }));
         if (candidates.length === 0) {
           if (failures.length > 0) {
