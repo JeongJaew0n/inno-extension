@@ -7,6 +7,23 @@ import { createUpdateScheduler } from './updateScheduler';
 const GET_SITE_STATUS = 'GET_SITE_STATUS';
 const RESCAN_SITE = 'RESCAN_SITE';
 
+/**
+ * 확장 context가 살아 있는지 확인한다.
+ *
+ * 확장을 재로드하거나 삭제하면 이미 주입된 content script는 페이지에서 제거되지 않고 계속
+ * 실행되지만, 소속 context가 무효화되어 모든 `chrome.*` 호출이 실패한다. 이 스크립트는 새
+ * context를 얻을 수 없으므로 되살릴 방법이 없다. 탭을 새로고침해야 새 script가 주입된다.
+ *
+ * 무효화된 context에서는 `chrome.runtime` 접근 자체가 던질 수 있어 try로 감싼다.
+ */
+export function isExtensionContextValid(): boolean {
+  try {
+    return typeof chrome !== 'undefined' && chrome.runtime?.id !== undefined;
+  } catch {
+    return false;
+  }
+}
+
 function waitForDocumentBody(): Promise<void> {
   if (document.body) return Promise.resolve();
   return new Promise((resolve) => {
@@ -20,6 +37,7 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
   let settings: ExtensionSettingsV1 | null = null;
   let observer: MutationObserver | null = null;
   let lastReconciledUrl: string | null = null;
+  let contextInvalidated = false;
   let started = false;
   let reconciling = false;
   let rerunRequested = false;
@@ -56,6 +74,12 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
     if (!started) return;
     if (reconciling) {
       rerunRequested = true;
+      return;
+    }
+
+    // 무효화된 context에서는 매 reconcile이 실패하며 로그만 쌓인다. 한 번만 알리고 멈춘다.
+    if (!isExtensionContextValid()) {
+      quiesce();
       return;
     }
 
@@ -113,7 +137,7 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
   });
 
   function scheduleUpdate(): void {
-    if (!started) return;
+    if (!started || contextInvalidated) return;
 
     // SPA는 pushState로 이동하므로 hashchange/popstate 없이 route가 바뀔 수 있다.
     // route가 바뀐 것을 확인하면 debounce를 거치지 않고 바로 reconcile한다.
@@ -161,6 +185,34 @@ export function createSiteRuntime(options: SiteRuntimeOptions): SiteRuntime {
 
     return false;
   };
+
+  /**
+   * 확장 context가 무효화됐을 때 조용히 멈춘다.
+   *
+   * 이미 주입한 UI는 **제거하지 않는다.** 클립보드 복사는 `chrome.*`를 쓰지 않으므로
+   * context가 죽어도 버튼은 계속 동작한다. 여기서 DOM을 걷어내면 아직 쓸 수 있는 기능까지
+   * 사용자에게서 빼앗는 셈이 된다. 갱신만 멈추고 남은 것은 그대로 둔다.
+   */
+  function quiesce(): void {
+    if (contextInvalidated) return;
+    contextInvalidated = true;
+    started = false;
+    scheduler.cancel();
+    disconnectObserver();
+    window.removeEventListener('hashchange', handleNavigation);
+    window.removeEventListener('popstate', handleNavigation);
+    // 리스너 제거도 chrome API 호출이라 무효화된 context에서는 던진다.
+    try {
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+      chrome.runtime.onMessage.removeListener(handleMessage);
+    } catch {
+      // 이미 무효화된 context다. 정리할 대상도 함께 사라졌다.
+    }
+    console.info(
+      `[Inno Extension] ${options.siteId} 확장 context가 무효화되어 갱신을 멈춥니다.`
+      + ' 탭을 새로고침하면 복구됩니다.',
+    );
+  }
 
   const runtime: SiteRuntime = {
     async start(): Promise<void> {
