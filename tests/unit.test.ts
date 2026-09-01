@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { findFeatureDescriptor, SITES } from '../src/catalog/sites';
+import { isExtensionContextValid } from '../src/platform/runtime/createSiteRuntime';
 import { createUpdateScheduler } from '../src/platform/runtime/updateScheduler';
 import { createDefaultSettings } from '../src/platform/settings/defaults';
 import { getSettings, saveSettings } from '../src/platform/settings/repository';
@@ -1352,4 +1353,46 @@ test('GitHub 커밋 복사 대상은 Conversation 탭에서만 잡힌다', () =>
     }),
     [],
   );
+});
+
+test('확장 context 유효성은 chrome.runtime.id 존재로 판정한다', () => {
+  const globalRef = globalThis as unknown as { chrome?: unknown };
+  const original = globalRef.chrome;
+
+  try {
+    globalRef.chrome = { runtime: { id: 'abcdefghijklmnop' } };
+    assert.equal(isExtensionContextValid(), true);
+
+    // 확장을 재로드하면 이미 주입된 script에서 runtime.id가 사라진다.
+    globalRef.chrome = { runtime: { id: undefined } };
+    assert.equal(isExtensionContextValid(), false, 'id가 사라지면 무효');
+
+    globalRef.chrome = { runtime: undefined };
+    assert.equal(isExtensionContextValid(), false, 'runtime이 없으면 무효');
+
+    globalRef.chrome = {};
+    assert.equal(isExtensionContextValid(), false);
+
+    globalRef.chrome = undefined;
+    assert.equal(isExtensionContextValid(), false, 'chrome 자체가 없으면 무효');
+  } finally {
+    globalRef.chrome = original;
+  }
+});
+
+test('확장 context 유효성 판정은 접근 자체가 던져도 false를 돌려준다', () => {
+  const globalRef = globalThis as unknown as { chrome?: unknown };
+  const original = globalRef.chrome;
+
+  try {
+    // 무효화된 context에서는 프로퍼티 접근이 예외를 던질 수 있다.
+    globalRef.chrome = {
+      get runtime() {
+        throw new Error('Extension context invalidated.');
+      },
+    };
+    assert.equal(isExtensionContextValid(), false);
+  } finally {
+    globalRef.chrome = original;
+  }
 });
