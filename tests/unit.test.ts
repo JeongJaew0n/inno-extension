@@ -45,8 +45,14 @@ import {
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
 import { resolveCopyTargets } from '../src/sites/gitlab/features/commitShaCopy/runtime';
 import {
+  buildMergeRequestMarkdown,
+  buildMergeRequestTitleText,
+} from '../src/sites/gitlab/features/mergeRequestTitleCopy/clipboard';
+import {
+  buildMergeRequestUrl,
   normalizeCommitSha,
   parseMergeRequestOverviewUrl,
+  parseMergeRequestTitleRoute,
 } from '../src/sites/gitlab/routes';
 import { resolveCopyTargets as resolveGithubCommitTargets } from '../src/sites/githubEnterprise/features/commitShaCopy/runtime';
 import {
@@ -1420,4 +1426,63 @@ test('GitHub PR 제목만 복사는 공백을 정규화하고 빈 제목을 거�
   assert.equal(buildPullRequestTitleText('   '), null);
   assert.equal(buildPullRequestTitleText(''), null);
   assert.equal(buildPullRequestTitleText(null), null);
+});
+
+test('GitLab 제목 복사 route는 목록과 상세를 모두 지원한다', () => {
+  assert.deepEqual(
+    parseMergeRequestTitleRoute('https://rnd-app.innogrid.com/group/sub/repo/-/merge_requests'),
+    { kind: 'list', namespacePath: 'group/sub/repo' },
+  );
+  assert.deepEqual(
+    parseMergeRequestTitleRoute('https://rnd-app.innogrid.com/group/sub/repo/-/merge_requests/1'),
+    { kind: 'detail', namespacePath: 'group/sub/repo', mergeRequestIid: '1' },
+  );
+  // 제목은 모든 하위 탭에 보이므로 커밋 번호 복사와 달리 하위 탭도 포함한다.
+  for (const tab of ['/commits', '/diffs', '/pipelines']) {
+    assert.equal(
+      parseMergeRequestTitleRoute(`https://rnd-app.innogrid.com/group/repo/-/merge_requests/1${tab}`)?.kind,
+      'detail',
+      `${tab}도 상세로 취급한다`,
+    );
+  }
+  assert.equal(parseMergeRequestTitleRoute('https://rnd-app.innogrid.com/group/repo/-/issues'), null);
+  assert.equal(parseMergeRequestTitleRoute('https://gitlab.com/group/repo/-/merge_requests/1'), null);
+});
+
+test('커밋 번호 복사 route는 여전히 개요 탭만 지원한다', () => {
+  // 제목 복사 route를 추가해도 기존 계약이 바뀌지 않아야 한다.
+  assert.equal(
+    parseMergeRequestOverviewUrl('https://rnd-app.innogrid.com/group/repo/-/merge_requests/1/commits'),
+    null,
+  );
+  assert.ok(parseMergeRequestOverviewUrl('https://rnd-app.innogrid.com/group/repo/-/merge_requests/1'));
+});
+
+test('GitLab MR URL은 하위 탭과 쿼리를 제거해 정규화한다', () => {
+  assert.equal(
+    buildMergeRequestUrl('/group/sub/repo/-/merge_requests/7'),
+    'https://rnd-app.innogrid.com/group/sub/repo/-/merge_requests/7',
+  );
+  assert.equal(
+    buildMergeRequestUrl('/group/repo/-/merge_requests/7/diffs?commit_id=abc#note_1'),
+    'https://rnd-app.innogrid.com/group/repo/-/merge_requests/7',
+  );
+  assert.equal(buildMergeRequestUrl('/group/repo/-/issues/7'), null);
+  assert.equal(buildMergeRequestUrl(null), null);
+});
+
+test('GitLab MR 제목 복사는 링크와 평문의 이스케이프가 다르다', () => {
+  const url = 'https://rnd-app.innogrid.com/group/repo/-/merge_requests/1';
+  const title = 'NPT-164 [CCP-BE] CCP -> Jazz 마이그레이션';
+
+  assert.equal(buildMergeRequestTitleText(title), title, '평문은 그대로 둔다');
+  assert.equal(
+    buildMergeRequestMarkdown(url, title),
+    `[NPT-164 \\[CCP-BE\\] CCP -> Jazz 마이그레이션](${url})`,
+    '링크는 대괄호를 이스케이프한다',
+  );
+
+  assert.equal(buildMergeRequestTitleText('  기능   추가 '), '기능 추가');
+  assert.equal(buildMergeRequestTitleText('   '), null);
+  assert.equal(buildMergeRequestMarkdown(url, null), null);
 });

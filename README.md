@@ -49,7 +49,7 @@ npm run build
 | Jira | 업무 링크 복사 | 없음 | `pms-innogrid.atlassian.net`의 Jira 화면 |
 | Confluence | 본문 Markdown 복사 | Markdown → ADF 변환 | `pms-innogrid.atlassian.net/wiki` |
 | GitHub Enterprise | PR 제목 링크 복사, 커밋 번호 복사 | 없음 | `github.nhnent.com` |
-| GitLab | 커밋 번호 복사 | 없음 | `rnd-app.innogrid.com` |
+| GitLab | MR 제목 복사, 커밋 번호 복사 | 없음 | `rnd-app.innogrid.com` |
 
 ### 아마란스
 
@@ -128,6 +128,19 @@ PR **Conversation** 탭 타임라인의 커밋 번호 오른쪽 버튼으로 40�
 - Commits 탭에는 GitHub이 제공하는 `Copy full SHA` 버튼이 이미 있으므로 버튼을 추가하지 않는다.
 
 ### GitLab
+
+#### MR 제목 복사
+
+Merge Request 목록과 상세 화면에서 제목 옆에 버튼 두 개를 표시한다.
+
+| 버튼 | 복사 결과 |
+| --- | --- |
+| **MR 제목 Markdown 링크 복사** | `[제목](URL)` |
+| **MR 제목만 복사** | `제목` |
+
+- 링크 복사는 제목에 `[CCP-BE]` 같은 대괄호가 있어도 구조가 깨지지 않는다.
+- 제목만 복사는 화면에 보이는 그대로를 평문으로 복사한다.
+- 주소에서 하위 탭 경로와 조회 상태를 제거한 정규 URL을 사용한다.
 
 #### 커밋 번호 복사
 
@@ -212,7 +225,7 @@ src/
     ├── jira/         업무 링크 복사
     ├── confluence/   본문 Markdown 복사, ADF 변환
     ├── githubEnterprise/  PR 제목 링크 복사, 커밋 번호 복사
-    └── gitlab/       커밋 번호 복사
+    └── gitlab/       MR 제목 복사, 커밋 번호 복사
 ```
 
 사이트별 runtime은 하나의 `MutationObserver`로 활성 기능의 `reconcile()`을 호출한다. 서비스나 기능이 꺼지면 각 기능의 `dispose()`가 자신이 만든 DOM, style, timer, listener를 정리한다.

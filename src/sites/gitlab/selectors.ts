@@ -13,3 +13,14 @@ export const COMMIT_REFERENCE_LINK = 'a.gfm.gfm-commit';
 
 /** 전체 40자 SHA를 담고 있는 속성. */
 export const COMMIT_SHA_ATTRIBUTE = 'data-commit';
+
+export const MERGE_REQUEST_TITLE_COPY_ROOT = 'gitlab-merge-request-title-copy';
+
+/** MR 상세의 제목. `detail-page-header` 안의 유일한 `h1`이다. */
+export const MERGE_REQUEST_DETAIL_TITLE = 'h1.title[data-testid="title-content"]';
+
+/** MR 목록의 각 행. */
+export const MERGE_REQUEST_ROW = '.issuable-list > li';
+
+/** 목록 행의 제목 링크. */
+export const MERGE_REQUEST_ROW_TITLE_LINK = 'a[data-testid="issuable-title-link"]';
