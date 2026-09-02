@@ -48,6 +48,10 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
       gitlab: {
         enabled: true,
         features: {
+          mergeRequestTitleCopy: {
+            enabled: true,
+            options: {},
+          },
           commitShaCopy: {
             enabled: true,
             options: {},

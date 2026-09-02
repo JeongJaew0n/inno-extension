@@ -118,6 +118,14 @@ export const SITES = [
     color: '#fc6d26',
     features: [
       {
+        id: 'mergeRequestTitleCopy',
+        name: 'MR 제목 복사',
+        description: 'Merge Request 제목을 Markdown 링크 또는 평문으로 복사합니다.',
+        routeSummary: 'Merge Request 목록과 상세 화면',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
+      {
         id: 'commitShaCopy',
         name: '커밋 번호 복사',
         description: 'Merge Request 개요 화면의 커밋 번호를 전체 SHA로 복사합니다.',

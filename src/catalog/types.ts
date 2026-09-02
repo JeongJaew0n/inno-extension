@@ -11,6 +11,7 @@ export const FEATURE_IDS = [
   'pullRequestTitleCopy',
   'commitShaCopy',
   'githubCommitShaCopy',
+  'mergeRequestTitleCopy',
 ] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 
