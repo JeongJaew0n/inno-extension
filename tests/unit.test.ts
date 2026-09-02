@@ -53,7 +53,10 @@ import {
   extractCommitShaFromHref,
   parsePullRequestConversationUrl,
 } from '../src/sites/githubEnterprise/routes';
-import { buildPullRequestClipboardContent } from '../src/sites/githubEnterprise/features/pullRequestTitleCopy/clipboard';
+import {
+  buildPullRequestClipboardContent,
+  buildPullRequestTitleText,
+} from '../src/sites/githubEnterprise/features/pullRequestTitleCopy/clipboard';
 import {
   buildPullRequestUrl,
   parseGithubEnterpriseRoute,
@@ -1395,4 +1398,26 @@ test('확장 context 유효성 판정은 접근 자체가 던져도 false를 돌
   } finally {
     globalRef.chrome = original;
   }
+});
+
+test('GitHub PR 제목만 복사는 Markdown 이스케이프를 하지 않는다', () => {
+  // 링크가 아니므로 대괄호를 그대로 둔다. 링크 복사와의 차이가 핵심이다.
+  const title = '[CloudStation] 관리 기능 API 개발';
+  assert.equal(buildPullRequestTitleText(title), title);
+
+  const escaped = buildPullRequestClipboardContent('https://github.nhnent.com/a/b/pull/1', title)?.markdown;
+  assert.equal(escaped, '[\\[CloudStation\\] 관리 기능 API 개발](https://github.nhnent.com/a/b/pull/1)');
+});
+
+test('GitHub PR 제목만 복사는 저장소 접두사를 유지한다', () => {
+  // 화면에 보이는 제목 그대로 복사한다. 접두사도 제목의 일부다.
+  const title = '#II-SL-CloudStation-Veritas-BE/411: [CloudStation] 관리 기능 API 개발';
+  assert.equal(buildPullRequestTitleText(title), title);
+});
+
+test('GitHub PR 제목만 복사는 공백을 정규화하고 빈 제목을 거른다', () => {
+  assert.equal(buildPullRequestTitleText('  기능   추가 '), '기능 추가');
+  assert.equal(buildPullRequestTitleText('   '), null);
+  assert.equal(buildPullRequestTitleText(''), null);
+  assert.equal(buildPullRequestTitleText(null), null);
 });

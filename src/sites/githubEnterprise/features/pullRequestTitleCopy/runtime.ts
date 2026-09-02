@@ -9,8 +9,10 @@ import {
 import { buildPullRequestUrl, parseGithubEnterpriseRoute } from '../../routes';
 import {
   buildPullRequestClipboardContent,
+  buildPullRequestTitleText,
   writePullRequestClipboardContent,
 } from './clipboard';
+import { writePlainText } from '../../../../platform/clipboard/writePlainText';
 
 interface CopyTarget {
   anchor: Element;
@@ -83,6 +85,9 @@ const COPY_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" s
 const CHECK_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 const FAIL_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
 
+/** 제목만 복사용 아이콘. 링크가 아니라 글자를 가져간다는 뜻으로 텍스트 기호를 쓴다. */
+const TEXT_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>';
+
 function createCopyHost(context: PageContext, target: CopyTarget): HTMLSpanElement | null {
   const content = buildPullRequestClipboardContent(target.pullRequestUrl, target.title);
   if (!content) return null;
@@ -118,38 +123,58 @@ function createCopyHost(context: PageContext, target: CopyTarget): HTMLSpanEleme
       button.copied { color: var(--fgColor-success, #1a7f37); }
       button.failed { color: var(--fgColor-danger, #d1242f); }
     </style>
-    <button type="button" aria-label="PR 제목 Markdown 링크 복사" title="PR 제목 Markdown 링크 복사">${COPY_ICON}</button>
+    <button type="button" data-copy-mode="link" aria-label="PR 제목 Markdown 링크 복사" title="PR 제목 Markdown 링크 복사">${COPY_ICON}</button>
+    <button type="button" data-copy-mode="title" aria-label="PR 제목만 복사" title="PR 제목만 복사">${TEXT_ICON}</button>
   `;
 
-  const button = shadow.querySelector('button');
-  if (!button) return null;
+  const linkButton = shadow.querySelector<HTMLButtonElement>('[data-copy-mode="link"]');
+  const titleButton = shadow.querySelector<HTMLButtonElement>('[data-copy-mode="title"]');
+  if (!linkButton || !titleButton) return null;
 
-  let resetTimer: number | null = null;
-  button.addEventListener('click', async (event) => {
-    // 목록의 제목 링크 안에 붙으므로 행 이동을 막아야 한다.
-    event.preventDefault();
-    event.stopPropagation();
+  /**
+   * 복사 동작과 피드백을 붙인다.
+   *
+   * 두 버튼이 각자 타이머를 가지므로 한쪽 피드백이 다른 쪽을 되돌리지 않는다.
+   */
+  function attachCopyBehavior(
+    button: HTMLButtonElement,
+    idleIcon: string,
+    copy: () => Promise<void>,
+  ): void {
+    let resetTimer: number | null = null;
+    button.addEventListener('click', async (event) => {
+      // 목록의 제목 링크 안에 붙으므로 행 이동을 막아야 한다.
+      event.preventDefault();
+      event.stopPropagation();
 
-    if (resetTimer !== null) window.clearTimeout(resetTimer);
-    button.disabled = true;
-    try {
-      await writePullRequestClipboardContent(content);
-      button.innerHTML = CHECK_ICON;
-      button.classList.remove('failed');
-      button.classList.add('copied');
-    } catch {
-      button.innerHTML = FAIL_ICON;
-      button.classList.remove('copied');
-      button.classList.add('failed');
-    }
+      if (resetTimer !== null) window.clearTimeout(resetTimer);
+      button.disabled = true;
+      try {
+        await copy();
+        button.innerHTML = CHECK_ICON;
+        button.classList.remove('failed');
+        button.classList.add('copied');
+      } catch {
+        button.innerHTML = FAIL_ICON;
+        button.classList.remove('copied');
+        button.classList.add('failed');
+      }
 
-    resetTimer = window.setTimeout(() => {
-      resetTimer = null;
-      if (!host.isConnected) return;
-      button.innerHTML = COPY_ICON;
-      button.classList.remove('copied', 'failed');
-      button.disabled = false;
-    }, COPY_FEEDBACK_MS);
+      resetTimer = window.setTimeout(() => {
+        resetTimer = null;
+        if (!host.isConnected) return;
+        button.innerHTML = idleIcon;
+        button.classList.remove('copied', 'failed');
+        button.disabled = false;
+      }, COPY_FEEDBACK_MS);
+    });
+  }
+
+  attachCopyBehavior(linkButton, COPY_ICON, () => writePullRequestClipboardContent(content));
+  attachCopyBehavior(titleButton, TEXT_ICON, async () => {
+    const titleText = buildPullRequestTitleText(target.title);
+    if (!titleText) throw new Error('복사할 PR 제목이 없습니다.');
+    await writePlainText(titleText);
   });
 
   liveHosts.add(host);
