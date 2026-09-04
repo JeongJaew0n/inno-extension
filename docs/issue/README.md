@@ -26,3 +26,4 @@
 | 2026-09-01 | [확장 재로드로 사라지지 않는 콘솔 오류](./2026-09-01-stale-content-script-console-error.md) | **대응 적용·확인 완료** — 원인은 유력 가설 단계 |
 | 2026-09-02 | [Popup `Markdown -> ADF` 결과는 `Mermaid -> ADF`로 변환할 수 없다](./2026-09-02-mermaid-conversion-fails-inside-expand.md) | **수정 적용·실측 확인 완료** |
 | 2026-09-04 | [30줄 넘는 코드블럭은 Mermaid 변환 검증을 통과할 수 없다](./2026-09-04-mermaid-verification-reads-truncated-dom.md) | **수정 적용·실측 확인 완료** |
+| 2026-09-04 | [줄 사이에 빈 줄이 있으면 Markdown 표가 변환되지 않는다](./2026-09-04-markdown-table-broken-by-blank-lines.md) | **원인 확정 (입력 원문 문제)** — 대응 미적용 |
