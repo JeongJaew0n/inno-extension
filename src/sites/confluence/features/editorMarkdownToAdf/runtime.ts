@@ -9,6 +9,7 @@ import {
 } from '../../selectors';
 import type { CodeBlockAdfPayload } from './code-block-to-adf';
 import { readConfluenceCodeBlockText } from './code-block';
+import { looksLikeMarkdownDocument } from './markdown-detection';
 import {
   buildConfluenceMermaidReplacementHtml,
   CONFLUENCE_MERMAID_EXTENSION_KEY,
@@ -350,11 +351,61 @@ function resolveMermaidReplacementTarget(
 ): HTMLElement {
   const expand = codeBlock.closest<HTMLElement>(EDITOR_EXPAND);
   if (!expand || !editor.contains(expand)) return codeBlock;
+  return wrapsOnlyNode(expand, codeBlock) ? expand : codeBlock;
+}
 
+/** `container`가 `node` 하나만 콘텐츠로 담고 있으면 `true`. */
+function wrapsOnlyNode(container: HTMLElement, node: HTMLElement): boolean {
   const innerNodes = Array.from(
-    expand.querySelectorAll<HTMLElement>('[data-prosemirror-node-name]'),
+    container.querySelectorAll<HTMLElement>('[data-prosemirror-node-name]'),
   );
-  return innerNodes.length === 1 && innerNodes[0] === codeBlock ? expand : codeBlock;
+  return innerNodes.length === 1 && innerNodes[0] === node;
+}
+
+/**
+ * 코드블럭이 본문 최상위에 있으면 `true`.
+ *
+ * Confluence는 코드블럭을 `.fabric-editor-breakout-mark` 래퍼로 감싸므로 편집기의 직계 자식이
+ * 아니다. `editor.children`에서 codeBlock을 찾으면 하나도 나오지 않는다. `findEditorTopLevelNode()`가
+ * 돌려주는 최상위 노드가 이 코드블럭만 담고 있는지로 판정한다.
+ *
+ * 목록·인용·표 안의 코드블럭은 그 컨테이너가 최상위가 되므로 `false`다.
+ */
+function isTopLevelCodeBlock(editor: HTMLElement, codeBlock: HTMLElement): boolean {
+  const topLevel = findEditorTopLevelNode(editor, codeBlock);
+  if (!topLevel) return false;
+  return topLevel === codeBlock || wrapsOnlyNode(topLevel, codeBlock);
+}
+
+/**
+ * 코드블럭 벗기기를 실행할지 판정한다.
+ *
+ * 벗기기는 대상 코드블럭을 Markdown으로 해석해 산문으로 풀어버린다. 실제 소스 코드에 실행하면
+ * 코드가 사라지므로, Markdown 원문을 통째로 붙여넣은 문서일 때만 실행한다.
+ *
+ * 세 조건을 모두 요구한다.
+ *
+ * 1. 보호 대상(이미 변환된 Mermaid 원본)이 아닌 코드블럭이 하나 이상 있다
+ * 2. 그중 최상위에 놓인 것이 하나 이상 있다
+ * 3. **전부** Markdown 문서로 보인다
+ *
+ * 3번이 핵심이다. 벗기기 동작 자체는 문서의 모든 코드블럭을 대상으로 하므로, 실제 코드가 하나라도
+ * 섞여 있으면 실행해서는 안 된다. 하나라도 판정이 안 서면 벗기지 않는다.
+ *
+ * 판정에는 DOM 원문을 쓴다. CodeMirror가 30줄 안팎까지만 렌더하지만 Markdown 특징은 앞부분에
+ * 나타나므로 게이트 용도로는 충분하다. 읽지 못한 코드블럭은 `looksLikeMarkdownDocument()`가
+ * `false`를 돌려주어 자연히 벗기기가 막힌다.
+ *
+ * docs/plans/confluence-magic-button/spec.md
+ */
+function shouldUnwrapCodeBlocks(editor: HTMLElement): boolean {
+  const codeBlocks = Array.from(editor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK))
+    .filter((codeBlock) => !hasValidMermaidPair(editor, codeBlock));
+  if (codeBlocks.length === 0) return false;
+  if (!codeBlocks.some((codeBlock) => isTopLevelCodeBlock(editor, codeBlock))) return false;
+  return codeBlocks.every(
+    (codeBlock) => looksLikeMarkdownDocument(readConfluenceCodeBlockText(codeBlock)),
+  );
 }
 
 function hasValidMermaidPair(editor: HTMLElement, codeBlock: HTMLElement): boolean {
@@ -486,6 +537,131 @@ async function replaceMermaidCodeBlock(
   }
 }
 
+interface PhaseFailure {
+  index: number;
+  message: string;
+}
+
+interface CodeBlockPhaseResult {
+  convertedCount: number;
+  failures: PhaseFailure[];
+  warnings: string[];
+  protectedMermaidCount: number;
+}
+
+interface MermaidPhaseResult {
+  convertedCount: number;
+  failures: PhaseFailure[];
+}
+
+/** 짝을 찾지 못한 기존 Mermaid 컴포넌트 수. 0보다 크면 중복 생성 위험이 있어 변환하지 않는다. */
+function countUnpairedMermaidExtensions(editor: HTMLElement): number {
+  const pairedCount = Array.from(editor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK))
+    .filter((codeBlock) => mayBeMermaidCodeBlock(codeBlock))
+    .filter((codeBlock) => hasValidMermaidPair(editor, codeBlock))
+    .length;
+  return countMermaidExtensions(editor) - pairedCount;
+}
+
+/**
+ * 1단계 — 코드블럭 원문을 Markdown으로 해석해 원위치 ADF로 교체한다.
+ *
+ * 대상 범위는 종전 `코드블럭 -> ADF`와 같다. 실행 여부만 `shouldUnwrapCodeBlocks()`가 가른다.
+ */
+async function runCodeBlockPhase(
+  editor: HTMLElement,
+  onProgress: (done: number, total: number) => void,
+): Promise<CodeBlockPhaseResult> {
+  const codeBlocks = Array.from(editor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK))
+    .map((codeBlock, index) => ({ codeBlock, index }));
+  if (codeBlocks.length === 0) throw new Error('ADF로 변환할 코드블럭이 없습니다.');
+
+  const protectedMermaidCount = codeBlocks
+    .filter(({ codeBlock }) => hasValidMermaidPair(editor, codeBlock)).length;
+  // 보호 대상은 읽지 않는다. 변환하지 않을 블록까지 읽으면 브리지 요청만 늘어난다.
+  const { failures, sources } = await readCodeBlockSources(
+    editor,
+    codeBlocks.filter(({ codeBlock }) => !hasValidMermaidPair(editor, codeBlock)),
+  );
+  const convertMarkdown = await loadCodeBlockConverter();
+  const candidates = sources.map(({ index, localId, source }) => ({
+    index,
+    localId,
+    payload: convertMarkdown(source),
+  }));
+  if (candidates.length === 0) {
+    if (failures.length > 0) {
+      throw new Error(`코드블럭 ${failures.length}개의 원문을 읽지 못했습니다. ${failures[0].message}`);
+    }
+    throw new Error('ADF로 변환할 코드블럭이 없습니다. Mermaid 컴포넌트 원본은 보호됩니다.');
+  }
+
+  const warnings = candidates.flatMap(({ index, payload }) => (
+    payload.warnings.map((warning) => `코드블럭 ${index + 1}: ${warning}`)
+  ));
+
+  let convertedCount = 0;
+  const total = candidates.length;
+  onProgress(0, total);
+  for (const { localId, payload } of candidates.reverse()) {
+    await replaceCodeBlockWithAdf(editor, localId, payload.html, payload.markdown);
+    convertedCount += 1;
+    onProgress(convertedCount, total);
+  }
+
+  return { convertedCount, failures, warnings, protectedMermaidCount };
+}
+
+/**
+ * 2단계 — Mermaid 코드블럭을 `extension + 접힌 원본`으로 교체한다.
+ *
+ * 대상이 없으면 오류가 아니라 `convertedCount: 0`으로 끝낸다. 1단계만 수행하는 문서도 정상이다.
+ */
+async function runMermaidPhase(
+  editor: HTMLElement,
+  onProgress: (done: number, total: number) => void,
+): Promise<MermaidPhaseResult> {
+  const allCodeBlocks = Array.from(editor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK))
+    .map((codeBlock, index) => ({ codeBlock, index }));
+
+  // 브리지 요청을 Mermaid 후보로 한정한다. 문서 전체를 읽으면 실패 표면만 넓어진다.
+  const mermaidCandidateBlocks = allCodeBlocks.filter(
+    ({ codeBlock }) => mayBeMermaidCodeBlock(codeBlock),
+  );
+  const { failures, sources } = await readCodeBlockSources(
+    editor,
+    mermaidCandidateBlocks.filter(({ codeBlock }) => !hasValidMermaidPair(editor, codeBlock)),
+  );
+  const candidates = sources.filter(({ source }) => isMermaidCodeBlockSource(source));
+
+  if (candidates.length === 0) {
+    if (failures.length > 0) {
+      throw new Error(`Mermaid 후보 코드블럭 ${failures.length}개의 원문을 읽지 못했습니다. ${failures[0].message}`);
+    }
+    return { convertedCount: 0, failures };
+  }
+
+  let convertedCount = 0;
+  const total = candidates.length;
+  onProgress(0, total);
+  for (const { codeBlock, index, source } of candidates.reverse()) {
+    await replaceMermaidCodeBlock(editor, codeBlock, index, source);
+    convertedCount += 1;
+    onProgress(convertedCount, total);
+  }
+
+  return { convertedCount, failures };
+}
+
+/** 두 단계의 결과를 버튼 라벨 한 줄로 요약한다. */
+export function describeConversionResult(unwrapped: number, mermaid: number): string {
+  if (unwrapped === 0 && mermaid === 0) return '변환할 내용이 없습니다';
+  const parts: string[] = [];
+  if (unwrapped > 0) parts.push(`코드블럭 ${unwrapped}`);
+  if (mermaid > 0) parts.push(`Mermaid ${mermaid}`);
+  return `${parts.join(' · ')} 변환`;
+}
+
 export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
   let host: HTMLSpanElement | null = null;
   const feedbackTimers = new Set<number>();
@@ -527,193 +703,106 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         button:disabled { cursor: default; opacity: 0.72; }
         .divider { width: 1px; height: 20px; margin: 0 2px; background: #dfe1e6; }
       </style>
-      <button type="button" data-action="mermaid" aria-label="Mermaid -> ADF 변환">
+      <button type="button" data-action="markdown-convert" aria-label="Markdown 변환">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M7 4v4"></path><path d="M17 4v4"></path><path d="M5 8h14"></path>
-          <path d="M6 12h4l2 3 2-3h4"></path><path d="M12 15v5"></path>
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+          <path d="M14 3v5h5"></path>
+          <path d="M9 13h6"></path><path d="M9 17h3"></path>
         </svg>
-        <span data-mermaid-label>Mermaid -&gt; ADF</span>
-      </button>
-      <span class="divider" aria-hidden="true"></span>
-      <button type="button" data-action="code-block-adf" aria-label="코드블럭 -> ADF">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 7h10"></path><path d="m11 4 3 3-3 3"></path>
-          <path d="M20 17H10"></path><path d="m13 14-3 3 3 3"></path>
-        </svg>
-        <span data-code-block-adf-label>코드블럭 -&gt; ADF</span>
+        <span data-markdown-convert-label>Markdown 변환</span>
       </button>
     `;
 
-    const codeBlockAdfButton = shadow.querySelector<HTMLButtonElement>('[data-action="code-block-adf"]');
-    const codeBlockAdfLabel = shadow.querySelector<HTMLElement>('[data-code-block-adf-label]');
-    const mermaidButton = shadow.querySelector<HTMLButtonElement>('[data-action="mermaid"]');
-    const mermaidLabel = shadow.querySelector<HTMLElement>('[data-mermaid-label]');
-    if (!codeBlockAdfButton || !codeBlockAdfLabel || !mermaidButton || !mermaidLabel) return null;
+    const markdownButton = shadow.querySelector<HTMLButtonElement>('[data-action="markdown-convert"]');
+    const markdownLabel = shadow.querySelector<HTMLElement>('[data-markdown-convert-label]');
+    if (!markdownButton || !markdownLabel) return null;
 
-    const buttons = [codeBlockAdfButton, mermaidButton];
-    const setBusy = (busy: boolean): void => {
-      buttons.forEach((button) => { button.disabled = busy; });
-    };
-    const resetLater = (button: HTMLButtonElement, label: HTMLElement, text: string): void => {
+    const setBusy = (busy: boolean): void => { markdownButton.disabled = busy; };
+    const resetLater = (): void => {
       const timer = window.setTimeout(() => {
         feedbackTimers.delete(timer);
         if (nextHost.isConnected) {
           setBusy(false);
-          label.textContent = text;
-          button.removeAttribute('title');
+          markdownLabel.textContent = 'Markdown 변환';
+          markdownButton.removeAttribute('title');
         }
       }, 2200);
       feedbackTimers.add(timer);
     };
 
-    codeBlockAdfButton.addEventListener('click', async () => {
+    /**
+     * 한 번의 클릭에서 두 단계를 순서대로 수행한다.
+     *
+     * 1단계 코드블럭 벗기기는 `shouldUnwrapCodeBlocks()`가 참일 때만 실행한다. Markdown 원문의
+     * ` ```mermaid ` 펜스는 1단계를 거쳐야 개별 코드블럭이 되므로 순서를 바꿀 수 없다.
+     */
+    markdownButton.addEventListener('click', async () => {
       setBusy(true);
-      codeBlockAdfLabel.textContent = '변환 중';
-      codeBlockAdfButton.removeAttribute('title');
-      let convertedCount = 0;
+      markdownLabel.textContent = '확인 중';
+      markdownButton.removeAttribute('title');
+
+      let unwrapped = 0;
+      let mermaidConverted = 0;
+      const notices: string[] = [];
 
       try {
-        const currentEditor = context.document.querySelector<HTMLElement>(EDITOR_BODY);
-        if (!currentEditor) throw new Error('Confluence 편집 본문을 찾을 수 없습니다.');
+        const getEditor = (): HTMLElement => {
+          const found = context.document.querySelector<HTMLElement>(EDITOR_BODY);
+          if (!found) throw new Error('Confluence 편집 본문을 찾을 수 없습니다.');
+          return found;
+        };
 
-        const codeBlocks = Array.from(
-          currentEditor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK),
-        ).map((codeBlock, index) => ({ codeBlock, index }));
-        if (codeBlocks.length === 0) throw new Error('ADF로 변환할 코드블럭이 없습니다.');
+        let editor = getEditor();
 
-        const protectedMermaidCount = codeBlocks.filter(({ codeBlock }) => (
-          hasValidMermaidPair(currentEditor, codeBlock)
-        )).length;
-        // 보호 대상은 읽지 않는다. 변환하지 않을 블록까지 읽으면 브리지 요청만 늘어난다.
-        const { failures, sources } = await readCodeBlockSources(
-          currentEditor,
-          codeBlocks.filter(({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock)),
-        );
-        const convertMarkdown = await loadCodeBlockConverter();
-        const candidates = sources.map(({ index, localId, source }) => ({
-          index,
-          localId,
-          payload: convertMarkdown(source),
-        }));
-        if (candidates.length === 0) {
-          if (failures.length > 0) {
-            throw new Error(`코드블럭 ${failures.length}개의 원문을 읽지 못했습니다. ${failures[0].message}`);
+        // 1단계가 문서를 바꾼 뒤에 걸리면 되돌리기 곤란하므로 미리 확인한다.
+        const unpaired = countUnpairedMermaidExtensions(editor);
+        if (unpaired > 0) {
+          throw new Error(`문서 다른 위치에 Mermaid 컴포넌트 ${unpaired}개가 있습니다. 기존 컴포넌트를 정리한 뒤 다시 실행하세요.`);
+        }
+
+        if (shouldUnwrapCodeBlocks(editor)) {
+          const result = await runCodeBlockPhase(editor, (done, total) => {
+            unwrapped = done;
+            markdownLabel.textContent = total > 1 ? `코드블럭 ${done}/${total}` : '코드블럭 변환 중';
+          });
+          unwrapped = result.convertedCount;
+          notices.push(...result.warnings);
+          if (result.protectedMermaidCount > 0) {
+            notices.push(`Mermaid 컴포넌트 원본 ${result.protectedMermaidCount}개는 제외했습니다.`);
           }
-          throw new Error('ADF로 변환할 코드블럭이 없습니다. Mermaid 컴포넌트 원본은 보호됩니다.');
+          if (result.failures.length > 0) {
+            notices.push(`원문을 읽지 못해 제외한 코드블럭 ${result.failures.length}개: ${result.failures.map(({ index }) => index + 1).join(', ')}번`);
+          }
+          // 1단계가 코드블럭 순번과 노드 참조를 모두 바꾸므로 본문을 다시 잡는다.
+          editor = getEditor();
         }
 
-        const warnings = candidates.flatMap(({ index, payload }) => (
-          payload.warnings.map((warning) => `코드블럭 ${index + 1}: ${warning}`)
-        ));
-        for (const { localId, payload } of candidates.reverse()) {
-          await replaceCodeBlockWithAdf(
-            currentEditor,
-            localId,
-            payload.html,
-            payload.markdown,
-          );
-          convertedCount += 1;
+        markdownLabel.textContent = 'Mermaid 확인 중';
+        const mermaid = await runMermaidPhase(editor, (done, total) => {
+          mermaidConverted = done;
+          markdownLabel.textContent = `Mermaid ${done}/${total}`;
+        });
+        mermaidConverted = mermaid.convertedCount;
+        if (mermaid.failures.length > 0) {
+          notices.push(`원문을 읽지 못해 제외한 Mermaid 후보 ${mermaid.failures.length}개: ${mermaid.failures.map(({ index }) => index + 1).join(', ')}번`);
         }
 
-        codeBlockAdfLabel.textContent = failures.length > 0
-          ? `${convertedCount}개 변환 · 제외 ${failures.length}`
-          : warnings.length > 0
-            ? `${convertedCount}개 변환 · 경고 ${warnings.length}`
-            : `${convertedCount}개 변환`;
-        const notices = [
-          ...warnings,
-          ...(protectedMermaidCount > 0
-            ? [`Mermaid 컴포넌트 원본 ${protectedMermaidCount}개는 제외했습니다.`]
-            : []),
-          ...(failures.length > 0
-            ? [`원문을 읽지 못해 제외한 코드블럭 ${failures.length}개: ${failures.map(({ index }) => index + 1).join(', ')}번`]
-            : []),
-        ];
+        markdownLabel.textContent = describeConversionResult(unwrapped, mermaidConverted);
         if (notices.length > 0) {
-          codeBlockAdfButton.title = notices.join('\n');
-          console.warn('[Inno Extension] Confluence 코드블럭 -> ADF 변환 안내', notices);
+          markdownButton.title = notices.join('\n');
+          console.warn('[Inno Extension] Confluence Markdown 변환 안내', notices);
         }
       } catch (error) {
-        console.error('[Inno Extension] Confluence 코드블럭 -> ADF 변환 실패', error);
-        const message = error instanceof Error ? error.message : '코드블럭을 ADF로 변환하지 못했습니다.';
+        console.error('[Inno Extension] Confluence Markdown 변환 실패', error);
+        const message = error instanceof Error ? error.message : 'Markdown을 변환하지 못했습니다.';
         const cause = summarizeConversionFailure(message);
-        codeBlockAdfLabel.textContent = convertedCount > 0
-          ? `${convertedCount}개 변환 · 일부 실패`
+        markdownLabel.textContent = unwrapped + mermaidConverted > 0
+          ? `${describeConversionResult(unwrapped, mermaidConverted)} · 일부 실패`
           : cause ? `변환 실패 · ${cause}` : '변환 실패';
-        codeBlockAdfButton.title = message;
+        markdownButton.title = message;
       }
 
-      resetLater(codeBlockAdfButton, codeBlockAdfLabel, '코드블럭 -> ADF');
-    });
-
-    mermaidButton.addEventListener('click', async () => {
-      setBusy(true);
-      mermaidLabel.textContent = '변환 중';
-      mermaidButton.removeAttribute('title');
-      let convertedCount = 0;
-
-      try {
-        const currentEditor = context.document.querySelector<HTMLElement>(EDITOR_BODY);
-        if (!currentEditor) throw new Error('Confluence 편집 본문을 찾을 수 없습니다.');
-
-        const allCodeBlocks = Array.from(
-          currentEditor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK),
-        ).map((codeBlock, index) => ({ codeBlock, index }));
-
-        // 브리지 요청을 Mermaid 후보로 한정한다. 문서 전체를 읽으면 실패 표면만 넓어진다.
-        const mermaidCandidateBlocks = allCodeBlocks.filter(
-          ({ codeBlock }) => mayBeMermaidCodeBlock(codeBlock),
-        );
-        // 짝 판정은 DOM 구조만 사용하므로 원문 읽기 성공 여부와 무관하게 계산한다.
-        const pairedCount = mermaidCandidateBlocks.filter(
-          ({ codeBlock }) => hasValidMermaidPair(currentEditor, codeBlock),
-        ).length;
-        const unpairedExtensionCount = countMermaidExtensions(currentEditor) - pairedCount;
-
-        if (unpairedExtensionCount > 0) {
-          throw new Error(`문서 다른 위치에 Mermaid 컴포넌트 ${unpairedExtensionCount}개가 있습니다. 기존 컴포넌트를 정리한 뒤 다시 실행하세요.`);
-        }
-
-        const { failures, sources } = await readCodeBlockSources(
-          currentEditor,
-          mermaidCandidateBlocks.filter(
-            ({ codeBlock }) => !hasValidMermaidPair(currentEditor, codeBlock),
-          ),
-        );
-        const candidates = sources.filter(({ source }) => isMermaidCodeBlockSource(source));
-
-        if (candidates.length === 0) {
-          if (failures.length > 0) {
-            throw new Error(`Mermaid 후보 코드블럭 ${failures.length}개의 원문을 읽지 못했습니다. ${failures[0].message}`);
-          }
-          throw new Error('변환할 Mermaid 코드블럭이 없습니다.');
-        }
-
-        for (const { codeBlock, index, source } of candidates.reverse()) {
-          await replaceMermaidCodeBlock(currentEditor, codeBlock, index, source);
-          convertedCount += 1;
-        }
-
-        mermaidLabel.textContent = failures.length > 0
-          ? `${convertedCount}개 변환 · 제외 ${failures.length}`
-          : `${convertedCount}개 변환`;
-        if (failures.length > 0) {
-          const notice = `원문을 읽지 못해 제외한 코드블럭 ${failures.length}개: ${failures.map(({ index }) => index + 1).join(', ')}번`;
-          mermaidButton.title = notice;
-          console.warn('[Inno Extension] Confluence Mermaid -> ADF 변환 안내', notice, failures);
-        }
-      } catch (error) {
-        console.error('[Inno Extension] Confluence Mermaid -> ADF 변환 실패', error);
-        const message = error instanceof Error ? error.message : 'Mermaid를 변환하지 못했습니다.';
-        const cause = summarizeConversionFailure(message);
-        mermaidLabel.textContent = convertedCount > 0
-          ? `${convertedCount}개 변환 · 일부 실패`
-          : message.startsWith('변환할 Mermaid') ? '변환 대상 없음'
-            : cause ? `변환 실패 · ${cause}` : '변환 실패';
-        mermaidButton.title = message;
-      }
-
-      resetLater(mermaidButton, mermaidLabel, 'Mermaid -> ADF');
+      resetLater();
     });
 
     toolbar.append(nextHost);
