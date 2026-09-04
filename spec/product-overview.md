@@ -172,6 +172,7 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - 2026-08-26: GitHub Enterprise에 `커밋 번호 복사` 기능을 추가했다. PR Conversation 탭 타임라인의 커밋 번호 오른쪽 버튼으로 40자 전체 SHA를 복사한다. Commits 탭에는 GitHub 기본 `Copy full SHA` 버튼이 이미 있어 route 판정과 타임라인 스코프로 이중 배제했다.
 - 2026-09-02: GitHub Enterprise `PR 제목 링크 복사`에 제목만 평문으로 복사하는 버튼을 추가했다. 별도 기능으로 나누지 않고 같은 host에 버튼을 더해 앵커 경쟁으로 인한 host 재생성을 피했다.
 - 2026-09-02: GitLab에 `MR 제목 복사` 기능을 추가했다. 목록과 상세에서 제목을 Markdown 링크 또는 평문으로 복사한다. 정규화·이스케이프 로직은 GitHub Enterprise 기능과 공용 모듈로 공유한다.
+- 2026-09-04: Confluence Mermaid 변환이 항상 실패하던 두 원인을 고쳤다. Popup 변환기가 Mermaid를 접힌 영역으로 감싸 편집기 변환이 원위치 교체를 검증할 수 없던 문제와, 31줄 이상인 코드블럭에서 원문 읽기(ProseMirror 전체)와 검증 읽기(DOM 30줄)가 달라 검증이 통과할 수 없던 문제다. **Popup 변환 결과에서 Mermaid 원문이 더 이상 접힌 채로 나오지 않는다.** 접기는 편집기 변환이 `Mermaid 원본` 영역으로 수행한다.
 
 ## 관련 문서
 

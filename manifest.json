@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Inno Extension",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "아마란스, Jira, Confluence, GitHub Enterprise, GitLab의 사내 업무 편의 기능을 하나의 확장 프로그램으로 제공합니다.",
   "icons": {
     "16": "icons/icon-16.png",
