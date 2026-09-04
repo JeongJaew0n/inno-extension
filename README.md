@@ -32,6 +32,19 @@ Inno Extension은 여러 업무 사이트의 편의 기능을 하나의 확장 �
 
 현재 배포 버전은 [v0.7.1](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.7.1)이며, 배포 ZIP은 릴리즈 페이지에서 받을 수 있다.
 
+### 업데이트
+
+Chrome 웹 스토어에 올리지 않으므로 새 버전이 나와도 **자동으로 갱신되지 않는다.** 갱신은 [프로젝트 Skill `$update-release`](./.codex/skills/update-release/SKILL.md)를 사용한다. 설치 폴더를 찾아 현재 버전과 최신 릴리즈를 비교하고, ZIP을 내려받아 무결성을 확인한 뒤 백업하고 같은 경로에 덮어쓴다.
+
+수동으로 할 때도 **설치 폴더 경로를 바꾸지 않는다.** `manifest.json`에 `key`가 없어 압축해제 확장의 ID가 폴더 경로에서 파생되므로, 경로가 바뀌면 확장 ID가 바뀌고 `chrome.storage.sync`에 저장한 기능 ON/OFF 설정이 사라진다.
+
+파일을 덮어쓴 뒤에는 두 단계가 더 필요하다.
+
+1. `chrome://extensions`에서 확장 카드의 새로고침을 누른다.
+2. 열려 있던 대상 사이트 탭을 새로고침한다.
+
+1번을 건너뛰면 이전 코드가 계속 돌고, 2번을 건너뛰면 기존 탭의 content script가 무효화된 상태로 남아 버튼이 보이지 않는다.
+
 ### 소스에서 설치
 
 ```bash

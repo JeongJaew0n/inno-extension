@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Release"
+  short_description: "설치된 Inno Extension을 최신 릴리즈로 갱신"
+  default_prompt: "Use $update-release to check for a newer Inno Extension release, download it, and update the local unpacked install in place."
