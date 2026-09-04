@@ -15,12 +15,6 @@ import {
   normalizeTitleAutofillText,
   TITLE_AUTOFILL_MAX_LENGTH,
 } from '../sites/amaranth/features/titleAutofill/contracts';
-import {
-  handleConfluencePopupAction,
-  handleConfluencePopupFile,
-  handleConfluencePopupInput,
-  renderConfluenceFeatureOptions,
-} from './confluenceActions';
 import { featureRoute, parsePopupRoute, siteRoute, type PopupRoute } from './router';
 
 const appElement = document.querySelector<HTMLElement>('#app');
@@ -179,9 +173,18 @@ function renderSiteDetail(siteId: SiteId): string {
 function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
   if (siteId === 'confluence' && featureId === 'pageMarkdownAppend') {
     const siteSettings = settings.sites.confluence;
-    return renderConfluenceFeatureOptions(
-      siteSettings.enabled && siteSettings.features[featureId]?.enabled === true,
-    );
+    const enabled = siteSettings.enabled && siteSettings.features[featureId]?.enabled === true;
+    // Popup에서 ADF JSON을 미리 보던 변환기는 제거했다. 결과를 문서에 넣을 방법이 없어
+    // 편집기 버튼과 역할이 겹쳤고, 두 경로의 Markdown 해석 규칙이 달라 오해를 만들었다.
+    return `
+      <div class="option-fields">
+        ${enabled ? '' : '<p class="notice">서비스와 이 기능을 켜야 변환 버튼이 나타납니다.</p>'}
+        <div class="editor-converter-guide">
+          <strong>Confluence 편집 화면</strong>
+          <p><code>edit-v2</code> 편집기 toolbar의 <code>Markdown 변환</code> 버튼으로 본문의 Markdown 원문을 편집 콘텐츠로 바꿀 수 있습니다. 이미 서식화된 본문은 변환하지 않습니다.</p>
+        </div>
+      </div>
+    `;
   }
 
   if (siteId === 'amaranth' && featureId === 'titleAutofill') {
@@ -353,11 +356,9 @@ async function saveFeatureOptionsWithFeedback(form: HTMLElement): Promise<void> 
 
 app.addEventListener('click', async (event) => {
   const target = event.target instanceof Element
-    ? event.target.closest<HTMLElement>('[data-route], [data-open-origin], [data-save-feature-options], [data-reset-feature], [data-reset-all], [data-confluence-action]')
+    ? event.target.closest<HTMLElement>('[data-route], [data-open-origin], [data-save-feature-options], [data-reset-feature], [data-reset-all]')
     : null;
   if (!target) return;
-
-  if (await handleConfluencePopupAction(target, render)) return;
 
   if (target.dataset.openOrigin) {
     await chrome.tabs.create({ url: target.dataset.openOrigin });
@@ -392,8 +393,6 @@ app.addEventListener('change', async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
 
-  if (await handleConfluencePopupFile(target, render)) return;
-
   if (target.hasAttribute('data-site-toggle') && isSiteId(target.dataset.siteId)) {
     await setSiteEnabled(target.dataset.siteId, target.checked);
     await render();
@@ -411,13 +410,6 @@ app.addEventListener('change', async (event) => {
   if (target.dataset.optionKind === 'string') return;
   const form = target.closest<HTMLElement>('[data-options-form]');
   if (form) await saveFeatureOptions(form);
-});
-
-app.addEventListener('input', (event) => {
-  const target = event.target;
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-    handleConfluencePopupInput(target);
-  }
 });
 
 window.addEventListener('hashchange', () => void render());
