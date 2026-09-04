@@ -52,21 +52,28 @@ test('markdown를 Confluence ADF로 변환한다', () => {
   });
 });
 
-test('mermaid fence는 expand/codeBlock으로 보존한다', () => {
+// 편집기의 `Mermaid -> ADF`가 최상위 코드블럭만 교체할 수 있어 expand로 감싸지 않는다.
+// docs/issue/2026-09-02-mermaid-conversion-fails-inside-expand.md
+test('mermaid fence는 최상위 codeBlock으로 보존한다', () => {
   const markdown = '```mermaid\ngraph TD;\nA-->B;\n```';
   const adf = markdownToConfluenceAdf(markdown);
 
   assert.equal(adf.mermaidCount, 1);
   assert.deepEqual(adf.doc.content[0], {
-    type: 'expand',
-    attrs: { title: 'Mermaid 코드 보기' },
-    content: [{
-      type: 'codeBlock',
-      attrs: { language: 'mermaid' },
-      content: [{ type: 'text', text: 'graph TD;\nA-->B;' }],
-    }],
+    type: 'codeBlock',
+    attrs: { language: 'mermaid' },
+    content: [{ type: 'text', text: 'graph TD;\nA-->B;' }],
   });
+});
 
+test('mermaid fence를 expand로 감싸지 않는다', () => {
+  const adf = markdownToConfluenceAdf('```mermaid\ngraph TD;\nA-->B;\n```');
+
+  assert.equal(
+    JSON.stringify(adf.doc).includes('expand'),
+    false,
+    'Mermaid를 expand로 감싸면 편집기 Mermaid -> ADF 변환이 영구 실패한다',
+  );
 });
 
 test('지원하지 않는 HTML과 이미지 변환 제외는 warnings에 남긴다', () => {

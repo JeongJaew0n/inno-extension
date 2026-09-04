@@ -74,6 +74,8 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 - 매크로의 `guestParams.index`에는 변환 직전 본문 전체 코드 블록에서 해당 원본이 차지하는 0부터 시작하는 순번을 넣는다.
 - Forge 앱이 source codeBlock을 index로 참조하므로 node를 실제 삭제하지 않고 `Mermaid 원본` 접힌 영역 안에 보존한다.
 - source가 `expand` 안에 있고 그 top-level node 바로 앞이 동일 Mermaid extension인 경우만 이미 변환된 정상 pair로 본다.
+- 변환 대상 코드 블록이 `expand` 안에 **홀로** 들어 있으면 그 `expand`를 통째로 교체 단위로 삼는다. expand는 중첩할 수 없어 안쪽에 붙여넣으면 새 영역이 `nestedExpand`로 강등되고 위치 검증이 영구히 실패하기 때문이다.
+- 코드 블록 외에 다른 내용이 함께 든 `expand`는 교체하지 않는다. 통째로 교체하면 그 내용이 사라지므로 변환에 실패하고 되돌린다.
 - 여러 후보는 뒤에서부터 처리해 앞쪽 삽입이 기존 코드 블록 순번에 영향을 주지 않게 한다.
 - Confluence의 비동기 node view 생성을 최대 3초 기다리고, extension과 접힌 source가 원래 위치에서 인접한 경우에만 성공으로 판단한다.
 - macro가 문서 최상단으로 이동하거나 원본이 그대로 남는 등 검증에 실패하면 Confluence toolbar의 실제 실행 취소 명령으로 해당 paste transaction을 되돌린다.
@@ -103,7 +105,9 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 - 외부 HTTP 이미지 참조
 - Mermaid fenced code block의 source 보존
 
-Popup의 Markdown 변환 결과에서 Mermaid fenced code block은 Mermaid 앱 매크로가 아니라 `expand` 안의 `codeBlock(language: mermaid)`로 보존한다. Popup 변환기는 tenant나 페이지 문맥을 모르기 때문에 서드파티 Mermaid 앱 렌더링을 보장하지 않는다.
+Popup의 Markdown 변환 결과에서 Mermaid fenced code block은 Mermaid 앱 매크로가 아니라 **최상위 `codeBlock(language: mermaid)`**로 보존한다. Popup 변환기는 tenant나 페이지 문맥을 모르기 때문에 서드파티 Mermaid 앱 렌더링을 보장하지 않는다.
+
+이전에는 `expand('Mermaid 코드 보기')`로 감쌌으나, 편집기의 `Mermaid -> ADF`가 최상위 코드 블록만 교체를 검증할 수 있어 Popup 결과를 편집기에서 변환하는 경로가 100% 실패했다. 원본을 접는 것은 편집기 변환이 `Mermaid 원본` 영역으로 직접 하므로, 다이어그램이 없는 시점에 미리 접지 않는다.
 
 편집 화면의 `Mermaid -> ADF`는 이미 코드 블록으로 구성된 본문을 별도로 처리한다. 조사된 Mermaid 기능은 Confluence 기본 node가 아니라 특정 Forge 앱의 `extension` node이며, 별도 코드 블록을 문서 내 순번으로 참조한다. 구현은 Atlassian ADF schema의 `data-node-type="extension"` DOM 표현을 paste payload로 사용하며, 현재 tenant가 이를 비동기로 실제 macro node로 수용하는 것을 저장 ADF에서 확인했다.
 
@@ -187,6 +191,7 @@ Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위�
 - 2026-08-12: Markdown 편집기 변환의 DOM Range 전체 선택을 ProseMirror `AllSelection`으로 교체하고, 원본 top-level node가 모두 교체된 경우만 성공으로 판정하도록 강화했다. 잘못 적용된 변경은 toolbar 실행 취소로 자동 복구한다. 줄 끝 공백과 literal `<br>`을 보존하고 code language·expand의 Confluence schema HTML 표현도 보강했다.
 - 2026-08-12: 편집기 toolbar의 본문 전체 `Markdown -> ADF 변환` 버튼을 제거했다. 기존 `코드블럭 벗기기`는 `코드블럭 -> ADF`로 변경하고, 코드블럭 원문을 단순 문단으로 푸는 대신 Markdown -> ADF 변환 결과로 원위치 교체하도록 행동 계약을 변경했다. 정상 Mermaid component가 참조하는 접힌 원본은 보호한다.
 - 2026-08-12: 편집기 toolbar에서 `Mermaid -> ADF`를 왼쪽, `코드블럭 -> ADF`를 오른쪽에 배치했다.
+- 2026-09-04: Popup 변환기와 편집기 변환기가 서로 맞지 않던 문제를 고쳤다. Popup이 Mermaid를 `expand('Mermaid 코드 보기')`로 감싸는 바람에 편집기 `Mermaid -> ADF`가 항상 실패했다. Popup은 최상위 `codeBlock`을 내도록 바꾸고, 편집기는 코드 블록이 `expand` 안에 홀로 있으면 그 `expand`를 통째로 교체 단위로 삼도록 했다. 다른 내용이 함께 든 `expand`는 내용 손실을 막기 위해 건드리지 않는다.
 
 ## 관련 문서
 
