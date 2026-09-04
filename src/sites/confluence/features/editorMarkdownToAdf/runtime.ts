@@ -373,6 +373,31 @@ function findEditorTopLevelNode(editor: HTMLElement, node: HTMLElement): HTMLEle
   return current.parentElement === editor ? current : null;
 }
 
+/**
+ * DOM에서 읽은 코드블럭 원문이 `source`와 같은 내용인지 판정한다.
+ *
+ * CodeMirror는 코드블럭을 30줄 안팎까지만 DOM에 렌더한다. 그래서 긴 블록에서는
+ * `readConfluenceCodeBlockText()`가 원문의 일부만 돌려준다. 붙여넣을 `source`는 브리지로
+ * ProseMirror node에서 전체를 읽으므로, 등호로 비교하면 31줄 이상인 블록은 검증을 영원히
+ * 통과하지 못한다. 실측에서 35줄(748자) 블록의 DOM 읽기가 30줄(631자)에서 끊겼다.
+ *
+ * 렌더된 구간이 원문의 연속 부분이면 같은 블록으로 본다. 블록 내부 스크롤 위치에 따라 앞이
+ * 아니라 중간이 렌더될 수 있으므로 접두사가 아니라 부분 문자열로 확인한다.
+ *
+ * 아무것도 렌더되지 않은 경우(`''`)는 통과시키지 않는다. 빈 문자열은 모든 원문의 부분
+ * 문자열이라 검증이 무조건 참이 되기 때문이다.
+ *
+ * 이 완화는 단독으로 쓰이지 않는다. `localId` 일치 · 접힌 expand 여부 · 직전 최상위 노드가
+ * 해당 extension인지가 함께 걸리므로 다른 코드블럭을 오인할 여지는 낮다.
+ *
+ * docs/issue/2026-09-04-mermaid-verification-reads-truncated-dom.md
+ */
+export function matchesCodeBlockSource(codeBlock: HTMLElement, source: string): boolean {
+  const domSource = readConfluenceCodeBlockText(codeBlock);
+  if (!domSource) return source === '';
+  return source === domSource || source.includes(domSource);
+}
+
 function matchesMermaidSourceAtIndex(
   editor: HTMLElement,
   codeBlockIndex: number,
@@ -382,7 +407,7 @@ function matchesMermaidSourceAtIndex(
   const codeBlock = editor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK)[codeBlockIndex];
   return Boolean(
     codeBlock
-    && readConfluenceCodeBlockText(codeBlock) === source
+    && matchesCodeBlockSource(codeBlock, source)
     && (!requireCollapsed || isCollapsedMermaidSource(codeBlock)),
   );
 }
@@ -396,7 +421,7 @@ function isMermaidReplacementAtOriginalPosition(
   const extension = findMermaidExtensionByLocalId(editor, localId);
   const codeBlock = editor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK)[codeBlockIndex];
   if (!extension || !codeBlock
-    || readConfluenceCodeBlockText(codeBlock) !== source
+    || !matchesCodeBlockSource(codeBlock, source)
     || !isCollapsedMermaidSource(codeBlock)) return false;
 
   const extensionTopLevel = findEditorTopLevelNode(editor, extension);

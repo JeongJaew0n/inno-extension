@@ -30,6 +30,7 @@ import {
   parseConfluencePageUrl,
 } from '../src/sites/confluence/routes';
 import {
+  matchesCodeBlockSource,
   mayBeMermaidCodeBlock,
   readCodeBlockSources,
   summarizeConversionFailure,
@@ -831,6 +832,32 @@ function createFakeCodeBlock(lines: string[] | null): HTMLElement {
     },
   } as unknown as HTMLElement;
 }
+
+// CodeMirror가 30줄 안팎까지만 렌더해 DOM 원문이 잘리는 문제를 견딘다.
+// docs/issue/2026-09-04-mermaid-verification-reads-truncated-dom.md
+test('코드블럭 원문 대조는 완전히 일치하면 통과한다', () => {
+  const source = 'flowchart TD\n  A --> B';
+  assert.equal(matchesCodeBlockSource(createFakeCodeBlock(['flowchart TD', '  A --> B']), source), true);
+});
+
+test('코드블럭 원문 대조는 DOM이 잘려도 통과한다', () => {
+  const full = ['sequenceDiagram', '  A->>B: 1', '  B->>A: 2', '  A->>B: 3'].join('\n');
+  // 렌더가 앞 2줄에서 끊긴 경우
+  assert.equal(matchesCodeBlockSource(createFakeCodeBlock(['sequenceDiagram', '  A->>B: 1']), full), true);
+  // 블록 내부 스크롤로 가운데만 렌더된 경우
+  assert.equal(matchesCodeBlockSource(createFakeCodeBlock(['  A->>B: 1', '  B->>A: 2']), full), true);
+});
+
+test('코드블럭 원문 대조는 다른 내용을 통과시키지 않는다', () => {
+  const full = 'flowchart TD\n  A --> B';
+  assert.equal(matchesCodeBlockSource(createFakeCodeBlock(['flowchart LR', '  X --> Y']), full), false);
+});
+
+test('코드블럭 원문 대조는 아무것도 렌더되지 않으면 통과시키지 않는다', () => {
+  // 빈 문자열은 모든 원문의 부분 문자열이라 무조건 참이 되는 것을 막는다.
+  assert.equal(matchesCodeBlockSource(createFakeCodeBlock(null), 'flowchart TD'), false);
+  assert.equal(matchesCodeBlockSource(createFakeCodeBlock([]), 'flowchart TD'), false);
+});
 
 test('Mermaid 후보 사전 판정은 DOM 원문으로 확실히 아닌 코드블럭만 제외한다', () => {
   assert.equal(mayBeMermaidCodeBlock(createFakeCodeBlock(['flowchart TD', '  A --> B'])), true);
