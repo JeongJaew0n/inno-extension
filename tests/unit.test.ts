@@ -1030,6 +1030,40 @@ test('Markdown 변환은 벗기기 · 문단 · Mermaid 순서로 실행한다',
   assert.match(runtimeSource, /if \(paragraphRuns > 0\) editor = getEditor\(\);/);
 });
 
+test('Mermaid 교체 판정은 노드 재사용에 기대지 않는다', async () => {
+  const runtimeSource = await readFile(
+    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+  const fn = runtimeSource.slice(
+    runtimeSource.indexOf('async function replaceMermaidCodeBlock'),
+    runtimeSource.indexOf('export function createEditorMarkdownToAdfRuntime'),
+  );
+
+  // ProseMirror가 DOM 노드를 재사용해 교체 후에도 isConnected가 true로 남을 수 있다.
+  // 접힌 원본으로 들어간 경우도 성공으로 본다.
+  assert.match(fn, /!codeBlock\.isConnected \|\| isCollapsedMermaidSource\(codeBlock\)/);
+  // isConnected 단독 판정이 남아 있으면 안 된다.
+  assert.doesNotMatch(fn, /!codeBlock\.isConnected\s*\n\s*&&/);
+});
+
+test('실패와 진단 결과는 다음 클릭까지 남는다', async () => {
+  const runtimeSource = await readFile(
+    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+  // 2.2초 만에 사라지면 사용자가 원인 문구를 읽지 못한다.
+  assert.match(runtimeSource, /const keepUntilNextClick/);
+  const handler = runtimeSource.slice(runtimeSource.indexOf("markdownButton.addEventListener('click'"));
+  const failure = handler.slice(handler.indexOf('} catch (error) {'));
+  assert.match(failure, /keepUntilNextClick\(\);/);
+  // 실패 경로가 resetLater 로 흘러가면 안 된다.
+  assert.ok(
+    failure.indexOf('keepUntilNextClick();') < failure.indexOf('resetLater();'),
+    '실패 경로는 resetLater 앞에서 종료해야 한다',
+  );
+});
+
 test('문단 Markdown 변환은 Confluence 파서에 맡긴다', async () => {
   const runtimeSource = await readFile(
     'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',

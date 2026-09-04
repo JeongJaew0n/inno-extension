@@ -560,8 +560,23 @@ async function replaceMermaidCodeBlock(
 ): Promise<void> {
   const localId = crypto.randomUUID();
   const html = buildConfluenceMermaidReplacementHtml(codeBlockIndex, localId, source);
+  /**
+   * 원본 코드블럭이 소비됐는지 판정한다.
+   *
+   * `!codeBlock.isConnected`만 보면 안 된다. **ProseMirror는 DOM 노드를 재사용한다.** 문단 변환
+   * 단계에서 교체가 제대로 됐는데도 원래 엘리먼트의 `isConnected`가 계속 `true`인 것을 실측으로
+   * 확인했다. 특히 앞 단계가 문서를 통째로 다시 쓴 직후에는 재사용 양상이 달라진다.
+   *
+   * 교체가 성공하면 원본은 둘 중 하나다. 노드가 버려졌거나, 재사용되어 `Mermaid 원본` 접힌
+   * 영역 **안으로** 들어갔거나. 붙여넣기가 실패했다면 원본은 접히지 않은 채 제자리에 남는다.
+   *
+   * docs/issue/2026-09-04-mermaid-phase-verification-node-reuse.md
+   */
+  const didConsumeOriginal = (): boolean => (
+    !codeBlock.isConnected || isCollapsedMermaidSource(codeBlock)
+  );
   const didReplaceSource = (): boolean => (
-    !codeBlock.isConnected
+    didConsumeOriginal()
     && isMermaidReplacementAtOriginalPosition(editor, codeBlockIndex, localId, source)
   );
 
@@ -575,7 +590,8 @@ async function replaceMermaidCodeBlock(
       'Mermaid 코드블럭을 원래 위치의 컴포넌트로 교체하지 못했습니다.',
     );
   } catch (error) {
-    const changed = !codeBlock.isConnected || Boolean(findMermaidExtensionByLocalId(editor, localId));
+    // 노드 재사용 때문에 `isConnected`만으로는 변경 여부를 알 수 없다. 위 판정과 같은 기준을 쓴다.
+    const changed = didConsumeOriginal() || Boolean(findMermaidExtensionByLocalId(editor, localId));
     if (changed && !await rollbackMermaidReplacement(editor, codeBlockIndex, localId, source)) {
       throw new Error('Mermaid 변환 결과가 올바르지 않고 자동 되돌리기도 실패했습니다. Confluence 실행 취소를 한 번 눌러주세요.');
     }
@@ -910,6 +926,7 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
     if (!markdownButton || !markdownLabel) return null;
 
     const setBusy = (busy: boolean): void => { markdownButton.disabled = busy; };
+    /** 성공·무변경 결과는 잠깐 보여주고 원래 라벨로 되돌린다. */
     const resetLater = (): void => {
       const timer = window.setTimeout(() => {
         feedbackTimers.delete(timer);
@@ -920,6 +937,18 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         }
       }, 2200);
       feedbackTimers.add(timer);
+    };
+
+    /**
+     * 실패와 진단 결과는 **다음 클릭까지 남긴다.**
+     *
+     * 2.2초 만에 사라지면 사용자가 원인 문구를 읽지 못한다. 실제로 Mermaid 변환이 실패했을 때
+     * 사용자도 개발자도 어느 분기에서 끊겼는지 확인하지 못해 원인 규명이 막혔다. 버튼은 곧바로
+     * 다시 누를 수 있게 풀어두고, 라벨과 hover 문구만 유지한다. 다음 클릭이 `확인 중`으로
+     * 덮어쓴다.
+     */
+    const keepUntilNextClick = (): void => {
+      if (nextHost.isConnected) setBusy(false);
     };
 
     /**
@@ -999,7 +1028,7 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
               '',
               '원문 전체를 코드블럭 하나에 넣은 뒤 다시 실행하세요.',
             ].join('\n');
-            resetLater();
+            keepUntilNextClick();
             return;
           }
         }
@@ -1017,6 +1046,8 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
           ? `${describeConversionResult(unwrapped, paragraphRuns, mermaidConverted)} · 일부 실패`
           : cause ? `변환 실패 · ${cause}` : '변환 실패';
         markdownButton.title = message;
+        keepUntilNextClick();
+        return;
       }
 
       resetLater();
