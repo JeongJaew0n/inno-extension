@@ -24,3 +24,5 @@
 | --- | --- | --- |
 | 2026-09-01 | [reconcile 경로에서 보고된 콘솔 오류](./2026-09-01-reconcile-console-error.md) | 1차 조사. 아래 문서로 이어짐 |
 | 2026-09-01 | [확장 재로드로 사라지지 않는 콘솔 오류](./2026-09-01-stale-content-script-console-error.md) | **대응 적용·확인 완료** — 원인은 유력 가설 단계 |
+| 2026-09-02 | [Popup `Markdown -> ADF` 결과는 `Mermaid -> ADF`로 변환할 수 없다](./2026-09-02-mermaid-conversion-fails-inside-expand.md) | **수정 적용·실측 확인 완료** |
+| 2026-09-04 | [30줄 넘는 코드블럭은 Mermaid 변환 검증을 통과할 수 없다](./2026-09-04-mermaid-verification-reads-truncated-dom.md) | **수정 적용·실측 확인 완료** |
