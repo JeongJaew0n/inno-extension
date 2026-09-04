@@ -108,13 +108,22 @@ class Converter {
     };
   }
 
+  /**
+   * Mermaid fenced code block을 최상위 `codeBlock`으로 낸다.
+   *
+   * 예전에는 `expand('Mermaid 코드 보기')`로 감쌌다. Popup은 tenant를 몰라 서드파티 Mermaid 앱
+   * 렌더링을 보장할 수 없으니 원문을 접어두자는 의도였다. 그런데 편집기의 `Mermaid -> ADF`는
+   * 코드블럭이 최상위일 때만 교체를 검증할 수 있어(`findEditorTopLevelNode`가 `expand` 안의
+   * 노드에 `null`을 준다), 감싸는 순간 후속 변환이 100% 실패했다.
+   *
+   * 접기의 목적은 다이어그램이 생긴 뒤 원본을 숨기는 것이고, 그 접기는 편집기 변환이
+   * `Mermaid 원본` expand로 직접 만든다. 다이어그램이 없는 시점에 미리 접을 이유가 없다.
+   *
+   * docs/issue/2026-09-02-mermaid-conversion-fails-inside-expand.md
+   */
   private renderMermaidBlock(text: string): AdfNode[] {
     this.mermaidCount += 1;
-    return [{
-      type: 'expand',
-      attrs: { title: 'Mermaid 코드 보기' },
-      content: [this.codeBlock(text, 'mermaid')],
-    }];
+    return [this.codeBlock(text, 'mermaid')];
   }
 
   private renderList(list: Tokens.List): AdfNode {

@@ -322,10 +322,39 @@ function findMermaidExtensionByLocalId(
   ));
 }
 
+const EDITOR_EXPAND = '[data-prosemirror-node-name="expand"], [data-prosemirror-node-name="nestedExpand"]';
+
 function isCollapsedMermaidSource(codeBlock: HTMLElement): boolean {
-  return Boolean(codeBlock.closest(
-    '[data-prosemirror-node-name="expand"], [data-prosemirror-node-name="nestedExpand"]',
-  ));
+  return Boolean(codeBlock.closest(EDITOR_EXPAND));
+}
+
+/**
+ * Mermaid 코드블럭을 교체할 때 실제로 선택할 노드를 고른다.
+ *
+ * 보통은 코드블럭 자신이다. 다만 코드블럭이 `expand` 안에 **홀로** 들어 있으면 그 `expand`를
+ * 통째로 교체 단위로 삼는다.
+ *
+ * Confluence는 expand를 중첩할 수 없다. expand 안의 코드블럭 자리에 `extension + expand(원본)`을
+ * 붙여넣으면 새 expand가 `nestedExpand`로 강등되고, 새 extension과 원본이 같은 top-level 노드에
+ * 갇혀 `isMermaidReplacementAtOriginalPosition()`의 형제 비교가 영구히 거짓이 된다. 3초 타임아웃
+ * 뒤 되돌아갈 뿐 절대 성공하지 못한다.
+ *
+ * 코드블럭 말고 다른 내용이 함께 든 expand는 건드리지 않는다. 통째로 교체하면 그 내용이 사라진다.
+ * 그 경우는 종전대로 변환에 실패하고 되돌아간다 — 내용을 잃는 것보다 낫다.
+ *
+ * docs/issue/2026-09-02-mermaid-conversion-fails-inside-expand.md
+ */
+function resolveMermaidReplacementTarget(
+  editor: HTMLElement,
+  codeBlock: HTMLElement,
+): HTMLElement {
+  const expand = codeBlock.closest<HTMLElement>(EDITOR_EXPAND);
+  if (!expand || !editor.contains(expand)) return codeBlock;
+
+  const innerNodes = Array.from(
+    expand.querySelectorAll<HTMLElement>('[data-prosemirror-node-name]'),
+  );
+  return innerNodes.length === 1 && innerNodes[0] === codeBlock ? expand : codeBlock;
 }
 
 function hasValidMermaidPair(editor: HTMLElement, codeBlock: HTMLElement): boolean {
@@ -414,7 +443,7 @@ async function replaceMermaidCodeBlock(
     && isMermaidReplacementAtOriginalPosition(editor, codeBlockIndex, localId, source)
   );
 
-  await selectEditorNode(editor, codeBlock);
+  await selectEditorNode(editor, resolveMermaidReplacementTarget(editor, codeBlock));
   try {
     await pasteAndWaitForChange(
       editor,
