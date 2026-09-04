@@ -36,7 +36,11 @@ import {
   readCodeBlockSources,
   summarizeConversionFailure,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/runtime';
-import { looksLikeMarkdownDocument } from '../src/sites/confluence/features/editorMarkdownToAdf/markdown-detection';
+import {
+  describeUnconvertedMarkdown,
+  findUnconvertedMarkdown,
+  looksLikeMarkdownDocument,
+} from '../src/sites/confluence/features/editorMarkdownToAdf/markdown-detection';
 import { adfDocumentToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/adf-to-editor-html';
 import { codeBlockMarkdownToAdfPayload } from '../src/sites/confluence/features/editorMarkdownToAdf/code-block-to-adf';
 import {
@@ -910,11 +914,143 @@ test('Markdown 문서 판정은 읽지 못한 원문을 통과시키지 않는�
   assert.equal(looksLikeMarkdownDocument('   \n  \n'), false);
 });
 
+// 변환되면 문법 문자가 소비돼 사라지므로, 신호와 노드를 짝지어 판정한다.
+// 개수만 보면 사용자가 일부러 쓴 한 줄을 미변환으로 오판하므로 구조 증거를 요구한다.
+// docs/plans/confluence-magic-button/spec.md
+test('미변환 판정은 표 헤더와 구분선이 붙어 있으면 확정한다', () => {
+  const findings = findUnconvertedMarkdown(['| a | b |', '|---|---|', '| 1 | 2 |'], () => 0);
+  assert.deepEqual(findings.map((f) => [f.construct, f.evidence]), [['표', 'structure']]);
+});
+
+test('미변환 판정은 표처럼 보이는 한 줄을 확정하지 않는다', () => {
+  // 사용자가 문단에 파이프를 쓴 경우다. 구분선이 뒤따르지 않으면 표가 아니다.
+  assert.deepEqual(findUnconvertedMarkdown(['| 항목 | 값 |', '설명을 이어서 쓴다'], () => 0), []);
+});
+
+test('미변환 판정은 펜스가 짝수로 있을 때만 확정한다', () => {
+  const paired = findUnconvertedMarkdown(['```', 'code', '```'], () => 0);
+  assert.deepEqual(paired.map((f) => [f.construct, f.evidence]), [['코드블럭', 'structure']]);
+  // 여는 것만 있으면 코드가 아니라 그냥 백틱일 수 있다.
+  assert.deepEqual(findUnconvertedMarkdown(['```', 'code'], () => 0), []);
+});
+
+test('미변환 판정은 제목 한두 줄을 확정하지 않는다', () => {
+  // 일반 문서에 `# TODO` 한 줄을 일부러 쓸 수 있다.
+  assert.deepEqual(findUnconvertedMarkdown(['회의 정리', '# TODO 나중에', '내일 이어서'], () => 0), []);
+  assert.deepEqual(findUnconvertedMarkdown(['# 하나', '본문', '# 둘'], () => 0), []);
+});
+
+test('미변환 판정은 같은 신호가 3개 이상 반복되면 확정한다', () => {
+  const findings = findUnconvertedMarkdown(['# 하나', '# 둘', '# 셋'], () => 0);
+  assert.deepEqual(findings.map((f) => [f.construct, f.evidence]), [['제목', 'repetition']]);
+});
+
+test('미변환 판정은 ATX 제목 문법을 엄격히 본다', () => {
+  const only = (paras: string[]) => findUnconvertedMarkdown(paras, () => 0).map((f) => f.construct);
+  // 문법을 만족하는 것 (반복 3회로 확정)
+  assert.deepEqual(only(['# 하나', '## 둘', '###### 여섯']), ['제목']);
+  assert.deepEqual(only(['   # 들여쓰기 3칸', '   ## 둘', '# 셋']), ['제목']);
+  // 문법을 만족하지 않는 것
+  assert.deepEqual(only(['#공백없음', '##공백없음', '###공백없음']), []);
+  assert.deepEqual(only(['####### 일곱개', '####### 또', '####### 또']), []);
+  assert.deepEqual(only(['    # 4칸 들여쓰기', '    # 또', '    # 또']), []);
+  assert.deepEqual(only(['# ', '# ', '# ']), []);
+});
+
+test('미변환 판정은 표 헤더와 구분선의 칸 수가 같아야 확정한다', () => {
+  const only = (paras: string[]) => findUnconvertedMarkdown(paras, () => 0).map((f) => f.construct);
+  assert.deepEqual(only(['| a | b |', '|---|---|']), ['표']);
+  assert.deepEqual(only(['| a | b |', '| :-- | --: |']), ['표']);
+  // 칸 수가 다르면 표가 아니다
+  assert.deepEqual(only(['| a | b | c |', '|---|---|']), []);
+  // 구분선이 뒤따르지 않으면 표가 아니다
+  assert.deepEqual(only(['| 항목 | 값 |', '설명을 이어서 쓴다']), []);
+  // 순서가 뒤바뀌면 표가 아니다
+  assert.deepEqual(only(['|---|---|', '| a | b |']), []);
+});
+
+test('미변환 판정은 펜스가 규칙대로 닫혀야 확정한다', () => {
+  const only = (paras: string[]) => findUnconvertedMarkdown(paras, () => 0).map((f) => f.construct);
+  assert.deepEqual(only(['```ts', 'code', '```']), ['코드블럭']);
+  assert.deepEqual(only(['~~~', 'code', '~~~']), ['코드블럭']);
+  // 닫는 펜스에 info string이 있으면 닫힌 것이 아니다
+  assert.deepEqual(only(['```ts', 'code', '```ts']), []);
+  // 문자가 다르면 짝이 아니다
+  assert.deepEqual(only(['```', 'code', '~~~']), []);
+  // 닫는 펜스가 더 짧으면 닫힌 것이 아니다
+  assert.deepEqual(only(['````', 'code', '```']), []);
+  // 열기만 하면 코드블럭이 아니다
+  assert.deepEqual(only(['```', 'code']), []);
+});
+
+test('미변환 판정은 노드가 있으면 보류한다', () => {
+  // Markdown 문법을 본문에서 설명하는 문서가 여기 걸린다. 확정으로 올리면 오탐이다.
+  const paras = ['# 하나', '# 둘', '# 셋'];
+  assert.deepEqual(findUnconvertedMarkdown(paras, (n) => (n === 'heading' ? 3 : 0)), []);
+});
+
+test('미변환 판정은 해시태그와 이슈 번호를 제목으로 보지 않는다', () => {
+  assert.deepEqual(findUnconvertedMarkdown(['#긴급', '#123 이슈', '#태그'], () => 0), []);
+});
+
+test('미변환 판정은 정상 변환 결과를 건드리지 않는다', () => {
+  assert.deepEqual(findUnconvertedMarkdown(['제목', '표 안의 값', '인용문입니다'], () => 0), []);
+});
+
+test('미변환 Markdown 요약은 구성과 개수를 나열한다', () => {
+  assert.equal(
+    describeUnconvertedMarkdown([
+      { construct: '제목', signalCount: 38, evidence: 'repetition' },
+      { construct: '표', signalCount: 219, evidence: 'structure' },
+    ]),
+    '제목 38 · 표 219',
+  );
+  assert.equal(describeUnconvertedMarkdown([]), '');
+});
+
 test('변환 결과 요약은 수행한 단계만 표시한다', () => {
-  assert.equal(describeConversionResult(0, 0), '변환할 내용이 없습니다');
-  assert.equal(describeConversionResult(1, 0), '코드블럭 1 변환');
-  assert.equal(describeConversionResult(0, 7), 'Mermaid 7 변환');
-  assert.equal(describeConversionResult(1, 7), '코드블럭 1 · Mermaid 7 변환');
+  assert.equal(describeConversionResult(0, 0, 0), '변환할 내용이 없습니다');
+  assert.equal(describeConversionResult(1, 0, 0), '코드블럭 1 변환');
+  assert.equal(describeConversionResult(0, 2, 0), '문단 2 변환');
+  assert.equal(describeConversionResult(0, 0, 7), 'Mermaid 7 변환');
+  assert.equal(describeConversionResult(1, 2, 7), '코드블럭 1 · 문단 2 · Mermaid 7 변환');
+});
+
+test('Markdown 변환은 벗기기 · 문단 · Mermaid 순서로 실행한다', async () => {
+  const runtimeSource = await readFile(
+    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+  const codeBlock = runtimeSource.indexOf('await runCodeBlockPhase(');
+  const paragraph = runtimeSource.indexOf('await runParagraphMarkdownPhase(');
+  const mermaid = runtimeSource.indexOf('await runMermaidPhase(');
+  assert.ok(codeBlock < paragraph, '벗기기가 문단 변환보다 먼저여야 한다');
+  assert.ok(paragraph < mermaid, '문단 변환이 Mermaid 변환보다 먼저여야 한다');
+  // 단계마다 본문을 다시 잡아야 순번과 노드 참조가 어긋나지 않는다.
+  assert.match(runtimeSource, /if \(paragraphRuns > 0\) editor = getEditor\(\);/);
+});
+
+test('문단 Markdown 변환은 Confluence 파서에 맡긴다', async () => {
+  const runtimeSource = await readFile(
+    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+
+  // 평문만 실어야 Confluence Markdown 파서가 돈다. text/html 이 있으면 그쪽이 우선한다.
+  assert.match(runtimeSource, /pastePlainTextAndWaitForChange/);
+  const helper = runtimeSource.slice(
+    runtimeSource.indexOf('async function pastePlainTextAndWaitForChange'),
+    runtimeSource.indexOf('async function pasteAndWaitForChange'),
+  );
+  assert.match(helper, /setData\('text\/plain'/);
+  assert.doesNotMatch(helper, /setData\('text\/html'/);
+
+  // 문단 단계는 우리 변환기를 쓰지 않는다. 취소선 구분자 규칙이 Confluence와 다르다.
+  const phase = runtimeSource.slice(
+    runtimeSource.indexOf('async function runParagraphMarkdownPhase'),
+    runtimeSource.indexOf('export function describeConversionResult'),
+  );
+  assert.doesNotMatch(phase, /loadCodeBlockConverter|convertMarkdown/);
 });
 
 test('Mermaid 후보 사전 판정은 DOM 원문으로 확실히 아닌 코드블럭만 제외한다', () => {
