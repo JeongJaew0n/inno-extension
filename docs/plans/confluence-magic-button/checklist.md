@@ -4,42 +4,45 @@
 
 ## 0. 선결
 
-- [ ] Q1 버튼 이름 확정
-- [ ] Q2 벗기기 범위(A / B / C) 확정
-- [ ] Q3 Markdown 판정 임계값 확정
-- [ ] Q4 1단계 단독 실행 경로 유지 여부 확정
+- [x] Q1 버튼 이름 확정 — `Markdown 변환`
+- [x] Q2 벗기기 범위 확정 — 원래 동작 유지 + `if` 게이트
+- [x] Q3 Markdown 판정 임계값 확정 — 특징 2종 이상
+- [x] Q4 1단계 단독 실행 경로 — 남기지 않음
 
 ## 1. 판정 로직
 
-- [ ] `isTopLevelCodeBlock()` — `findEditorTopLevelNode()`를 재사용하고 `.fabric-editor-breakout-mark` 래퍼를 통과한다
-- [ ] `resolveMermaidReplacementTarget()`의 "래퍼 안에 콘텐츠 노드가 하나뿐" 판정을 공용 함수로 추출한다
-- [ ] `looksLikeMarkdownDocument()` — 제목·표 구분선·펜스·목록·인용 중 2종 이상
-- [ ] DOM 원문으로 1차 후보를 좁히고 브리지 원문으로 확정한다 (30줄 잘림 대응)
+- [x] `isTopLevelCodeBlock()` — `findEditorTopLevelNode()`를 재사용하고 `.fabric-editor-breakout-mark` 래퍼를 통과한다
+- [x] `resolveMermaidReplacementTarget()`의 "래퍼 안에 콘텐츠 노드가 하나뿐" 판정을 공용 함수로 추출한다
+- [x] `looksLikeMarkdownDocument()` — 제목·표 구분선·펜스·목록·인용 중 2종 이상
+- [x] DOM 원문으로 1차 후보를 좁히고 브리지 원문으로 확정한다 (30줄 잘림 대응)
 
 ## 2. 핸들러 재구성
 
-- [ ] 기존 `코드블럭 -> ADF` 본문을 `runCodeBlockPhase()`로 추출
-- [ ] 기존 `Mermaid -> ADF` 본문을 `runMermaidPhase()`로 추출
-- [ ] 단일 핸들러에서 순차 호출. 1단계 후 편집 본문을 **다시 조회**
-- [ ] `codeBlockIndex`를 2단계 시작 시점에 다시 계산 (매크로 `guestParams.index` 근거)
-- [ ] B안 채택 시 짝 없는 Mermaid 컴포넌트 가드를 **1단계 이전**에 확인
-- [ ] 1단계를 건너뛰면 `loadCodeBlockConverter()`를 호출하지 않는다
+- [x] 기존 `코드블럭 -> ADF` 본문을 `runCodeBlockPhase()`로 추출
+- [x] 기존 `Mermaid -> ADF` 본문을 `runMermaidPhase()`로 추출
+- [x] 단일 핸들러에서 순차 호출. 1단계 후 편집 본문을 **다시 조회**
+- [x] `codeBlockIndex`를 2단계 시작 시점에 다시 계산 (매크로 `guestParams.index` 근거)
+- [x] B안 채택 시 짝 없는 Mermaid 컴포넌트 가드를 **1단계 이전**에 확인
+- [x] 1단계를 건너뛰면 `loadCodeBlockConverter()`를 호출하지 않는다
 
 ## 3. UI
 
-- [ ] 버튼 2개 + divider를 버튼 1개로 교체
-- [ ] 아이콘 선정 (두 동작을 아우르는 형태)
-- [ ] 라벨에 단계·진행 표시: `벗기는 중` → `Mermaid 3/7` → 결과
-- [ ] 부분 실패를 라벨과 hover에 나눠 표기
-- [ ] 대상이 없으면 오류가 아니라 `변환할 내용이 없습니다`
+- [x] 버튼 2개 + divider를 버튼 1개로 교체
+- [x] 아이콘 선정 — 문서 아이콘
+- [x] 라벨에 단계·진행 표시: `벗기는 중` → `Mermaid 3/7` → 결과
+- [x] 부분 실패를 라벨과 hover에 나눠 표기
+- [x] 대상이 없으면 오류가 아니라 `변환할 내용이 없습니다`
 
 ## 4. 테스트
 
-- [ ] `looksLikeMarkdownDocument()` — Markdown 문서 통과 / Kotlin·YAML·JSON·셸 차단
-- [ ] 특징 1종만 있는 입력이 차단되는지 (YAML의 `- item`, 셸의 `# 주석`)
-- [ ] 최상위 판정 — 래퍼 안 코드블럭은 참, 목록·인용 안 코드블럭은 거짓
+- [x] `findUnconvertedMarkdown()` — 확정/보류/해당 없음 3상태
+- [x] 저장소 Markdown 28개로 오탐 0 / 재현율 28-28 측정
+
+- [x] `looksLikeMarkdownDocument()` — Markdown 문서 통과 / Kotlin·YAML·JSON·셸 차단
+- [x] 특징 1종만 있는 입력이 차단되는지 (YAML의 `- item`, 셸의 `# 주석`)
+- [x] 최상위 판정 — 래퍼 안 코드블럭은 참, 목록·인용 안 코드블럭은 거짓
 - [ ] 단계 순서 — 1단계 후 2단계가 새 DOM을 조회하는지
-- [ ] 기존 87개 테스트 무회귀
+- [x] 기존 87개 테스트 무회귀
 
 ## 5. 실제 tenant 검증
 
@@ -52,7 +55,7 @@
 ## 6. 문서
 
 - [ ] `spec/features/confluence-adf-markdown-tools.md` 편집기 절 재작성
-- [ ] 같은 파일 **변경 이력 섹션 안**에 항목 추가 (파일 끝에 붙이지 않는다)
+- [x] 같은 파일 **변경 이력 섹션 안**에 항목 추가 (파일 끝에 붙이지 않는다)
 - [ ] `spec/product-overview.md` 변경 이력 추가
 - [ ] README에 기능 설명이 있으면 갱신
 - [ ] 이 계획 문서의 상태를 갱신

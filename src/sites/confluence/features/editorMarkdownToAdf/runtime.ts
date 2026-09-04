@@ -9,7 +9,11 @@ import {
 } from '../../selectors';
 import type { CodeBlockAdfPayload } from './code-block-to-adf';
 import { readConfluenceCodeBlockText } from './code-block';
-import { looksLikeMarkdownDocument } from './markdown-detection';
+import {
+  describeUnconvertedMarkdown,
+  findUnconvertedMarkdown,
+  looksLikeMarkdownDocument,
+} from './markdown-detection';
 import {
   buildConfluenceMermaidReplacementHtml,
   CONFLUENCE_MERMAID_EXTENSION_KEY,
@@ -46,7 +50,7 @@ const PROSEMIRROR_SELECTION_TIMEOUT_MS = 1000;
 const PROSEMIRROR_SELECT_REQUEST_EVENT = 'inno-extension:confluence:select-prosemirror-node';
 const PROSEMIRROR_SELECT_RESPONSE_EVENT = 'inno-extension:confluence:select-prosemirror-node-result';
 
-type ProseMirrorBridgeAction = 'read-node' | 'select-node';
+type ProseMirrorBridgeAction = 'read-node' | 'select-node' | 'select-range';
 
 interface ProseMirrorBridgeResponse {
   requestId?: unknown;
@@ -59,9 +63,11 @@ async function requestProseMirrorBridge(
   editor: HTMLElement,
   action: ProseMirrorBridgeAction,
   node?: HTMLElement,
+  endNode?: HTMLElement,
 ): Promise<ProseMirrorBridgeResponse> {
   const localId = node?.dataset.localId;
-  if (!localId) throw new Error('Confluence codeBlock 식별자를 찾을 수 없습니다.');
+  if (!localId) throw new Error('Confluence 노드 식별자를 찾을 수 없습니다.');
+  const endLocalId = endNode?.dataset.localId ?? localId;
   const document = editor.ownerDocument;
   const requestId = crypto.randomUUID();
 
@@ -98,13 +104,22 @@ async function requestProseMirrorBridge(
 
     document.addEventListener(PROSEMIRROR_SELECT_RESPONSE_EVENT, onResponse);
     document.dispatchEvent(new CustomEvent(PROSEMIRROR_SELECT_REQUEST_EVENT, {
-      detail: JSON.stringify({ action, requestId, localId }),
+      detail: JSON.stringify({ action, requestId, localId, endLocalId }),
     }));
   });
 }
 
 async function selectEditorNode(editor: HTMLElement, node: HTMLElement): Promise<void> {
   await requestProseMirrorBridge(editor, 'select-node', node);
+}
+
+/** 연속한 문단 구간을 한 번에 선택한다. 첫 문단과 마지막 문단을 잡으면 그 사이가 모두 들어간다. */
+async function selectEditorRange(
+  editor: HTMLElement,
+  first: HTMLElement,
+  last: HTMLElement,
+): Promise<void> {
+  await requestProseMirrorBridge(editor, 'select-range', first, last);
 }
 
 async function readProseMirrorCodeBlockText(
@@ -230,6 +245,37 @@ function waitForEditorChange(
     const timer = window.setTimeout(() => finish(didChange()), timeoutMs);
     observer.observe(editor, { childList: true, subtree: true, attributes: true });
   });
+}
+
+/**
+ * 평문만 실어 붙여넣는다.
+ *
+ * `text/html`이 함께 있으면 Confluence가 그쪽을 우선하므로 Markdown 파서를 타지 않는다.
+ * 문단으로 남은 Markdown은 Confluence 자체 파서에 맡기는 것이 낫다. 그쪽이 이 편집기의 실제
+ * 규칙이고, 우리 변환기와 달리 취소선 구분자로 `~~`만 인정해 `1~3`ㆍ`4~5` 같은 범위 표기를
+ * 깨뜨리지 않는다.
+ *
+ * docs/issue/2026-09-04-tilde-range-becomes-strikethrough.md
+ */
+async function pastePlainTextAndWaitForChange(
+  editor: HTMLElement,
+  plainText: string,
+  didChange: () => boolean,
+  failureMessage: string,
+): Promise<void> {
+  const clipboardData = new DataTransfer();
+  clipboardData.setData('text/plain', plainText);
+
+  editor.dispatchEvent(new ClipboardEvent('paste', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    clipboardData,
+  }));
+
+  if (!await waitForEditorChange(editor, didChange, MERMAID_EXTENSION_INSERT_TIMEOUT_MS)) {
+    throw new Error(failureMessage);
+  }
 }
 
 async function pasteAndWaitForChange(
@@ -653,11 +699,157 @@ async function runMermaidPhase(
   return { convertedCount, failures };
 }
 
+/**
+ * 편집 본문에서 변환되지 않고 문단으로 남은 Markdown을 찾는다.
+ *
+ * 두 단계 모두 할 일이 없을 때만 호출한다. 그 경우 `변환할 내용이 없습니다`만 보여주면 사용자가
+ * 원인을 알 수 없기 때문이다. 코드블럭이 아니라 문단으로 붙여넣은 Markdown이 이 상태가 된다.
+ */
+function findUnconvertedMarkdownInEditor(editor: HTMLElement): string {
+  const paragraphTexts = Array.from(
+    editor.querySelectorAll<HTMLElement>('[data-prosemirror-node-name="paragraph"]'),
+  )
+    .map((paragraph) => (paragraph.textContent ?? '').trim())
+    .filter(Boolean);
+  if (paragraphTexts.length === 0) return '';
+
+  const findings = findUnconvertedMarkdown(
+    paragraphTexts,
+    (nodeName) => editor.querySelectorAll(`[data-prosemirror-node-name="${nodeName}"]`).length,
+  );
+  return describeUnconvertedMarkdown(findings);
+}
+
+interface ParagraphRun {
+  paragraphs: HTMLElement[];
+  markdown: string;
+}
+
+/**
+ * 본문 최상위의 **연속한 문단** 구간을 모은다.
+ *
+ * 원문을 코드블럭이 아니라 본문에 그대로 붙여넣으면 각 줄이 문단이 된다. 그 줄들을 다시 이어
+ * 붙이면 원래 Markdown이 복원된다. 빈 줄도 빈 문단으로 남아 있으므로 블록 구분이 유지된다.
+ *
+ * Confluence가 붙여넣기 과정에서 이미 변환해 둔 노드(목록·표 등)는 문단이 아니므로 구간을
+ * 끊는다. 그 노드들은 건드리지 않고 그대로 둔다.
+ */
+function collectParagraphRuns(editor: HTMLElement): ParagraphRun[] {
+  const runs: ParagraphRun[] = [];
+  let current: HTMLElement[] | null = null;
+
+  for (const child of Array.from(editor.children)) {
+    const element = child as HTMLElement;
+    // 데코레이션은 문서 내용이 아니므로 구간을 끊지 않는다.
+    if (element.classList.contains('ProseMirror-widget')) continue;
+
+    if (element.getAttribute('data-prosemirror-node-name') === 'paragraph') {
+      if (!current) { current = []; runs.push({ paragraphs: current, markdown: '' }); }
+      current.push(element);
+    } else {
+      current = null;
+    }
+  }
+
+  return runs
+    .filter((run) => run.paragraphs.length > 0)
+    .map((run) => ({
+      paragraphs: run.paragraphs,
+      // NBSP는 Markdown 파서가 공백으로 보지 않아 빈 줄 판정을 망친다.
+      markdown: run.paragraphs
+        .map((paragraph) => (paragraph.textContent ?? '').replace(/\u00a0/g, ' '))
+        .join('\n'),
+    }));
+}
+
+/**
+ * 2단계 — 문단으로 남은 Markdown을 Confluence에 다시 맡긴다.
+ *
+ * 구간의 문단 텍스트를 그대로 이어 붙여 **평문으로 다시 붙여넣는다.** 그러면 Confluence 자체
+ * Markdown 파서가 제목·표·코드블럭·목록·인용을 만들어 준다. 실측으로 확인했다.
+ *
+ * 우리 변환기를 쓰지 않는 이유는 두 파서의 규칙이 다르기 때문이다. `marked`는 취소선 구분자로
+ * 물결표 1개도 인정해 `1~3장 ... 4~5장` 같은 범위 표기를 취소선으로 만들고 글자를 지운다.
+ * Confluence는 `~~`만 인정한다. 사용자가 직접 붙여넣었을 때와 같은 결과를 내는 쪽이 맞다.
+ *
+ * 구간은 **뒤에서부터** 처리한다. 앞 구간을 먼저 바꾸면 뒤 구간의 ProseMirror 위치가 어긋난다.
+ *
+ * docs/plans/confluence-magic-button/spec.md
+ * docs/issue/2026-09-04-tilde-range-becomes-strikethrough.md
+ */
+async function runParagraphMarkdownPhase(
+  editor: HTMLElement,
+  onProgress: (done: number, total: number) => void,
+): Promise<{ convertedRuns: number }> {
+  const targets = collectParagraphRuns(editor).filter(
+    (run) => findUnconvertedMarkdown(
+      run.markdown.split('\n').map((line) => line.trim()),
+      () => 0,
+    ).length > 0,
+  );
+  if (targets.length === 0) return { convertedRuns: 0 };
+
+  let convertedRuns = 0;
+  onProgress(0, targets.length);
+
+  for (const run of targets.reverse()) {
+    const first = run.paragraphs[0];
+    const last = run.paragraphs[run.paragraphs.length - 1];
+    // 되돌리기 판정이 이 스냅샷과의 일치로 이뤄지므로 붙여넣기 직전에 잡는다.
+    const beforeHtml = editor.innerHTML;
+
+    /**
+     * 교체 성공 판정에 쓸 표시 줄.
+     *
+     * ProseMirror는 문단 DOM 노드를 **재사용**한다. 실측에서 교체가 제대로 됐는데도 원래
+     * 엘리먼트의 `isConnected`가 계속 `true`였다. 그래서 노드 동일성이 아니라 **문법이 남은
+     * 줄이 사라졌는지**로 판정한다.
+     */
+    const signature = run.markdown
+      .split('\n')
+      .map((line) => line.trim())
+      .find((line) => /^ {0,3}#{1,6}[ \t]+\S/.test(line) || line.includes('|'));
+
+    await selectEditorRange(editor, first, last);
+    const didReplace = (): boolean => {
+      if (editor.innerHTML === beforeHtml) return false;
+      if (!signature) return true;
+      return !Array.from(
+        editor.querySelectorAll<HTMLElement>('[data-prosemirror-node-name="paragraph"]'),
+      ).some((paragraph) => (paragraph.textContent ?? '').trim() === signature);
+    };
+
+    try {
+      await pastePlainTextAndWaitForChange(
+        editor,
+        run.markdown,
+        didReplace,
+        '문단으로 남은 Markdown을 원래 위치에서 교체하지 못했습니다.',
+      );
+    } catch (error) {
+      if (!await rollbackEditorChange(editor, beforeHtml)) {
+        throw new Error('Markdown 변환 결과가 올바르지 않고 자동 되돌리기도 실패했습니다. Confluence 실행 취소를 한 번 눌러주세요.');
+      }
+      throw error;
+    }
+
+    convertedRuns += 1;
+    onProgress(convertedRuns, targets.length);
+  }
+
+  return { convertedRuns };
+}
+
 /** 두 단계의 결과를 버튼 라벨 한 줄로 요약한다. */
-export function describeConversionResult(unwrapped: number, mermaid: number): string {
-  if (unwrapped === 0 && mermaid === 0) return '변환할 내용이 없습니다';
+export function describeConversionResult(
+  unwrapped: number,
+  paragraphRuns: number,
+  mermaid: number,
+): string {
+  if (unwrapped === 0 && paragraphRuns === 0 && mermaid === 0) return '변환할 내용이 없습니다';
   const parts: string[] = [];
   if (unwrapped > 0) parts.push(`코드블럭 ${unwrapped}`);
+  if (paragraphRuns > 0) parts.push(`문단 ${paragraphRuns}`);
   if (mermaid > 0) parts.push(`Mermaid ${mermaid}`);
   return `${parts.join(' · ')} 변환`;
 }
@@ -742,6 +934,7 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
       markdownButton.removeAttribute('title');
 
       let unwrapped = 0;
+      let paragraphRuns = 0;
       let mermaidConverted = 0;
       const notices: string[] = [];
 
@@ -777,6 +970,15 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
           editor = getEditor();
         }
 
+        // 문단으로 남은 Markdown을 우리 변환기로 바꾼다. Confluence 평문 붙여넣기는 제목을
+        // 변환하지 못하고 `#`만 지워버리므로 여기에 맡기지 않는다.
+        const paragraphPhase = await runParagraphMarkdownPhase(editor, (done, total) => {
+          paragraphRuns = done;
+          markdownLabel.textContent = `문단 Markdown ${done}/${total}`;
+        });
+        paragraphRuns = paragraphPhase.convertedRuns;
+        if (paragraphRuns > 0) editor = getEditor();
+
         markdownLabel.textContent = 'Mermaid 확인 중';
         const mermaid = await runMermaidPhase(editor, (done, total) => {
           mermaidConverted = done;
@@ -787,7 +989,22 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
           notices.push(`원문을 읽지 못해 제외한 Mermaid 후보 ${mermaid.failures.length}개: ${mermaid.failures.map(({ index }) => index + 1).join(', ')}번`);
         }
 
-        markdownLabel.textContent = describeConversionResult(unwrapped, mermaidConverted);
+        if (unwrapped === 0 && paragraphRuns === 0 && mermaidConverted === 0) {
+          const unconverted = findUnconvertedMarkdownInEditor(editor);
+          if (unconverted) {
+            markdownLabel.textContent = `미변환 Markdown · ${unconverted}`;
+            markdownButton.title = [
+              'Markdown이 코드블럭이 아니라 문단으로 들어와 있습니다.',
+              `문단에 남은 문법: ${unconverted}`,
+              '',
+              '원문 전체를 코드블럭 하나에 넣은 뒤 다시 실행하세요.',
+            ].join('\n');
+            resetLater();
+            return;
+          }
+        }
+
+        markdownLabel.textContent = describeConversionResult(unwrapped, paragraphRuns, mermaidConverted);
         if (notices.length > 0) {
           markdownButton.title = notices.join('\n');
           console.warn('[Inno Extension] Confluence Markdown 변환 안내', notices);
@@ -796,8 +1013,8 @@ export function createEditorMarkdownToAdfRuntime(): FeatureRuntime {
         console.error('[Inno Extension] Confluence Markdown 변환 실패', error);
         const message = error instanceof Error ? error.message : 'Markdown을 변환하지 못했습니다.';
         const cause = summarizeConversionFailure(message);
-        markdownLabel.textContent = unwrapped + mermaidConverted > 0
-          ? `${describeConversionResult(unwrapped, mermaidConverted)} · 일부 실패`
+        markdownLabel.textContent = unwrapped + paragraphRuns + mermaidConverted > 0
+          ? `${describeConversionResult(unwrapped, paragraphRuns, mermaidConverted)} · 일부 실패`
           : cause ? `변환 실패 · ${cause}` : '변환 실패';
         markdownButton.title = message;
       }

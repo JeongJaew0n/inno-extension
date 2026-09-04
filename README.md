@@ -108,15 +108,18 @@ npm run build
 
 #### Markdown → ADF 변환
 
-기본값은 OFF다. Popup에서 기능을 켜면 로컬 변환기와 Confluence `edit-v2` 편집 도구를 사용할 수 있다.
+기본값은 OFF다. Popup에서 기능을 켜면 Confluence `edit-v2` 편집기 toolbar에 **Markdown 변환** 버튼이 나타난다.
 
-- Popup에서 Markdown 텍스트 또는 `.md` 파일을 ADF JSON으로 변환한다.
-- **M → ADF**는 Mermaid 선언 코드 블록을 같은 위치의 Confluence Mermaid component로 바꾸고, 렌더링에 필요한 원본은 접힌 영역에 보존한다.
-- **코드블럭 → ADF**는 각 코드 블록 안의 Markdown을 제목·문단·목록·표·코드 등 편집 콘텐츠로 같은 위치에 다시 작성한다.
+버튼 하나가 세 단계를 순서대로 수행한다.
+
+1. **코드블럭 벗기기** — 본문의 코드 블록이 전부 Markdown 문서로 보일 때만 실행한다. 실제 소스 코드는 건드리지 않는다.
+2. **문단 Markdown 변환** — 문단으로 남은 Markdown을 평문으로 다시 붙여넣어 Confluence 파서가 제목·표·코드 블록으로 만들게 한다.
+3. **Mermaid 변환** — Mermaid 선언 코드 블록을 같은 위치의 Confluence Mermaid component로 바꾸고, 렌더링에 필요한 원본은 접힌 영역에 보존한다.
+
 - 변환은 현재 편집 초안만 변경한다. 확장이 페이지의 **업데이트** 버튼을 누르지 않으므로 결과를 확인한 뒤 사용자가 직접 저장한다.
 - 잘못된 변환은 Confluence 실행 취소로 되돌릴 수 있다.
 
-> 실제 소스 코드를 Markdown으로 해석할 가능성이 있으므로 `코드블럭 → ADF` 실행 전 대상 블록을 확인하고, 저장 전 결과를 검토해야 한다.
+> 1단계는 대상 코드 블록이 모두 Markdown 문서로 보일 때만 실행되지만, 판정이 완벽하지는 않다. 저장 전 결과를 검토해야 한다.
 
 ### GitHub Enterprise
 
