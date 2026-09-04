@@ -27,3 +27,5 @@
 | 2026-09-02 | [Popup `Markdown -> ADF` 결과는 `Mermaid -> ADF`로 변환할 수 없다](./2026-09-02-mermaid-conversion-fails-inside-expand.md) | **수정 적용·실측 확인 완료** |
 | 2026-09-04 | [30줄 넘는 코드블럭은 Mermaid 변환 검증을 통과할 수 없다](./2026-09-04-mermaid-verification-reads-truncated-dom.md) | **수정 적용·실측 확인 완료** |
 | 2026-09-04 | [줄 사이에 빈 줄이 있으면 Markdown 표가 변환되지 않는다](./2026-09-04-markdown-table-broken-by-blank-lines.md) | **원인 확정 (입력 원문 문제)** — 대응 미적용 |
+| 2026-09-04 | [물결표 범위 표기가 취소선이 된다](./2026-09-04-tilde-range-becomes-strikethrough.md) | **원인 확정 (GFM 문법)** — 수정 미적용 |
+| 2026-09-04 | [대량 변환 직후 Mermaid 변환이 전부 실패했다](./2026-09-04-mermaid-phase-verification-node-reuse.md) | **재현 실패** — 유력 원인 대응만 적용 |
