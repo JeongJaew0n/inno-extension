@@ -30,11 +30,13 @@ import {
   parseConfluencePageUrl,
 } from '../src/sites/confluence/routes';
 import {
+  describeConversionResult,
   matchesCodeBlockSource,
   mayBeMermaidCodeBlock,
   readCodeBlockSources,
   summarizeConversionFailure,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/runtime';
+import { looksLikeMarkdownDocument } from '../src/sites/confluence/features/editorMarkdownToAdf/markdown-detection';
 import { adfDocumentToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/adf-to-editor-html';
 import { codeBlockMarkdownToAdfPayload } from '../src/sites/confluence/features/editorMarkdownToAdf/code-block-to-adf';
 import {
@@ -477,21 +479,33 @@ test('Confluence edit-v2 URL만 편집기 변환 대상으로 판별한다', () 
   );
 });
 
-test('Confluence 편집기 toolbar는 코드블럭 -> ADF와 Mermaid 버튼만 제공한다', async () => {
+test('Confluence 편집기 toolbar는 Markdown 변환 버튼 하나만 제공한다', async () => {
   const runtimeSource = await readFile(
     'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
     'utf8',
   );
 
-  assert.match(runtimeSource, /data-action="code-block-adf"/);
-  assert.match(runtimeSource, /data-code-block-adf-label>코드블럭 -&gt; ADF/);
-  assert.match(runtimeSource, /data-action="mermaid"/);
-  assert.ok(
-    runtimeSource.indexOf('data-action="mermaid"')
-      < runtimeSource.indexOf('data-action="code-block-adf"'),
+  assert.match(runtimeSource, /data-action="markdown-convert"/);
+  assert.match(runtimeSource, /data-markdown-convert-label>Markdown 변환/);
+  // 버튼을 하나로 합쳤으므로 이전 두 버튼의 action은 남아 있으면 안 된다.
+  assert.doesNotMatch(runtimeSource, /data-action="code-block-adf"/);
+  assert.doesNotMatch(runtimeSource, /data-action="mermaid"/);
+  assert.equal(runtimeSource.match(/<button type="button"/g)?.length, 1);
+});
+
+test('Markdown 변환은 벗기기를 먼저 하고 Mermaid 변환을 뒤에 한다', async () => {
+  const runtimeSource = await readFile(
+    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
   );
-  assert.doesNotMatch(runtimeSource, /data-action="convert"/);
-  assert.doesNotMatch(runtimeSource, /data-action="unwrap"/);
+
+  // Markdown 원문의 mermaid 펜스는 1단계를 거쳐야 개별 코드블럭이 된다.
+  assert.ok(
+    runtimeSource.indexOf('await runCodeBlockPhase(')
+      < runtimeSource.indexOf('await runMermaidPhase('),
+  );
+  // 1단계는 조건을 만족할 때만 실행한다.
+  assert.match(runtimeSource, /if \(shouldUnwrapCodeBlocks\(editor\)\)/);
 });
 
 test('ADF를 Confluence 편집기 paste용 안전한 HTML로 직렬화한다', () => {
@@ -857,6 +871,50 @@ test('코드블럭 원문 대조는 아무것도 렌더되지 않으면 통과�
   // 빈 문자열은 모든 원문의 부분 문자열이라 무조건 참이 되는 것을 막는다.
   assert.equal(matchesCodeBlockSource(createFakeCodeBlock(null), 'flowchart TD'), false);
   assert.equal(matchesCodeBlockSource(createFakeCodeBlock([]), 'flowchart TD'), false);
+});
+
+// 벗기기는 코드를 산문으로 풀어버리므로 Markdown 문서일 때만 실행한다.
+// docs/plans/confluence-magic-button/spec.md
+test('Markdown 문서 판정은 특징 2종 이상을 요구한다', () => {
+  assert.equal(looksLikeMarkdownDocument(['# 제목', '', '- 항목'].join('\n')), true);
+  assert.equal(looksLikeMarkdownDocument(['## 표', '', '| A | B |', '|---|---|'].join('\n')), true);
+  assert.equal(looksLikeMarkdownDocument(['> 인용', '', '```', 'code', '```'].join('\n')), true);
+});
+
+test('Markdown 문서 판정은 특징 1종만 있으면 거른다', () => {
+  // YAML의 목록
+  assert.equal(looksLikeMarkdownDocument(['services:', '  - name: a', '  - name: b'].join('\n')), false);
+  // 셸 스크립트의 주석과 셰뱅
+  assert.equal(looksLikeMarkdownDocument(['#!/bin/sh', '# 배포', 'set -e'].join('\n')), false);
+  // 제목만
+  assert.equal(looksLikeMarkdownDocument('# 제목뿐인 문서'), false);
+});
+
+test('Markdown 문서 판정은 실제 코드를 통과시키지 않는다', () => {
+  const kotlin = [
+    '@HttpExchange("/internal/clusters")',
+    'interface SeClusterClient {',
+    '    @GetExchange("/resolve")',
+    '    fun resolve(@RequestParam name: String): Response',
+    '}',
+  ].join('\n');
+  assert.equal(looksLikeMarkdownDocument(kotlin), false);
+
+  const json = ['{', '  "code": "FAILED",', '  "status": 422', '}'].join('\n');
+  assert.equal(looksLikeMarkdownDocument(json), false);
+});
+
+test('Markdown 문서 판정은 읽지 못한 원문을 통과시키지 않는다', () => {
+  // 확신이 없으면 벗기지 않는다. 잘못 벗기면 내용을 잃는다.
+  assert.equal(looksLikeMarkdownDocument(''), false);
+  assert.equal(looksLikeMarkdownDocument('   \n  \n'), false);
+});
+
+test('변환 결과 요약은 수행한 단계만 표시한다', () => {
+  assert.equal(describeConversionResult(0, 0), '변환할 내용이 없습니다');
+  assert.equal(describeConversionResult(1, 0), '코드블럭 1 변환');
+  assert.equal(describeConversionResult(0, 7), 'Mermaid 7 변환');
+  assert.equal(describeConversionResult(1, 7), '코드블럭 1 · Mermaid 7 변환');
 });
 
 test('Mermaid 후보 사전 판정은 DOM 원문으로 확실히 아닌 코드블럭만 제외한다', () => {
