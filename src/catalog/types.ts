@@ -6,6 +6,7 @@ export const FEATURE_IDS = [
   'titleAutofill',
   'notificationTools',
   'issueLinkCopy',
+  'issueModalWidth',
   'pageMarkdownCopy',
   'pageMarkdownAppend',
   'pullRequestTitleCopy',

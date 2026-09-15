@@ -146,6 +146,56 @@ function createFakeIssueDocument(options: {
   } as unknown as Document;
 }
 
+// Jira 모달 전체 폭. Jira에 해당 기능이 없어 CSS로 폭 제한을 푼다.
+// docs/plans/jira-issue-modal-fullwidth/spec.md
+test('Jira 모달 전체 폭 기능은 기본이 꺼짐이다', () => {
+  const descriptor = findFeatureDescriptor('jira', 'issueModalWidth');
+  assert.ok(descriptor, '카탈로그에 기능이 있어야 한다');
+  assert.equal(descriptor?.defaultEnabled, false);
+  assert.equal(createDefaultSettings().sites.jira.features.issueModalWidth?.enabled, false);
+});
+
+test('Jira 모달 폭 선택자는 해시 클래스를 쓰지 않는다', async () => {
+  const selectors = await readFile('src/sites/jira/selectors.ts', 'utf8');
+  const styles = await readFile('src/sites/jira/features/issueModalWidth/styles.ts', 'utf8');
+
+  // Atlassian 컴파일 CSS의 원자 클래스는 빌드마다 해시가 바뀐다.
+  assert.doesNotMatch(selectors + styles, /\.__?[0-9a-z]{4}[0-9a-z]{4}\b/);
+  // 폭을 막는 두 요소를 모두 겨냥해야 한다.
+  assert.match(selectors, /modal-dialog--positioner/);
+  assert.match(styles, /ISSUE_MODAL_POSITIONER/);
+  assert.match(styles, /ISSUE_DIALOG/);
+});
+
+test('Jira 모달 크기 규칙은 속성 아래에서만 동작한다', async () => {
+  const styles = await readFile('src/sites/jira/features/issueModalWidth/styles.ts', 'utf8');
+  // 속성이 없으면 Jira 기본 크기 그대로여야 한다.
+  assert.match(styles, /html\[\$\{ISSUE_MODAL_WIDE_ATTRIBUTE\}\]/);
+  // 원자 클래스를 이기려면 !important 가 필요하다.
+  assert.match(styles, /width: 100vw !important/);
+  assert.match(styles, /max-width: 100vw !important/);
+});
+
+test('Jira 모달은 상하 여백까지 푼다', async () => {
+  const styles = await readFile('src/sites/jira/features/issueModalWidth/styles.ts', 'utf8');
+  // 위치 컨테이너가 top 60px / bottom 59px 로 잡고 있어 오프셋을 0으로 만들어야 한다.
+  assert.match(styles, /top: 0 !important/);
+  assert.match(styles, /bottom: 0 !important/);
+  assert.match(styles, /max-height: 100vh !important/);
+  assert.match(styles, /height: 100vh !important/);
+  // 본체 높이를 100% 로 주면 본문 전체 높이까지 늘어나 화면 밖으로 넘친다.
+  assert.doesNotMatch(styles, /height: 100% !important/);
+});
+
+test('Jira 모달 폭 토글은 기존 버튼 왼쪽에 붙는다', async () => {
+  const runtime = await readFile('src/sites/jira/features/issueModalWidth/runtime.ts', 'utf8');
+  // 사이트 기본 버튼 순서를 바꾸지 않는다.
+  assert.match(runtime, /insertAdjacentElement\('beforebegin'/);
+  assert.match(runtime, /ISSUE_MODAL_MINIMISE_BUTTON/);
+  // 우측 필드 컬럼은 건드리지 않기로 했다.
+  assert.doesNotMatch(runtime, /issue-view-layout/);
+});
+
 test('catalog의 사이트와 기능 ID는 중복되지 않고 기본 설정이 존재한다', () => {
   const defaults = createDefaultSettings();
   assert.equal(new Set(SITES.map((site) => site.id)).size, SITES.length);

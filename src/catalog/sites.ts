@@ -55,6 +55,14 @@ export const SITES = [
         defaultEnabled: true,
         hasDetails: true,
       },
+      {
+        id: 'issueModalWidth',
+        name: '업무 모달 전체 폭',
+        description: '보드에서 업무 상세 모달을 브라우저 화면 전체 폭으로 넓힙니다.',
+        routeSummary: 'Jira 보드의 업무 상세 모달',
+        defaultEnabled: false,
+        hasDetails: false,
+      },
     ],
   },
   {

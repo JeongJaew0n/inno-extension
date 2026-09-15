@@ -30,6 +30,10 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
             enabled: true,
             options: {},
           },
+          issueModalWidth: {
+            enabled: false,
+            options: {},
+          },
         },
       },
       githubEnterprise: {
