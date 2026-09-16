@@ -187,6 +187,42 @@ Shadow DOM host에 목록을 그려 입력창 아래에 띄운다. 다른 기능
 
 인라인 생성은 백로그 영역 전용이다. 범위가 줄었다.
 
+## 9-2. 설정 화면으로 가는 길 — service worker를 처음 두었다
+
+태그를 하나 더 넣자고 Popup을 열어 메뉴를 세 번 타고 들어가는 것이 번거롭다는 요청으로
+목록 맨 아래에 `＋ prefix 태그 추가·관리…` 버튼을 넣었다.
+
+### 왜 service worker가 필요한가
+
+content script에서 확장 페이지를 여는 길이 전부 막혀 있다.
+
+| 시도 | 결과 |
+| --- | --- |
+| `chrome.windows.create` | content script에 **없는 API** |
+| `chrome.runtime.openOptionsPage` | content script에 **노출되지 않는다** |
+| `window.open(chrome.runtime.getURL(...))` | 웹 페이지 컨텍스트의 `chrome-extension://` 최상위 이동은 **브라우저가 막는다** |
+
+그래서 메시지를 보내고 service worker가 창을 연다. 이 저장소에 service worker가 생긴 것은
+이번이 처음이다. **하는 일은 이것 하나다.**
+
+### `chrome.action.openPopup()`을 쓰지 않은 이유
+
+Chrome 127부터 모든 확장이 쓸 수 있고 실제 브라우저도 152라 동작은 한다. 그런데 그쪽은
+`default_popup`에 적힌 주소를 그대로 연다. **원하는 화면으로 바로 보낼 수 없다.** 버튼을
+만든 이유가 "메뉴를 타고 들어가기 번거로워서"인데 그러면 아무것도 해결되지 않는다.
+
+`chrome.windows.create({ type: 'popup' })`는 URL을 자유롭게 줄 수 있어 해시 라우트를 붙여
+곧장 prefix 태그 표로 보낸다. Popup CSS가 `width: 520px`이라 창 크기는 `536 × 700`으로 뒀다.
+
+### 키보드로 선택되지 않아야 한다
+
+요청 그대로다. `Enter`로 닿으면 태그를 넣으려다 창이 뜬다 — 입력하던 제목을 두고 화면이
+바뀌는 셈이다. 다른 항목이 **입력을 채우는** 동작인 데 비해 이것은 **화면을 여는** 동작이라
+성격도 다르다.
+
+목록 항목 배열(`matches`) 밖에 두고 `tabindex="-1"`을 준다. `↓` `↑`는 `matches` 길이 안에서만
+돌고, `Enter`·`Tab`은 `matches[activeIndex]`를 넣으므로 이 버튼에 닿을 길이 없다.
+
 ## 10. 실사용 접두사 조사
 
 기본 템플릿을 정하려고 실제 백로그 제목 37개에서 접두사를 모았다. **16종**이 쓰이고 있었다.

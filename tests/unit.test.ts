@@ -381,7 +381,7 @@ test('Manifest origin과 catalog origin이 일치한다', async () => {
     content_scripts: Array<{ matches: string[]; world?: string; js?: string[] }>;
     host_permissions?: string[];
     permissions?: string[];
-    background?: unknown;
+    background?: { service_worker?: string; type?: string };
   };
   const manifestOrigins = Array.from(new Set(
     manifest.content_scripts.flatMap((entry) => entry.matches),
@@ -397,9 +397,13 @@ test('Manifest origin과 catalog origin이 일치한다', async () => {
     true,
   );
   assert.equal(manifest.host_permissions, undefined);
-  assert.equal(manifest.background, undefined);
   assert.equal(manifest.permissions?.includes('scripting'), false);
   assert.equal(manifest.permissions?.includes('downloads'), false);
+  // service worker 는 설정 창을 여는 것 하나만 한다. 다른 진입점이 늘면 여기서 걸린다.
+  assert.deepEqual(manifest.background, {
+    service_worker: 'src/background/service-worker.ts',
+    type: 'module',
+  });
 });
 
 test('서비스 아이콘 asset은 정사각형 PNG이며 표시 크기 이상의 해상도를 가진다', async () => {
