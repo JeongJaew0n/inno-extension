@@ -240,43 +240,57 @@ function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
       settings.sites.jira.features.backlogSlashTemplate?.options,
     );
     const tags = resolvePrefixTags(options);
+    const visibleCount = tags.filter((tag) => tag.visible).length;
+
     const rows = tags.map((tag) => `
-      <li class="prefix-tag-row">
-        <label class="prefix-tag-toggle">
-          <input
-            type="checkbox"
-            data-prefix-tag-visible="${escapeHtml(tag.label)}"
-            data-built-in="${tag.builtIn}"
-            ${tag.visible ? 'checked' : ''}
-          />
-          <code>${escapeHtml(tag.label)}</code>
-        </label>
-        ${tag.builtIn
-          ? '<span class="prefix-tag-badge" title="확장이 기본 제공합니다. 숨길 수는 있지만 삭제할 수 없습니다.">기본</span>'
-          : `<span class="prefix-tag-actions">
-              <button type="button" class="link-button" data-prefix-tag-rename="${escapeHtml(tag.label)}">수정</button>
-              <button type="button" class="link-button is-danger" data-prefix-tag-remove="${escapeHtml(tag.label)}">삭제</button>
-            </span>`}
-      </li>
+      <tr${tag.visible ? '' : ' class="is-hidden"'}>
+        <td class="prefix-tag-name"><code>${escapeHtml(tag.label)}</code></td>
+        <td class="prefix-tag-visible">
+          <label class="switch">
+            <input
+              type="checkbox"
+              data-prefix-tag-visible="${escapeHtml(tag.label)}"
+              data-built-in="${tag.builtIn}"
+              aria-label="${escapeHtml(tag.label)} 표시"
+              ${tag.visible ? 'checked' : ''}
+            />
+            <span class="switch-track" aria-hidden="true"></span>
+          </label>
+        </td>
+        <td class="prefix-tag-manage">
+          ${tag.builtIn
+            ? '<span class="prefix-tag-badge" title="확장이 기본 제공합니다. 숨길 수는 있지만 삭제할 수 없습니다.">기본</span>'
+            : `<button type="button" class="link-button" data-prefix-tag-rename="${escapeHtml(tag.label)}">수정</button>
+               <button type="button" class="link-button is-danger" data-prefix-tag-remove="${escapeHtml(tag.label)}">삭제</button>`}
+        </td>
+      </tr>
     `).join('');
 
     return `
       <div class="option-fields">
         <div class="prefix-tag-panel">
-          <strong>prefix 태그</strong>
-          <p>백로그에서 업무를 추가할 때 <code>/</code>를 입력하면 여기 켜둔 태그가 나타납니다.</p>
-          <ul class="prefix-tag-list">${rows}</ul>
+          <div class="prefix-tag-head">
+            <strong>prefix 태그</strong>
+            <span>${visibleCount} / ${tags.length} 표시</span>
+          </div>
+          <p>백로그에서 업무를 추가할 때 <code>/</code>를 입력하면 켜둔 태그가 나타납니다.</p>
+          <table class="prefix-tag-table">
+            <thead>
+              <tr><th scope="col">이름</th><th scope="col">표시</th><th scope="col">관리</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
           <div class="prefix-tag-add">
             <input
               type="text"
               data-prefix-tag-new
-              placeholder="예: [DevOpsit][BE]"
+              placeholder="예: [Database]"
               maxlength="60"
               aria-label="추가할 prefix 태그"
             />
             <button type="button" class="secondary-button" data-prefix-tag-add>추가</button>
           </div>
-          <small>기본 태그는 숨길 수만 있고 삭제할 수 없습니다. 직접 추가한 태그는 수정·삭제할 수 있습니다.</small>
+          <small><strong>기본</strong> 태그는 숨길 수만 있고 삭제할 수 없습니다. 직접 추가한 태그는 수정·삭제할 수 있습니다.</small>
         </div>
       </div>
     `;

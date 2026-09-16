@@ -18,6 +18,9 @@ export const SUMMARY_MAX_LENGTH = 255;
  * 사용자는 **숨길 수는 있지만 삭제할 수는 없다.** 숨김 여부만 설정에 남긴다.
  */
 export const BUILT_IN_PREFIX_TAGS = [
+  '[공통]',
+  '[DevOpsit]',
+  '[DevOpsit][BE]',
   '[INFRA]',
   '[IAM]',
   '[CI/CD]',

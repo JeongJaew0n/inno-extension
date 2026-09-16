@@ -219,6 +219,16 @@ test('내장 prefix 태그는 설정이 비어도 전부 보인다', () => {
   assert.ok(resolvePrefixTags(options).every((tag) => tag.builtIn && tag.visible));
 });
 
+test('내장 prefix 태그에 팀 공용 태그가 들어 있다', () => {
+  // 요청받은 세 개다. 목록에서 빠지면 사용자가 커스텀으로 다시 만들어야 한다.
+  for (const label of ['[공통]', '[DevOpsit]', '[DevOpsit][BE]']) {
+    assert.ok(
+      (BUILT_IN_PREFIX_TAGS as readonly string[]).includes(label),
+      `${label} 가 내장 목록에 없다`,
+    );
+  }
+});
+
 test('내장 prefix 태그는 숨길 수 있지만 삭제할 수 없다', () => {
   let options = normalizePrefixTagOptions(undefined);
   options = setBuiltInVisibility(options, '[IAM]', false);
@@ -236,18 +246,18 @@ test('내장 prefix 태그는 숨길 수 있지만 삭제할 수 없다', () => 
 
 test('커스텀 prefix 태그는 추가·수정·삭제할 수 있다', () => {
   let options = normalizePrefixTagOptions(undefined);
-  options = addCustomTag(options, '[DevOpsit][BE]');
-  assert.ok(visibleTagLabels(options).includes('[DevOpsit][BE]'));
+  options = addCustomTag(options, '[플랫폼]');
+  assert.ok(visibleTagLabels(options).includes('[플랫폼]'));
 
-  options = renameCustomTag(options, '[DevOpsit][BE]', '[DevOpsit][FE]');
-  assert.ok(visibleTagLabels(options).includes('[DevOpsit][FE]'));
-  assert.ok(!visibleTagLabels(options).includes('[DevOpsit][BE]'));
+  options = renameCustomTag(options, '[플랫폼]', '[플랫폼팀]');
+  assert.ok(visibleTagLabels(options).includes('[플랫폼팀]'));
+  assert.ok(!visibleTagLabels(options).includes('[플랫폼]'));
 
-  options = setCustomVisibility(options, '[DevOpsit][FE]', false);
-  assert.ok(!visibleTagLabels(options).includes('[DevOpsit][FE]'));
+  options = setCustomVisibility(options, '[플랫폼팀]', false);
+  assert.ok(!visibleTagLabels(options).includes('[플랫폼팀]'));
 
-  options = removeCustomTag(options, '[DevOpsit][FE]');
-  assert.ok(!resolvePrefixTags(options).some((tag) => tag.label === '[DevOpsit][FE]'));
+  options = removeCustomTag(options, '[플랫폼팀]');
+  assert.ok(!resolvePrefixTags(options).some((tag) => tag.label === '[플랫폼팀]'));
 });
 
 test('prefix 태그는 중복을 만들지 않는다', () => {
