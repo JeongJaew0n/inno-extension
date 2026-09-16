@@ -16,7 +16,7 @@
 | [features/amaranth-notification-tools.md](./features/amaranth-notification-tools.md) | 아마란스 통합알림 새로고침과 인증번호 복사의 범위, 판별 계약, 실패·복구 동작 |
 | [features/jira-work-link-copy.md](./features/jira-work-link-copy.md) | Jira 업무 링크 복사 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
 | [features/jira-issue-modal-width.md](./features/jira-issue-modal-width.md) | Jira 업무 모달 전체 폭 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
-| [features/jira-backlog-slash-template.md](./features/jira-backlog-slash-template.md) | Jira 백로그 슬래시 템플릿 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
+| [features/jira-backlog-slash-template.md](./features/jira-backlog-slash-template.md) | Jira 백로그 prefix 태그 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
 | [features/confluence-page-markdown-copy.md](./features/confluence-page-markdown-copy.md) | Confluence 문서 본문 Markdown 복사의 범위, 변환 계약, 리스크, 변경 이력 |
 | [features/confluence-adf-markdown-tools.md](./features/confluence-adf-markdown-tools.md) | 로컬 Markdown -> ADF 변환기의 입력·출력, 지원 범위, 손실·실패 계약 |
 | [features/github-pull-request-title-copy.md](./features/github-pull-request-title-copy.md) | GitHub Enterprise PR 제목 Markdown 링크 복사의 범위, 클립보드 계약, Turbo 대응, 리스크 |

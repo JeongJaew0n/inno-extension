@@ -3,12 +3,19 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { findFeatureDescriptor, SITES } from '../src/catalog/sites';
 import {
+  addCustomTag,
   buildInsertion,
-  filterTemplates,
+  BUILT_IN_PREFIX_TAGS,
+  filterTags,
   moveActiveIndex,
-  normalizeTemplates,
-  parseTemplateText,
+  normalizePrefixTagOptions,
   readSlashToken,
+  removeCustomTag,
+  renameCustomTag,
+  resolvePrefixTags,
+  setBuiltInVisibility,
+  setCustomVisibility,
+  visibleTagLabels,
 } from '../src/sites/jira/features/backlogSlashTemplate/contracts';
 import { isExtensionContextValid } from '../src/platform/runtime/createSiteRuntime';
 import { createUpdateScheduler } from '../src/platform/runtime/updateScheduler';
@@ -173,28 +180,28 @@ test('슬래시 토큰은 공백이 나오면 끝난다', () => {
   assert.equal(readSlashToken('[DevOpsit][BE] 작업'), null);
 });
 
-test('템플릿 필터는 대소문자와 대괄호를 무시한다', () => {
-  const all = ['[공통]', '[DevOpsit][BE]', '[DevOpsit]'];
-  assert.deepEqual(filterTemplates(all, ''), all);
-  assert.deepEqual(filterTemplates(all, 'Dev'), ['[DevOpsit][BE]', '[DevOpsit]']);
-  assert.deepEqual(filterTemplates(all, 'dev'), ['[DevOpsit][BE]', '[DevOpsit]']);
-  assert.deepEqual(filterTemplates(all, '공통'), ['[공통]']);
-  assert.deepEqual(filterTemplates(all, 'BE'), ['[DevOpsit][BE]']);
-  assert.deepEqual(filterTemplates(all, '없는것'), []);
+test('prefix 태그 필터는 대소문자·대괄호·슬래시를 무시한다', () => {
+  const all = ['[INFRA]', '[IAM]', '[CI/CD]', '[GitOps]', '[개발환경]', '[점검/배포]'];
+  assert.deepEqual(filterTags(all, ''), all);
+  assert.deepEqual(filterTags(all, 'ia'), ['[IAM]']);
+  assert.deepEqual(filterTags(all, 'git'), ['[GitOps]']);
+  assert.deepEqual(filterTags(all, '개발'), ['[개발환경]']);
+  // 태그 안에 / 가 들어가는 경우가 실제로 있다. 토큰의 / 와 서로 방해하면 안 된다.
+  assert.deepEqual(filterTags(all, 'ci/cd'), ['[CI/CD]']);
+  assert.deepEqual(filterTags(all, 'cicd'), ['[CI/CD]']);
+  assert.deepEqual(filterTags(all, '없는것'), []);
 });
 
 test('삽입은 슬래시 토큰을 치환하고 뒤에 공백을 붙인다', () => {
-  assert.deepEqual(buildInsertion('/Dev', '[DevOpsit][BE]'), {
-    value: '[DevOpsit][BE] ',
-    caret: '[DevOpsit][BE] '.length,
+  assert.deepEqual(buildInsertion('/Git', '[GitOps]'), {
+    value: '[GitOps] ',
+    caret: '[GitOps] '.length,
   });
-  assert.deepEqual(buildInsertion('/', '[공통]'), { value: '[공통] ', caret: '[공통] '.length });
-  // 슬래시 입력이 아니면 삽입하지 않는다.
-  assert.equal(buildInsertion('작업 제목', '[공통]'), null);
+  assert.deepEqual(buildInsertion('/', '[IAM]'), { value: '[IAM] ', caret: '[IAM] '.length });
+  assert.equal(buildInsertion('작업 제목', '[IAM]'), null);
 });
 
 test('삽입 결과가 최대 길이를 넘으면 넣지 않는다', () => {
-  // 잘린 제목을 만드는 것보다 넣지 않는 편이 낫다.
   assert.equal(buildInsertion('/x', 'A'.repeat(255), 255), null);
   assert.ok(buildInsertion('/x', 'A'.repeat(254), 255));
 });
@@ -206,18 +213,69 @@ test('목록 커서는 끝에서 반대편으로 돈다', () => {
   assert.equal(moveActiveIndex(0, 0, 1), 0);
 });
 
-test('템플릿 텍스트는 빈 줄과 중복을 정리한다', () => {
-  assert.deepEqual(parseTemplateText('[공통]\n\n  [DevOpsit]  \n[공통]\n'), ['[공통]', '[DevOpsit]']);
-  assert.deepEqual(parseTemplateText('   \n  '), []);
+test('내장 prefix 태그는 설정이 비어도 전부 보인다', () => {
+  const options = normalizePrefixTagOptions(undefined);
+  assert.deepEqual(visibleTagLabels(options), [...BUILT_IN_PREFIX_TAGS]);
+  assert.ok(resolvePrefixTags(options).every((tag) => tag.builtIn && tag.visible));
 });
 
-test('템플릿 설정이 비었거나 잘못되면 기본값으로 떨어진다', () => {
-  const fallback = ['[공통]'];
-  assert.deepEqual(normalizeTemplates(undefined, fallback), fallback);
-  assert.deepEqual(normalizeTemplates('문자열', fallback), fallback);
-  assert.deepEqual(normalizeTemplates([], fallback), fallback);
-  assert.deepEqual(normalizeTemplates(['  ', ''], fallback), fallback);
-  assert.deepEqual(normalizeTemplates(['[A]', 123, '[B]'], fallback), ['[A]', '[B]']);
+test('내장 prefix 태그는 숨길 수 있지만 삭제할 수 없다', () => {
+  let options = normalizePrefixTagOptions(undefined);
+  options = setBuiltInVisibility(options, '[IAM]', false);
+  assert.ok(!visibleTagLabels(options).includes('[IAM]'));
+  // 숨겨도 목록에는 남아 있어야 다시 켤 수 있다.
+  assert.ok(resolvePrefixTags(options).some((tag) => tag.label === '[IAM]' && !tag.visible));
+
+  // 삭제 시도는 아무 일도 하지 않는다.
+  const after = removeCustomTag(options, '[IAM]');
+  assert.ok(resolvePrefixTags(after).some((tag) => tag.label === '[IAM]'));
+
+  options = setBuiltInVisibility(options, '[IAM]', true);
+  assert.ok(visibleTagLabels(options).includes('[IAM]'));
+});
+
+test('커스텀 prefix 태그는 추가·수정·삭제할 수 있다', () => {
+  let options = normalizePrefixTagOptions(undefined);
+  options = addCustomTag(options, '[DevOpsit][BE]');
+  assert.ok(visibleTagLabels(options).includes('[DevOpsit][BE]'));
+
+  options = renameCustomTag(options, '[DevOpsit][BE]', '[DevOpsit][FE]');
+  assert.ok(visibleTagLabels(options).includes('[DevOpsit][FE]'));
+  assert.ok(!visibleTagLabels(options).includes('[DevOpsit][BE]'));
+
+  options = setCustomVisibility(options, '[DevOpsit][FE]', false);
+  assert.ok(!visibleTagLabels(options).includes('[DevOpsit][FE]'));
+
+  options = removeCustomTag(options, '[DevOpsit][FE]');
+  assert.ok(!resolvePrefixTags(options).some((tag) => tag.label === '[DevOpsit][FE]'));
+});
+
+test('prefix 태그는 중복을 만들지 않는다', () => {
+  let options = normalizePrefixTagOptions(undefined);
+  // 내장과 같은 라벨은 커스텀으로 추가되지 않는다.
+  options = addCustomTag(options, '[IAM]');
+  assert.equal(resolvePrefixTags(options).filter((tag) => tag.label === '[IAM]').length, 1);
+
+  options = addCustomTag(options, '[내것]');
+  options = addCustomTag(options, '[내것]');
+  assert.equal(resolvePrefixTags(options).filter((tag) => tag.label === '[내것]').length, 1);
+
+  // 내장 라벨로 이름을 바꿀 수도 없다.
+  options = renameCustomTag(options, '[내것]', '[INFRA]');
+  assert.ok(resolvePrefixTags(options).some((tag) => tag.label === '[내것]'));
+});
+
+test('prefix 태그 설정은 형식이 깨져도 안전하게 복구한다', () => {
+  assert.deepEqual(normalizePrefixTagOptions('문자열'), { hiddenBuiltInTags: [], customTags: [] });
+  assert.deepEqual(
+    normalizePrefixTagOptions({ hiddenBuiltInTags: ['없는태그'], customTags: 'x' }),
+    { hiddenBuiltInTags: [], customTags: [] },
+  );
+  // visible 이 없으면 켜진 것으로 본다.
+  assert.deepEqual(
+    normalizePrefixTagOptions({ customTags: [{ label: '  [A]  ' }] }).customTags,
+    [{ label: '[A]', visible: true }],
+  );
 });
 
 test('슬래시 템플릿은 목록이 닫혀 있으면 Enter 를 가로채지 않는다', async () => {

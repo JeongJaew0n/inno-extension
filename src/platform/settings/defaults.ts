@@ -37,7 +37,9 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
           backlogSlashTemplate: {
             enabled: true,
             options: {
-              templates: ['[공통]', '[DevOpsit][BE]', '[DevOpsit]'],
+              // 내장 prefix 태그는 코드에 있다. 여기에는 숨김 여부와 커스텀만 둔다.
+              hiddenBuiltInTags: [],
+              customTags: [],
             },
           },
         },

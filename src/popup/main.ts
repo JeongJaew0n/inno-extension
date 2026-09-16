@@ -1,8 +1,12 @@
 import { findFeatureDescriptor, findSiteDescriptor, SITES } from '../catalog/sites';
 import {
-  formatTemplateText,
-  normalizeTemplates,
-  parseTemplateText,
+  addCustomTag,
+  normalizePrefixTagOptions,
+  removeCustomTag,
+  renameCustomTag,
+  resolvePrefixTags,
+  setBuiltInVisibility,
+  setCustomVisibility,
 } from '../sites/jira/features/backlogSlashTemplate/contracts';
 import { FEATURE_IDS, SITE_IDS, type FeatureId, type SiteId } from '../catalog/types';
 import { createDefaultSettings } from '../platform/settings/defaults';
@@ -232,41 +236,48 @@ function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
   }
 
   if (siteId === 'jira' && featureId === 'backlogSlashTemplate') {
-    const templates = normalizeTemplates(
-      settings.sites.jira.features.backlogSlashTemplate?.options.templates,
-      [],
+    const options = normalizePrefixTagOptions(
+      settings.sites.jira.features.backlogSlashTemplate?.options,
     );
-    const feedback = saveFeedback?.key === `${siteId}.${featureId}`
-      ? saveFeedback.status
-      : null;
-    const saveLabel = feedback === 'saving'
-      ? '저장 중…'
-      : feedback === 'saved'
-        ? '✓ 저장됨'
-        : feedback === 'error'
-          ? '저장 실패 · 다시 시도'
-          : '저장';
-    return `
-      <div class="option-fields" data-options-form data-site-id="jira" data-feature-id="backlogSlashTemplate">
-        <label>
-          <span>제목 접두사 목록</span>
-          <textarea
-            class="template-list-input"
-            data-option="templates"
-            data-option-kind="lines"
-            rows="6"
-            spellcheck="false"
-            placeholder="[공통]&#10;[DevOpsit][BE]&#10;[DevOpsit]"
-          >${escapeHtml(formatTemplateText(templates))}</textarea>
-          <small>한 줄에 하나씩 적습니다. 백로그에서 업무를 추가할 때 <code>/</code>를 입력하면 이 목록이 나타납니다.</small>
+    const tags = resolvePrefixTags(options);
+    const rows = tags.map((tag) => `
+      <li class="prefix-tag-row">
+        <label class="prefix-tag-toggle">
+          <input
+            type="checkbox"
+            data-prefix-tag-visible="${escapeHtml(tag.label)}"
+            data-built-in="${tag.builtIn}"
+            ${tag.visible ? 'checked' : ''}
+          />
+          <code>${escapeHtml(tag.label)}</code>
         </label>
-        <button
-          type="button"
-          class="secondary-button option-save-button ${feedback ? `is-${feedback}` : ''}"
-          data-save-feature-options
-          aria-live="polite"
-          ${feedback === 'saving' || feedback === 'saved' ? 'disabled' : ''}
-        >${saveLabel}</button>
+        ${tag.builtIn
+          ? '<span class="prefix-tag-badge" title="확장이 기본 제공합니다. 숨길 수는 있지만 삭제할 수 없습니다.">기본</span>'
+          : `<span class="prefix-tag-actions">
+              <button type="button" class="link-button" data-prefix-tag-rename="${escapeHtml(tag.label)}">수정</button>
+              <button type="button" class="link-button is-danger" data-prefix-tag-remove="${escapeHtml(tag.label)}">삭제</button>
+            </span>`}
+      </li>
+    `).join('');
+
+    return `
+      <div class="option-fields">
+        <div class="prefix-tag-panel">
+          <strong>prefix 태그</strong>
+          <p>백로그에서 업무를 추가할 때 <code>/</code>를 입력하면 여기 켜둔 태그가 나타납니다.</p>
+          <ul class="prefix-tag-list">${rows}</ul>
+          <div class="prefix-tag-add">
+            <input
+              type="text"
+              data-prefix-tag-new
+              placeholder="예: [DevOpsit][BE]"
+              maxlength="60"
+              aria-label="추가할 prefix 태그"
+            />
+            <button type="button" class="secondary-button" data-prefix-tag-add>추가</button>
+          </div>
+          <small>기본 태그는 숨길 수만 있고 삭제할 수 없습니다. 직접 추가한 태그는 수정·삭제할 수 있습니다.</small>
+        </div>
       </div>
     `;
   }
@@ -351,15 +362,28 @@ function collectFeatureOptions(form: HTMLElement): Record<string, unknown> {
   const options: Record<string, unknown> = {};
   for (const optionInput of optionInputs) {
     if (!optionInput.dataset.option) continue;
-    const kind = optionInput.dataset.optionKind;
-    // `lines` 는 한 줄에 하나씩 편집하는 목록이다. 쉼표로 나누면 항목 안의 쉼표가 깨진다.
-    options[optionInput.dataset.option] = kind === 'string'
+    options[optionInput.dataset.option] = optionInput.dataset.optionKind === 'string'
       ? normalizeTitleAutofillText(optionInput.value)
-      : kind === 'lines'
-        ? parseTemplateText(optionInput.value)
-        : parseList(optionInput.value);
+      : parseList(optionInput.value);
   }
   return options;
+}
+
+/**
+ * prefix 태그 설정을 바꿔 저장한다.
+ *
+ * 저장할 때마다 `normalizePrefixTagOptions`를 거치므로 형식이 깨진 값이 들어가지 않는다.
+ */
+async function updatePrefixTagOptions(
+  change: (options: ReturnType<typeof normalizePrefixTagOptions>) =>
+    ReturnType<typeof normalizePrefixTagOptions>,
+): Promise<void> {
+  const current = normalizePrefixTagOptions(
+    settings.sites.jira.features.backlogSlashTemplate?.options,
+  );
+  const next = normalizePrefixTagOptions(change(current));
+  await setFeatureOptions('jira', 'backlogSlashTemplate', { ...next });
+  await render();
 }
 
 async function saveFeatureOptions(form: HTMLElement): Promise<void> {
@@ -405,9 +429,34 @@ async function saveFeatureOptionsWithFeedback(form: HTMLElement): Promise<void> 
 
 app.addEventListener('click', async (event) => {
   const target = event.target instanceof Element
-    ? event.target.closest<HTMLElement>('[data-route], [data-open-origin], [data-save-feature-options], [data-reset-feature], [data-reset-all]')
+    ? event.target.closest<HTMLElement>('[data-route], [data-open-origin], [data-save-feature-options], [data-reset-feature], [data-reset-all], [data-prefix-tag-add], [data-prefix-tag-rename], [data-prefix-tag-remove]')
     : null;
   if (!target) return;
+
+  if (target.hasAttribute('data-prefix-tag-add')) {
+    const field = app.querySelector<HTMLInputElement>('[data-prefix-tag-new]');
+    const label = field?.value ?? '';
+    if (label.trim()) await updatePrefixTagOptions((options) => addCustomTag(options, label));
+    return;
+  }
+
+  if (target.dataset.prefixTagRename) {
+    const from = target.dataset.prefixTagRename;
+    const to = window.prompt('prefix 태그 수정', from);
+    // 취소하면 null 이다. 빈 문자열로 지워지지 않게 구분한다.
+    if (to !== null && to.trim()) {
+      await updatePrefixTagOptions((options) => renameCustomTag(options, from, to));
+    }
+    return;
+  }
+
+  if (target.dataset.prefixTagRemove) {
+    const label = target.dataset.prefixTagRemove;
+    if (window.confirm(`prefix 태그 ${label} 을(를) 삭제할까요?`)) {
+      await updatePrefixTagOptions((options) => removeCustomTag(options, label));
+    }
+    return;
+  }
 
   if (target.dataset.openOrigin) {
     await chrome.tabs.create({ url: target.dataset.openOrigin });
@@ -441,6 +490,16 @@ app.addEventListener('click', async (event) => {
 app.addEventListener('change', async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
+
+  if (target.dataset.prefixTagVisible) {
+    const label = target.dataset.prefixTagVisible;
+    const visible = target.checked;
+    const builtIn = target.dataset.builtIn === 'true';
+    await updatePrefixTagOptions((options) => (builtIn
+      ? setBuiltInVisibility(options, label, visible)
+      : setCustomVisibility(options, label, visible)));
+    return;
+  }
 
   if (target.hasAttribute('data-site-toggle') && isSiteId(target.dataset.siteId)) {
     await setSiteEnabled(target.dataset.siteId, target.checked);

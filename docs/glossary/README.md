@@ -25,6 +25,7 @@
 
 | 용어 | 정의 | 비고 |
 |---|---|---|
+| **prefix 태그** | Jira 업무 제목 앞에 붙여 영역을 구분하는 대괄호 표기. `[INFRA]`, `[CI/CD]` 등. 백로그에서 `/`로 골라 넣는다 | **내장**(확장 제공, 삭제 불가·숨김 가능)과 **커스텀**(사용자 추가, 수정·삭제 가능)으로 나뉜다 |
 | **사이트 (site)** | 기능을 묶는 단위. 아마란스·Jira·Confluence·GitHub Enterprise·GitLab 다섯 개다. 코드에서 `src/sites/<siteId>/`, `SiteId`, `SiteDescriptor` | 새 기능은 기존 사이트에 넣을지 새 사이트를 만들지 먼저 정한다 |
 | **기능 (feature)** | 사이트 안의 개별 동작 단위. Popup에서 따로 켜고 끈다. 코드에서 `FeatureId`, `FeatureRuntime` | 카탈로그에 등록하지 않으면 Popup에 나타나지 않는다 |
 | **카탈로그 (catalog)** | 사이트·기능 목록의 정본. `src/catalog/` | 설정 기본값·Popup·content script 매칭이 전부 여기서 파생된다 |

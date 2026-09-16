@@ -19,7 +19,13 @@ export interface AmaranthTitleAutofillOptions extends Record<string, unknown> {
   titleText: string;
 }
 
-export interface JiraBacklogSlashTemplateOptions extends Record<string, unknown> {
-  /** `/` 를 입력했을 때 보여줄 제목 접두사 목록. 한 줄에 하나로 편집한다. */
-  templates: string[];
+/**
+ * prefix 태그 설정.
+ *
+ * 내장 태그는 코드에 있고 여기에는 **숨김 여부만** 남긴다. 통째로 저장하면 다음 릴리즈에서
+ * 내장 목록을 늘려도 기존 사용자가 받지 못한다.
+ */
+export interface JiraPrefixTagOptions extends Record<string, unknown> {
+  hiddenBuiltInTags: string[];
+  customTags: Array<{ label: string; visible: boolean }>;
 }
