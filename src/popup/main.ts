@@ -1,4 +1,9 @@
 import { findFeatureDescriptor, findSiteDescriptor, SITES } from '../catalog/sites';
+import {
+  formatTemplateText,
+  normalizeTemplates,
+  parseTemplateText,
+} from '../sites/jira/features/backlogSlashTemplate/contracts';
 import { FEATURE_IDS, SITE_IDS, type FeatureId, type SiteId } from '../catalog/types';
 import { createDefaultSettings } from '../platform/settings/defaults';
 import {
@@ -226,6 +231,46 @@ function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
     `;
   }
 
+  if (siteId === 'jira' && featureId === 'backlogSlashTemplate') {
+    const templates = normalizeTemplates(
+      settings.sites.jira.features.backlogSlashTemplate?.options.templates,
+      [],
+    );
+    const feedback = saveFeedback?.key === `${siteId}.${featureId}`
+      ? saveFeedback.status
+      : null;
+    const saveLabel = feedback === 'saving'
+      ? '저장 중…'
+      : feedback === 'saved'
+        ? '✓ 저장됨'
+        : feedback === 'error'
+          ? '저장 실패 · 다시 시도'
+          : '저장';
+    return `
+      <div class="option-fields" data-options-form data-site-id="jira" data-feature-id="backlogSlashTemplate">
+        <label>
+          <span>제목 접두사 목록</span>
+          <textarea
+            class="template-list-input"
+            data-option="templates"
+            data-option-kind="lines"
+            rows="6"
+            spellcheck="false"
+            placeholder="[공통]&#10;[DevOpsit][BE]&#10;[DevOpsit]"
+          >${escapeHtml(formatTemplateText(templates))}</textarea>
+          <small>한 줄에 하나씩 적습니다. 백로그에서 업무를 추가할 때 <code>/</code>를 입력하면 이 목록이 나타납니다.</small>
+        </label>
+        <button
+          type="button"
+          class="secondary-button option-save-button ${feedback ? `is-${feedback}` : ''}"
+          data-save-feature-options
+          aria-live="polite"
+          ${feedback === 'saving' || feedback === 'saved' ? 'disabled' : ''}
+        >${saveLabel}</button>
+      </div>
+    `;
+  }
+
   return '<p class="empty-options">이 기능에는 별도의 추가 옵션이 없습니다.</p>';
 }
 
@@ -306,9 +351,13 @@ function collectFeatureOptions(form: HTMLElement): Record<string, unknown> {
   const options: Record<string, unknown> = {};
   for (const optionInput of optionInputs) {
     if (!optionInput.dataset.option) continue;
-    options[optionInput.dataset.option] = optionInput.dataset.optionKind === 'string'
+    const kind = optionInput.dataset.optionKind;
+    // `lines` 는 한 줄에 하나씩 편집하는 목록이다. 쉼표로 나누면 항목 안의 쉼표가 깨진다.
+    options[optionInput.dataset.option] = kind === 'string'
       ? normalizeTitleAutofillText(optionInput.value)
-      : parseList(optionInput.value);
+      : kind === 'lines'
+        ? parseTemplateText(optionInput.value)
+        : parseList(optionInput.value);
   }
   return options;
 }

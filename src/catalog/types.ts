@@ -7,6 +7,7 @@ export const FEATURE_IDS = [
   'notificationTools',
   'issueLinkCopy',
   'issueModalWidth',
+  'backlogSlashTemplate',
   'pageMarkdownCopy',
   'pageMarkdownAppend',
   'pullRequestTitleCopy',

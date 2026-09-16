@@ -34,6 +34,12 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
             enabled: false,
             options: {},
           },
+          backlogSlashTemplate: {
+            enabled: true,
+            options: {
+              templates: ['[공통]', '[DevOpsit][BE]', '[DevOpsit]'],
+            },
+          },
         },
       },
       githubEnterprise: {

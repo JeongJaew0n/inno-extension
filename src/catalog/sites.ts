@@ -63,6 +63,14 @@ export const SITES = [
         defaultEnabled: false,
         hasDetails: false,
       },
+      {
+        id: 'backlogSlashTemplate',
+        name: '백로그 슬래시 템플릿',
+        description: '백로그에서 업무를 추가할 때 `/`를 입력하면 미리 등록한 제목 접두사 목록을 보여줍니다.',
+        routeSummary: 'Jira 백로그의 업무 추가 입력창',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
     ],
   },
   {

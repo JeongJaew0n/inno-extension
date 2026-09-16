@@ -2,6 +2,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { findFeatureDescriptor, SITES } from '../src/catalog/sites';
+import {
+  buildInsertion,
+  filterTemplates,
+  moveActiveIndex,
+  normalizeTemplates,
+  parseTemplateText,
+  readSlashToken,
+} from '../src/sites/jira/features/backlogSlashTemplate/contracts';
 import { isExtensionContextValid } from '../src/platform/runtime/createSiteRuntime';
 import { createUpdateScheduler } from '../src/platform/runtime/updateScheduler';
 import { createDefaultSettings } from '../src/platform/settings/defaults';
@@ -148,6 +156,94 @@ function createFakeIssueDocument(options: {
 
 // Jira 모달 전체 폭. Jira에 해당 기능이 없어 CSS로 폭 제한을 푼다.
 // docs/plans/jira-issue-modal-fullwidth/spec.md
+// 백로그 슬래시 템플릿. `/` 로 제목 접두사를 골라 넣는다.
+// docs/plans/jira-backlog-slash-template/spec.md
+test('슬래시 토큰은 입력 첫 글자가 / 일 때만 인식한다', () => {
+  assert.equal(readSlashToken('/'), '');
+  assert.equal(readSlashToken('/Dev'), 'Dev');
+  // 문장 중간의 / 는 경로·날짜에 흔하다. 트리거하면 정상 입력을 방해한다.
+  assert.equal(readSlashToken('버그 수정 src/sites/jira'), null);
+  assert.equal(readSlashToken('9/16 배포'), null);
+  assert.equal(readSlashToken(''), null);
+});
+
+test('슬래시 토큰은 공백이 나오면 끝난다', () => {
+  // 공백을 쳤다는 것은 접두사 선택을 끝내고 본문을 쓰기 시작했다는 뜻이다.
+  assert.equal(readSlashToken('/Dev 작업'), null);
+  assert.equal(readSlashToken('[DevOpsit][BE] 작업'), null);
+});
+
+test('템플릿 필터는 대소문자와 대괄호를 무시한다', () => {
+  const all = ['[공통]', '[DevOpsit][BE]', '[DevOpsit]'];
+  assert.deepEqual(filterTemplates(all, ''), all);
+  assert.deepEqual(filterTemplates(all, 'Dev'), ['[DevOpsit][BE]', '[DevOpsit]']);
+  assert.deepEqual(filterTemplates(all, 'dev'), ['[DevOpsit][BE]', '[DevOpsit]']);
+  assert.deepEqual(filterTemplates(all, '공통'), ['[공통]']);
+  assert.deepEqual(filterTemplates(all, 'BE'), ['[DevOpsit][BE]']);
+  assert.deepEqual(filterTemplates(all, '없는것'), []);
+});
+
+test('삽입은 슬래시 토큰을 치환하고 뒤에 공백을 붙인다', () => {
+  assert.deepEqual(buildInsertion('/Dev', '[DevOpsit][BE]'), {
+    value: '[DevOpsit][BE] ',
+    caret: '[DevOpsit][BE] '.length,
+  });
+  assert.deepEqual(buildInsertion('/', '[공통]'), { value: '[공통] ', caret: '[공통] '.length });
+  // 슬래시 입력이 아니면 삽입하지 않는다.
+  assert.equal(buildInsertion('작업 제목', '[공통]'), null);
+});
+
+test('삽입 결과가 최대 길이를 넘으면 넣지 않는다', () => {
+  // 잘린 제목을 만드는 것보다 넣지 않는 편이 낫다.
+  assert.equal(buildInsertion('/x', 'A'.repeat(255), 255), null);
+  assert.ok(buildInsertion('/x', 'A'.repeat(254), 255));
+});
+
+test('목록 커서는 끝에서 반대편으로 돈다', () => {
+  assert.equal(moveActiveIndex(0, 3, 1), 1);
+  assert.equal(moveActiveIndex(2, 3, 1), 0);
+  assert.equal(moveActiveIndex(0, 3, -1), 2);
+  assert.equal(moveActiveIndex(0, 0, 1), 0);
+});
+
+test('템플릿 텍스트는 빈 줄과 중복을 정리한다', () => {
+  assert.deepEqual(parseTemplateText('[공통]\n\n  [DevOpsit]  \n[공통]\n'), ['[공통]', '[DevOpsit]']);
+  assert.deepEqual(parseTemplateText('   \n  '), []);
+});
+
+test('템플릿 설정이 비었거나 잘못되면 기본값으로 떨어진다', () => {
+  const fallback = ['[공통]'];
+  assert.deepEqual(normalizeTemplates(undefined, fallback), fallback);
+  assert.deepEqual(normalizeTemplates('문자열', fallback), fallback);
+  assert.deepEqual(normalizeTemplates([], fallback), fallback);
+  assert.deepEqual(normalizeTemplates(['  ', ''], fallback), fallback);
+  assert.deepEqual(normalizeTemplates(['[A]', 123, '[B]'], fallback), ['[A]', '[B]']);
+});
+
+test('슬래시 템플릿은 목록이 닫혀 있으면 Enter 를 가로채지 않는다', async () => {
+  const runtime = await readFile(
+    'src/sites/jira/features/backlogSlashTemplate/runtime.ts',
+    'utf8',
+  );
+  // 이 입력창의 Enter 는 이슈 생성이다. 잘못 가로채면 생성이 막힌다.
+  assert.match(runtime, /if \(!isListOpen\(\)\) return;/);
+  // IME 조합 중의 Enter 는 후보 확정이다.
+  assert.match(runtime, /event\.isComposing \|\| event\.keyCode === 229/);
+  // Jira 의 onKeyDown 에 닿지 않게 capture 단계에서 듣고 전파를 막는다.
+  assert.match(runtime, /addEventListener\('keydown', onKeyDown, true\)/);
+  assert.match(runtime, /event\.stopPropagation\(\)/);
+});
+
+test('슬래시 템플릿은 React controlled input 에 native setter 로 넣는다', async () => {
+  const runtime = await readFile(
+    'src/sites/jira/features/backlogSlashTemplate/runtime.ts',
+    'utf8',
+  );
+  // DOM 값만 바꾸면 React 가 다음 렌더에서 되돌린다.
+  assert.match(runtime, /getOwnPropertyDescriptor/);
+  assert.match(runtime, /new Event\('input', \{ bubbles: true \}\)/);
+});
+
 test('Jira 모달 전체 폭 기능은 기본이 꺼짐이다', () => {
   const descriptor = findFeatureDescriptor('jira', 'issueModalWidth');
   assert.ok(descriptor, '카탈로그에 기능이 있어야 한다');

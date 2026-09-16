@@ -37,3 +37,20 @@ export const ISSUE_MODAL_POSITIONER =
 /** 모달 우상단의 `사이드바로 전환` 버튼. 토글 버튼을 이 왼쪽에 붙인다. */
 export const ISSUE_MODAL_MINIMISE_BUTTON =
   '[data-testid="issue-view-foundation.header.minimise-button.modal-minimise-button"]';
+
+/** 백로그 슬래시 템플릿 기능. */
+export const BACKLOG_SLASH_TEMPLATE_ROOT = 'jira-backlog-slash-template';
+
+/**
+ * 백로그 인라인 생성의 제목 입력창.
+ *
+ * `data-testid`가 없어 `aria-label`로 잡는다. UI 언어가 한글인데 이 값은 영문이라 locale과
+ * 무관해 보이지만 계약은 아니다. 그래서 카드 리스트 컨테이너 안에 있는지도 함께 본다.
+ *
+ * **인라인 생성은 백로그 영역에만 있다.** 스프린트 컨테이너에는 생성 버튼도 입력창도 없는
+ * 것을 실측으로 확인했다.
+ *
+ * docs/plans/jira-backlog-slash-template/context.md
+ */
+export const BACKLOG_SUMMARY_INPUT = 'input[aria-label="Work item summary"]';
+export const BACKLOG_CARD_LIST_CONTAINER = '[data-testid^="software-backlog.card-list.container"]';

@@ -18,3 +18,8 @@ export interface ExtensionSettingsV1 {
 export interface AmaranthTitleAutofillOptions extends Record<string, unknown> {
   titleText: string;
 }
+
+export interface JiraBacklogSlashTemplateOptions extends Record<string, unknown> {
+  /** `/` 를 입력했을 때 보여줄 제목 접두사 목록. 한 줄에 하나로 편집한다. */
+  templates: string[];
+}
