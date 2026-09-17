@@ -252,14 +252,37 @@ export async function pasteAndWaitForChange(
   if (!await waitForEditorChange(editor, didChange)) throw new Error(failureMessage);
 }
 
+export interface EditorSnapshot {
+  html: string;
+  text: string;
+}
+
+export function snapshotEditor(editor: HTMLElement): EditorSnapshot {
+  return { html: editor.innerHTML, text: editor.textContent ?? '' };
+}
+
+/**
+ * 실행 취소를 눌러 되돌린다.
+ *
+ * 복원 판정에 `innerHTML` 완전 일치**만** 쓰면 안 된다. **CodeMirror가 자동 생성하는 스타일
+ * 스코프 클래스명이 다시 렌더될 때마다 바뀐다.** 실측에서 실행 취소로 내용이 완전히 복원됐는데도
+ * (길이까지 5645자로 동일) 469번째 글자의 `ͼ1r`이 `ͼ27`로 바뀌어 영영 일치하지 않았다.
+ * 코드블럭이 든 문서에서는 이 비교가 성립할 수 없다.
+ *
+ * 그래서 `textContent` 일치도 성공으로 본다. 생성 클래스명에 영향받지 않는다.
+ *
+ * docs/troubleshootings/project-specific/2026-09-17-code-block-phase-false-failure.md
+ */
 export async function rollbackEditorChange(
   editor: HTMLElement,
-  beforeHtml: string,
+  before: EditorSnapshot,
 ): Promise<boolean> {
   const undoButton = editor.ownerDocument.querySelector<HTMLButtonElement>(EDITOR_UNDO_BUTTON);
   if (!undoButton || undoButton.disabled) return false;
   undoButton.click();
-  return waitForEditorChange(editor, () => editor.innerHTML === beforeHtml);
+  return waitForEditorChange(editor, () => (
+    editor.innerHTML === before.html || (editor.textContent ?? '') === before.text
+  ));
 }
 
 /** `container`가 `node` 하나만 콘텐츠로 담고 있으면 `true`. */
@@ -320,6 +343,16 @@ function listCodeBlocks(editor: HTMLElement): HTMLElement[] {
 }
 
 /**
+ * 문서가 담은 ProseMirror 노드 수.
+ *
+ * 교체 여부를 구조로 판정할 때 쓴다. 데코레이션(`ProseMirror-widget`)은 `data-prosemirror-node-name`
+ * 을 갖지 않으므로 세어지지 않는다. 그래서 편집기가 장식을 붙였다 뗐다 해도 값이 흔들리지 않는다.
+ */
+function countEditorNodes(editor: HTMLElement): number {
+  return editor.querySelectorAll('[data-prosemirror-node-name]').length;
+}
+
+/**
  * 코드블럭 벗기기를 실행할지 판정한다.
  *
  * 벗기기는 대상 코드블럭을 Markdown으로 해석해 산문으로 풀어버린다. 실제 소스 코드에 실행하면
@@ -375,19 +408,51 @@ async function replaceCodeBlockWithAdf(
    */
   const codeBlock = listCodeBlocks(editor)[index];
   if (!codeBlock) throw new Error('변환할 코드블럭의 현재 위치를 찾을 수 없습니다.');
+  // 원문은 **선택 전에** 읽는다. 노드를 선택하면 CodeMirror가 내용을 다시 그려서 그 직후에는
+  // 빈 문자열이 읽히는 것을 실측으로 확인했다.
+  const beforeSource = readEditorCodeBlockText(codeBlock);
+  const beforeNodeCount = countEditorNodes(editor);
+
   await selectEditorNode(editor, codeBlock);
-  const beforePasteHtml = editor.innerHTML;
+  const before = snapshotEditor(editor);
+
+  /**
+   * 원본 코드블럭이 교체됐는지 판정한다.
+   *
+   * `!codeBlock.isConnected`만 보면 안 된다. **ProseMirror는 DOM 노드를 재사용한다.** 변환
+   * 결과물 안에 코드블럭이 들어 있으면 원본 엘리먼트가 **결과물의 새 코드블럭으로 넘어가서**
+   * 교체가 끝났는데도 `isConnected`가 계속 `true`다. 실측에서 3초 내내 `true`였고, 그 엘리먼트의
+   * 텍스트는 이미 새 코드블럭의 내용으로 바뀌어 있었다.
+   *
+   * 세 신호 중 하나라도 서면 교체된 것으로 본다.
+   *
+   * | 신호 | 왜 |
+   * | --- | --- |
+   * | 노드가 사라짐 | 재사용되지 않은 보통의 경우 |
+   * | **문서의 노드 수가 달라짐** | 코드블럭 하나가 여러 노드로 풀린다. 재사용과 무관하다 |
+   * | 코드블럭 원문이 달라짐 | 재사용된 엘리먼트가 다른 내용을 담게 됐다 |
+   *
+   * `innerHTML` 변화는 신호로 쓰지 않는다. **CodeMirror가 자동 생성하는 클래스명이 다시 렌더될
+   * 때마다 바뀌어** 붙여넣기와 무관하게 문자열이 달라진다.
+   *
+   * docs/troubleshootings/project-specific/2026-09-17-code-block-phase-false-failure.md
+   */
+  const didReplace = (): boolean => (
+    !codeBlock.isConnected
+    || countEditorNodes(editor) !== beforeNodeCount
+    || readEditorCodeBlockText(codeBlock) !== beforeSource
+  );
+
   try {
     await pasteAndWaitForChange(
       editor,
       html,
       markdown,
-      () => !codeBlock.isConnected,
+      didReplace,
       '코드블럭을 원래 위치의 ADF 내용으로 교체하지 못했습니다.',
     );
   } catch (error) {
-    if (editor.innerHTML !== beforePasteHtml
-      && !await rollbackEditorChange(editor, beforePasteHtml)) {
+    if (editor.innerHTML !== before.html && !await rollbackEditorChange(editor, before)) {
       throw new Error(`코드블럭 -> ADF 결과가 올바르지 않고 자동 되돌리기도 실패했습니다. ${siteName} 실행 취소를 한 번 눌러주세요.`);
     }
     throw error;
@@ -543,7 +608,7 @@ export async function runParagraphMarkdownPhase(
     const first = run.paragraphs[0];
     const last = run.paragraphs[run.paragraphs.length - 1];
     // 되돌리기 판정이 이 스냅샷과의 일치로 이뤄지므로 붙여넣기 직전에 잡는다.
-    const beforeHtml = editor.innerHTML;
+    const before = snapshotEditor(editor);
 
     /**
      * 교체 성공 판정에 쓸 표시 줄.
@@ -559,7 +624,7 @@ export async function runParagraphMarkdownPhase(
 
     await selectEditorRange(editor, first, last);
     const didReplace = (): boolean => {
-      if (editor.innerHTML === beforeHtml) return false;
+      if (editor.innerHTML === before.html) return false;
       if (!signature) return true;
       return !Array.from(editor.querySelectorAll<HTMLElement>(EDITOR_PARAGRAPH))
         .some((paragraph) => (paragraph.textContent ?? '').trim() === signature);
@@ -573,7 +638,7 @@ export async function runParagraphMarkdownPhase(
         '문단으로 남은 Markdown을 원래 위치에서 교체하지 못했습니다.',
       );
     } catch (error) {
-      if (!await rollbackEditorChange(editor, beforeHtml)) {
+      if (!await rollbackEditorChange(editor, before)) {
         throw new Error(`Markdown 변환 결과가 올바르지 않고 자동 되돌리기도 실패했습니다. ${siteName} 실행 취소를 한 번 눌러주세요.`);
       }
       throw error;

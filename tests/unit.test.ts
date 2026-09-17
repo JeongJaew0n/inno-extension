@@ -1291,6 +1291,43 @@ test('Jira 는 설명 편집기 컨테이너 안에서만 툴바를 찾는다', 
   assert.doesNotMatch(jiraSource, /document\.querySelector<HTMLElement>\(EDITOR_PRIMARY_TOOLBAR\)/);
 });
 
+test('코드블럭 교체 판정도 노드 재사용에 기대지 않는다', async () => {
+  const runtimeSource = await readFile(
+    'src/platform/editor/markdown-to-adf-runtime.ts',
+    'utf8',
+  );
+  const fn = runtimeSource.slice(
+    runtimeSource.indexOf('async function replaceCodeBlockWithAdf'),
+    runtimeSource.indexOf('export async function runCodeBlockPhase'),
+  );
+
+  // 변환 결과물에 코드블럭이 들어 있으면 ProseMirror 가 원본 엘리먼트를 그쪽으로 재사용해
+  // isConnected 가 영영 true 다. 내용이 달라졌는지로 판정해야 한다.
+  assert.match(fn, /countEditorNodes\(editor\) !== beforeNodeCount/);
+  assert.match(fn, /readEditorCodeBlockText\(codeBlock\) !== beforeSource/);
+  // isConnected 단독 판정이 남아 있으면 안 된다.
+  assert.doesNotMatch(fn, /\(\) => !codeBlock\.isConnected,/);
+  // 원문은 선택 전에 읽어야 한다. 선택 직후에는 CodeMirror 가 다시 그려 빈 문자열이 읽힌다.
+  assert.ok(
+    fn.indexOf('readEditorCodeBlockText(codeBlock)') < fn.indexOf('await selectEditorNode('),
+    '원문 읽기가 selectEditorNode 보다 앞서야 한다',
+  );
+});
+
+test('되돌리기 판정은 innerHTML 완전 일치에만 기대지 않는다', async () => {
+  const runtimeSource = await readFile(
+    'src/platform/editor/markdown-to-adf-runtime.ts',
+    'utf8',
+  );
+  const fn = runtimeSource.slice(
+    runtimeSource.indexOf('export async function rollbackEditorChange'),
+    runtimeSource.indexOf('export function wrapsOnlyNode'),
+  );
+
+  // CodeMirror 가 자동 생성하는 클래스명이 다시 렌더될 때마다 바뀌어 문자열이 영영 달라진다.
+  assert.match(fn, /editor\.textContent \?\? ''\) === before\.text/);
+});
+
 test('Mermaid 교체 판정은 노드 재사용에 기대지 않는다', async () => {
   const runtimeSource = await readFile(
     'src/sites/confluence/features/editorMarkdownToAdf/mermaid-phase.ts',
