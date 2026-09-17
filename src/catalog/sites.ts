@@ -76,7 +76,7 @@ export const SITES = [
         name: '설명 Markdown 변환',
         description: '업무 설명 편집기에서 코드블럭이나 문단으로 남은 Markdown을 제목·표·목록으로 변환합니다. Jira에는 Mermaid 앱이 없어 다이어그램은 만들지 않습니다.',
         routeSummary: 'Jira 업무 설명 편집기',
-        defaultEnabled: false,
+        defaultEnabled: true,
         hasDetails: false,
       },
     ],

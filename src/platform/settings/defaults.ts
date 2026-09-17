@@ -43,8 +43,9 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
             },
           },
           editorMarkdownToAdf: {
-            // 문서를 통째로 바꾸는 동작이라 사용자가 직접 켜야 한다. Confluence 쪽과 같다.
-            enabled: false,
+            // 버튼이 보이기만 할 뿐 누르기 전에는 아무것도 바꾸지 않는다. 기본값을 OFF 로 두면
+            // 기능이 있는 줄도 모른다. 저장은 여전히 사용자가 누른다.
+            enabled: true,
             options: {},
           },
         },

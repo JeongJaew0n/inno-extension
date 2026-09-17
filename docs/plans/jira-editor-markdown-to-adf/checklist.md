@@ -6,7 +6,7 @@
 
 - [x] Q1 Mermaid 불가 **수용.** 코드블럭으로 남긴다
 - [x] Q2 **설명 편집기만.** 댓글은 제외
-- [x] Q3 기능 기본값 **OFF**
+- [x] Q3 기능 기본값 **ON** (처음엔 OFF 로 정했다가 바꿨다)
 - [x] Q4 기능 ID `editorMarkdownToAdf` 동일
 
 ## 1. 선행 측정 — 남은 것
@@ -28,7 +28,7 @@
 ## 3. Jira 쪽 배선
 
 - [x] `FEATURE_IDS` · `src/catalog/sites.ts` 의 jira 에 기능 등록
-- [x] `defaults.ts` 에 기본값 (OFF)
+- [x] `defaults.ts` 에 기본값 (ON)
 - [x] `manifest.json` 에 Jira MAIN world content script 추가 (`document_start`)
 - [x] `src/sites/jira/selectors.ts` 에 편집기·툴바·컨테이너 선택자
 - [x] 설명 편집기만 고르는 조건 (`issue.views.field.rich-text.editor-container`)
@@ -54,7 +54,7 @@
 - [ ] 표·제목·목록이 섞인 문서 변환
 - [ ] Mermaid 코드블럭이 **코드블럭으로 남는지**
 - [ ] 댓글 편집기에는 버튼이 붙지 않는지
-- [ ] 기능 OFF 일 때 아무것도 주입되지 않는지
+- [ ] 기능을 끄면 아무것도 주입되지 않는지
 - [ ] Confluence 기능이 여전히 동작하는지
 
 ## 7. 문서
