@@ -1,4 +1,4 @@
-import { MARKDOWN_IGNORED_ELEMENTS } from '../../selectors';
+import { MARKDOWN_IGNORED_ELEMENTS } from './selectors';
 
 interface RenderContext {
   preserveWhitespace: boolean;
@@ -272,7 +272,15 @@ function normalizeMarkdown(value: string): string {
     .trim();
 }
 
-export function convertConfluenceBodyToMarkdown(body: HTMLElement): string {
+/**
+ * ADF 렌더러가 그린 본문을 Markdown 으로 옮긴다.
+ *
+ * **Confluence 문서 본문과 Jira 업무 설명이 같은 `.ak-renderer-document` 를 쓴다.** 두 사이트가
+ * 이 함수를 공유한다.
+ *
+ * docs/plans/jira-description-markdown-copy/context.md
+ */
+export function convertRendererToMarkdown(body: HTMLElement): string {
   const clone = body.cloneNode(true) as HTMLElement;
   clone.querySelectorAll(MARKDOWN_IGNORED_ELEMENTS).forEach((element) => element.remove());
   removeRedundantHeaderOnlyTables(clone);

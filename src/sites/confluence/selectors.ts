@@ -5,17 +5,3 @@ export const PAGE_TITLE_WRAPPER = '[data-testid="title-wrapper"]';
 /** 편집기를 담은 안정적인 조상. 단계마다 본문을 다시 잡을 때 이 안에서 찾는다. */
 export const EDITOR_WRAPPER = '[data-testid="editor-wrapper"]';
 export const EDITOR_MARKDOWN_TO_ADF_ROOT = 'confluence-editor-markdown-to-adf';
-
-export const MARKDOWN_IGNORED_ELEMENTS = [
-  'button',
-  'script',
-  'style',
-  'svg',
-  'input',
-  'select',
-  'textarea',
-  '[data-testid="anchor-button"]',
-  '[data-testid*="copy-button"]',
-  '[data-testid*="line-number"]',
-  '.react-syntax-highlighter-line-number',
-].join(',');

@@ -8,7 +8,7 @@ import {
   PAGE_MARKDOWN_COPY_ROOT,
   PAGE_TITLE_WRAPPER,
 } from '../../selectors';
-import { convertConfluenceBodyToMarkdown } from './markdown';
+import { convertRendererToMarkdown } from '../../../../platform/editor/renderer-to-markdown';
 
 type ButtonPlacement = 'toolbar' | 'body';
 
@@ -140,7 +140,7 @@ export function createPageMarkdownCopyRuntime(): FeatureRuntime {
       try {
         const currentBody = context.document.querySelector<HTMLElement>(PAGE_BODY);
         if (!currentBody) throw new Error('복사할 Confluence 본문을 찾을 수 없습니다.');
-        const markdown = convertConfluenceBodyToMarkdown(currentBody);
+        const markdown = convertRendererToMarkdown(currentBody);
         if (!markdown) throw new Error('복사할 Confluence 본문이 비어 있습니다.');
         await writePlainText(markdown);
         buttonLabel.textContent = '복사됨';

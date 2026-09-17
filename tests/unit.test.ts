@@ -39,7 +39,7 @@ import {
 import {
   escapeMarkdownText,
   isRedundantHeaderOnlyTable,
-} from '../src/sites/confluence/features/pageMarkdownCopy/markdown';
+} from '../src/platform/editor/renderer-to-markdown';
 import {
   parseConfluenceEditPageUrl,
   parseConfluencePageUrl,
