@@ -47,10 +47,12 @@ import {
 import {
   describeConversionResult,
   matchesCodeBlockSource,
-  mayBeMermaidCodeBlock,
   readCodeBlockSources,
   summarizeConversionFailure,
-} from '../src/sites/confluence/features/editorMarkdownToAdf/runtime';
+} from '../src/platform/editor/markdown-to-adf-runtime';
+import {
+  mayBeMermaidCodeBlock,
+} from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid-phase';
 import {
   describeUnconvertedMarkdown,
   findUnconvertedMarkdown,
@@ -703,7 +705,7 @@ test('Confluence edit-v2 URL만 편집기 변환 대상으로 판별한다', () 
 
 test('Confluence 편집기 toolbar는 Markdown 변환 버튼 하나만 제공한다', async () => {
   const runtimeSource = await readFile(
-    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'src/platform/editor/markdown-to-adf-runtime.ts',
     'utf8',
   );
 
@@ -715,19 +717,19 @@ test('Confluence 편집기 toolbar는 Markdown 변환 버튼 하나만 제공한
   assert.equal(runtimeSource.match(/<button type="button"/g)?.length, 1);
 });
 
-test('Markdown 변환은 벗기기를 먼저 하고 Mermaid 변환을 뒤에 한다', async () => {
+test('Markdown 변환은 벗기기를 먼저 하고 사이트 전용 단계를 뒤에 한다', async () => {
   const runtimeSource = await readFile(
-    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'src/platform/editor/markdown-to-adf-runtime.ts',
     'utf8',
   );
 
   // Markdown 원문의 mermaid 펜스는 1단계를 거쳐야 개별 코드블럭이 된다.
   assert.ok(
     runtimeSource.indexOf('await runCodeBlockPhase(')
-      < runtimeSource.indexOf('await runMermaidPhase('),
+      < runtimeSource.indexOf('await site.extraPhase.run('),
   );
   // 1단계는 조건을 만족할 때만 실행한다.
-  assert.match(runtimeSource, /if \(shouldUnwrapCodeBlocks\(editor\)\)/);
+  assert.match(runtimeSource, /if \(shouldUnwrapCodeBlocks\(editor, site\.isProtectedCodeBlock\)\)/);
 });
 
 test('ADF를 Confluence 편집기 paste용 안전한 HTML로 직렬화한다', () => {
@@ -1234,28 +1236,28 @@ test('변환 결과 요약은 수행한 단계만 표시한다', () => {
   assert.equal(describeConversionResult(1, 2, 7), '코드블럭 1 · 문단 2 · Mermaid 7 변환');
 });
 
-test('Markdown 변환은 벗기기 · 문단 · Mermaid 순서로 실행한다', async () => {
+test('Markdown 변환은 벗기기 · 문단 · 사이트 전용 단계 순서로 실행한다', async () => {
   const runtimeSource = await readFile(
-    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'src/platform/editor/markdown-to-adf-runtime.ts',
     'utf8',
   );
   const codeBlock = runtimeSource.indexOf('await runCodeBlockPhase(');
   const paragraph = runtimeSource.indexOf('await runParagraphMarkdownPhase(');
-  const mermaid = runtimeSource.indexOf('await runMermaidPhase(');
+  const extra = runtimeSource.indexOf('await site.extraPhase.run(');
   assert.ok(codeBlock < paragraph, '벗기기가 문단 변환보다 먼저여야 한다');
-  assert.ok(paragraph < mermaid, '문단 변환이 Mermaid 변환보다 먼저여야 한다');
+  assert.ok(paragraph < extra, '문단 변환이 사이트 전용 단계보다 먼저여야 한다');
   // 단계마다 본문을 다시 잡아야 순번과 노드 참조가 어긋나지 않는다.
   assert.match(runtimeSource, /if \(paragraphRuns > 0\) editor = getEditor\(\);/);
 });
 
 test('Mermaid 교체 판정은 노드 재사용에 기대지 않는다', async () => {
   const runtimeSource = await readFile(
-    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'src/sites/confluence/features/editorMarkdownToAdf/mermaid-phase.ts',
     'utf8',
   );
   const fn = runtimeSource.slice(
     runtimeSource.indexOf('async function replaceMermaidCodeBlock'),
-    runtimeSource.indexOf('export function createEditorMarkdownToAdfRuntime'),
+    runtimeSource.indexOf('export async function runMermaidPhase'),
   );
 
   // ProseMirror가 DOM 노드를 재사용해 교체 후에도 isConnected가 true로 남을 수 있다.
@@ -1267,7 +1269,7 @@ test('Mermaid 교체 판정은 노드 재사용에 기대지 않는다', async (
 
 test('실패와 진단 결과는 다음 클릭까지 남는다', async () => {
   const runtimeSource = await readFile(
-    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'src/platform/editor/markdown-to-adf-runtime.ts',
     'utf8',
   );
   // 2.2초 만에 사라지면 사용자가 원인 문구를 읽지 못한다.
@@ -1284,7 +1286,7 @@ test('실패와 진단 결과는 다음 클릭까지 남는다', async () => {
 
 test('문단 Markdown 변환은 Confluence 파서에 맡긴다', async () => {
   const runtimeSource = await readFile(
-    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'src/platform/editor/markdown-to-adf-runtime.ts',
     'utf8',
   );
 

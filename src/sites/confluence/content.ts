@@ -1,12 +1,12 @@
 import { createSiteRuntime } from '../../platform/runtime/createSiteRuntime';
-import { createEditorMarkdownToAdfRuntime } from './features/editorMarkdownToAdf/runtime';
+import { createEditorMarkdownToAdfRuntimeForConfluence } from './features/editorMarkdownToAdf/runtime';
 import { createPageMarkdownCopyRuntime } from './features/pageMarkdownCopy/runtime';
 
 const runtime = createSiteRuntime({
   siteId: 'confluence',
   features: [
     createPageMarkdownCopyRuntime(),
-    createEditorMarkdownToAdfRuntime(),
+    createEditorMarkdownToAdfRuntimeForConfluence(),
   ],
   debounceMs: 180,
 });
