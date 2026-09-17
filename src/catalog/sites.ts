@@ -79,6 +79,14 @@ export const SITES = [
         defaultEnabled: true,
         hasDetails: false,
       },
+      {
+        id: 'descriptionMarkdownCopy',
+        name: '설명 Markdown 복사',
+        description: '업무 설명 본문을 제목·표·목록·링크까지 Markdown으로 바꿔 복사합니다.',
+        routeSummary: 'Jira 업무 설명 읽기 화면',
+        defaultEnabled: true,
+        hasDetails: false,
+      },
     ],
   },
   {

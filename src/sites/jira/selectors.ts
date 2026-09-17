@@ -75,3 +75,25 @@ export const EDITOR_MARKDOWN_TO_ADF_ROOT = 'jira-editor-markdown-to-adf';
  */
 export const DESCRIPTION_EDITOR_CONTAINER =
   '[data-testid="issue.views.field.rich-text.editor-container"]';
+
+/** 설명 Markdown 복사 기능. */
+export const DESCRIPTION_MARKDOWN_COPY_ROOT = 'jira-description-markdown-copy';
+
+/**
+ * 업무 **설명** 필드. 읽기 화면과 편집 화면을 모두 담는다.
+ *
+ * 본문 렌더러를 **이 안에서만** 찾는다. 댓글도 같은 `.ak-renderer-document` 를 쓰므로 문서
+ * 전체에서 찾으면 댓글 본문을 복사하게 된다.
+ */
+export const DESCRIPTION_FIELD = '[data-testid="issue.views.field.rich-text.description"]';
+
+/** 설명 읽기 화면의 본문. Confluence 문서 본문과 같은 렌더러다. */
+export const DESCRIPTION_RENDERER = '.ak-renderer-document';
+
+/**
+ * `설명` 라벨 줄. 버튼을 이 안쪽 flex 줄에 붙인다.
+ *
+ * 라벨 자신은 `display: block` 이고, 그 첫 자식이 `display: flex` 줄이다. 실측에서 라벨 텍스트가
+ * x 261 에서 끝나고 706 까지 445px 가 비어 있었다.
+ */
+export const DESCRIPTION_LABEL = '[data-testid="issue.views.issue-base.common.description.label"]';

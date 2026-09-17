@@ -18,6 +18,7 @@
 | [features/jira-issue-modal-width.md](./features/jira-issue-modal-width.md) | Jira 업무 모달 전체 폭 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
 | [features/jira-backlog-slash-template.md](./features/jira-backlog-slash-template.md) | Jira 백로그 prefix 태그 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
 | [features/jira-editor-markdown-to-adf.md](./features/jira-editor-markdown-to-adf.md) | Jira 업무 설명 Markdown 변환의 범위, 단계 계약, Mermaid 미지원 근거, 리스크 |
+| [features/jira-description-markdown-copy.md](./features/jira-description-markdown-copy.md) | Jira 업무 설명을 Markdown 으로 복사하는 기능의 범위, 댓글 제외 근거, 리스크 |
 | [features/confluence-page-markdown-copy.md](./features/confluence-page-markdown-copy.md) | Confluence 문서 본문 Markdown 복사의 범위, 변환 계약, 리스크, 변경 이력 |
 | [features/confluence-adf-markdown-tools.md](./features/confluence-adf-markdown-tools.md) | 로컬 Markdown -> ADF 변환기의 입력·출력, 지원 범위, 손실·실패 계약 |
 | [features/github-pull-request-title-copy.md](./features/github-pull-request-title-copy.md) | GitHub Enterprise PR 제목 Markdown 링크 복사의 범위, 클립보드 계약, Turbo 대응, 리스크 |

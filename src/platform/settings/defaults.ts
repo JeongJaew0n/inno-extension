@@ -42,6 +42,11 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
               customTags: [],
             },
           },
+          descriptionMarkdownCopy: {
+            // 복사는 아무것도 바꾸지 않는다.
+            enabled: true,
+            options: {},
+          },
           editorMarkdownToAdf: {
             // 버튼이 보이기만 할 뿐 누르기 전에는 아무것도 바꾸지 않는다. 기본값을 OFF 로 두면
             // 기능이 있는 줄도 모른다. 저장은 여전히 사용자가 누른다.

@@ -1250,6 +1250,35 @@ test('Markdown 변환은 벗기기 · 문단 · 사이트 전용 단계 순서�
   assert.match(runtimeSource, /if \(paragraphRuns > 0\) editor = getEditor\(\);/);
 });
 
+test('Jira 설명 Markdown 복사는 설명 필드 안에서만 본문을 찾는다', async () => {
+  const source = await readFile(
+    'src/sites/jira/features/descriptionMarkdownCopy/runtime.ts',
+    'utf8',
+  );
+
+  // 댓글도 같은 `.ak-renderer-document` 를 쓴다. 문서 전체에서 찾으면 댓글 본문을 복사한다.
+  assert.match(source, /field\?\.querySelector<HTMLElement>\(DESCRIPTION_RENDERER\)/);
+  assert.doesNotMatch(source, /document\.querySelector<HTMLElement>\(DESCRIPTION_RENDERER\)/);
+  // 클릭 시점에 본문을 다시 찾아야 한다. 그 사이 다른 업무로 바뀌었을 수 있다.
+  const handler = source.slice(source.indexOf("button.addEventListener('click'"));
+  assert.match(handler, /findDescriptionBody\(context\.document\)/);
+});
+
+test('ADF 렌더러 변환기는 Confluence 와 Jira 가 공유한다', async () => {
+  const confluence = await readFile(
+    'src/sites/confluence/features/pageMarkdownCopy/runtime.ts',
+    'utf8',
+  );
+  const jira = await readFile(
+    'src/sites/jira/features/descriptionMarkdownCopy/runtime.ts',
+    'utf8',
+  );
+  for (const source of [confluence, jira]) {
+    assert.match(source, /convertRendererToMarkdown/);
+    assert.match(source, /platform\/editor\/renderer-to-markdown/);
+  }
+});
+
 test('Jira 는 Mermaid 단계를 붙이지 않는다', async () => {
   const jiraSource = await readFile(
     'src/sites/jira/features/editorMarkdownToAdf/runtime.ts',

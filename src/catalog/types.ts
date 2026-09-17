@@ -13,6 +13,7 @@ export const FEATURE_IDS = [
   // 바꾸면 `chrome.storage.sync` 의 키가 달라져 이미 켜둔 사용자의 설정이 사라진다.
   'pageMarkdownAppend',
   'editorMarkdownToAdf',
+  'descriptionMarkdownCopy',
   'pullRequestTitleCopy',
   'commitShaCopy',
   'githubCommitShaCopy',
