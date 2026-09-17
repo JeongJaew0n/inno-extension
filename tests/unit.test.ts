@@ -1285,10 +1285,10 @@ test('저장 버튼은 취소와 다르게 그린다', async () => {
   // 저장은 되돌릴 수 없다. 두 버튼이 같은 모양이면 위쪽에서 잘못 누를 위험이 커진다.
   assert.match(source, /\.save \{ background: #0c66e4/);
   assert.match(source, /\.cancel \{ background: transparent/);
-  // 순서는 취소 다음 저장이다.
+  // 순서는 아래쪽 버튼 줄과 같이 저장 다음 취소다.
   assert.ok(
-    source.indexOf('data-action="cancel"') < source.indexOf('data-action="save"'),
-    '취소가 저장보다 앞에 와야 한다',
+    source.indexOf('data-action="save"') < source.indexOf('data-action="cancel"'),
+    '저장이 취소보다 앞에 와야 한다',
   );
 });
 

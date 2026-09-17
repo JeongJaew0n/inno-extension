@@ -10,6 +10,8 @@
  * **`저장`은 되돌릴 수 없다.** 그래서 `취소`와 눈에 띄게 다르게 그린다. 위쪽에 있으면 아래쪽보다
  * 잘못 눌리기 쉬운데, 두 버튼이 같은 모양이면 그 위험이 커진다.
  *
+ * 순서는 아래쪽 버튼 줄과 같이 `저장` 다음 `취소`다.
+ *
  * docs/plans/jira-description-edit-actions/spec.md
  */
 
@@ -78,17 +80,17 @@ export function createDescriptionEditActionsRuntime(): FeatureRuntime {
         .save:hover { background: #0055cc; }
       </style>
       <span class="row">
-        <button type="button" class="cancel" data-action="cancel" aria-label="설명 편집 취소">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
-          </svg>
-          <span>취소</span>
-        </button>
         <button type="button" class="save" data-action="save" aria-label="설명 저장">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M20 6 9 17l-5-5"></path>
           </svg>
           <span>저장</span>
+        </button>
+        <button type="button" class="cancel" data-action="cancel" aria-label="설명 편집 취소">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
+          </svg>
+          <span>취소</span>
         </button>
       </span>
     `;
