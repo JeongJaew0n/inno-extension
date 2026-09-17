@@ -80,6 +80,14 @@ export const SITES = [
         hasDetails: false,
       },
       {
+        id: 'descriptionEditCancel',
+        name: '설명 편집 취소 버튼',
+        description: '설명을 편집 중일 때 `설명` 제목 옆에 취소 버튼을 추가합니다. 문서 끝까지 내려가지 않아도 됩니다.',
+        routeSummary: 'Jira 업무 설명 편집 상태',
+        defaultEnabled: true,
+        hasDetails: false,
+      },
+      {
         id: 'descriptionMarkdownCopy',
         name: '설명 Markdown 복사',
         description: '업무 설명 본문을 제목·표·목록·링크까지 Markdown으로 바꿔 복사합니다.',

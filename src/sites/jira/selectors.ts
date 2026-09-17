@@ -97,3 +97,26 @@ export const DESCRIPTION_RENDERER = '.ak-renderer-document';
  * x 261 에서 끝나고 706 까지 445px 가 비어 있었다.
  */
 export const DESCRIPTION_LABEL = '[data-testid="issue.views.issue-base.common.description.label"]';
+
+/** 설명 편집 취소 기능. */
+export const DESCRIPTION_EDIT_CANCEL_ROOT = 'jira-description-edit-cancel';
+
+/**
+ * 설명 **편집** 상태를 담는 컨테이너. 읽기 상태의 `DESCRIPTION_FIELD` 와 다른 요소다.
+ *
+ * | 상태 | 나타나는 `data-testid` |
+ * | --- | --- |
+ * | 읽기 | `issue.views.field.rich-text.description` |
+ * | 편집 | `issue.views.field.rich-text.editor-container` |
+ */
+export const DESCRIPTION_EDITOR_CONTAINER_FIELD =
+  '[data-testid="issue.views.field.rich-text.editor-container"]';
+
+/**
+ * 편집기 아래쪽 `취소` 버튼.
+ *
+ * **`comment-` 접두사지만 댓글 것이 아니다.** Jira 가 설명 편집에도 댓글 편집기 컴포넌트를
+ * 재사용해서 붙은 이름이다. 그래서 반드시 **설명 편집 컨테이너 안에서** 찾아야 한다. 문서
+ * 전체에서 찾으면 진짜 댓글 편집기의 취소 버튼을 누르게 된다.
+ */
+export const DESCRIPTION_EDITOR_CANCEL_BUTTON = '[data-testid="comment-cancel-button"]';

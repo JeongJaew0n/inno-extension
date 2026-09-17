@@ -11,10 +11,10 @@ import { writePlainText } from '../../../../platform/clipboard/writePlainText';
 import { convertRendererToMarkdown } from '../../../../platform/editor/renderer-to-markdown';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
+import { findDescriptionLabelRow } from '../../descriptionLabel';
 import { parseJiraBoardUrl, parseJiraIssueUrl } from '../../routes';
 import {
   DESCRIPTION_FIELD,
-  DESCRIPTION_LABEL,
   DESCRIPTION_MARKDOWN_COPY_ROOT,
   DESCRIPTION_RENDERER,
 } from '../../selectors';
@@ -39,22 +39,6 @@ function currentIssueKey(url: URL): string {
 function findDescriptionBody(document: Document): HTMLElement | null {
   const field = document.querySelector<HTMLElement>(DESCRIPTION_FIELD);
   return field?.querySelector<HTMLElement>(DESCRIPTION_RENDERER) ?? null;
-}
-
-/**
- * 버튼을 붙일 자리.
- *
- * `설명` 라벨 자신은 `display: block`이고 그 첫 자식이 `display: flex` 줄이다. 그 줄에 붙여야
- * `설명` 오른쪽에 나란히 놓인다. 구조가 바뀌면 라벨 자체에 붙인다 — 줄이 하나 늘 뿐 동작은 한다.
- */
-function findLabelRow(document: Document): HTMLElement | null {
-  const label = document.querySelector<HTMLElement>(DESCRIPTION_LABEL);
-  if (!label) return null;
-
-  const first = label.firstElementChild as HTMLElement | null;
-  if (!first) return label;
-  const display = document.defaultView?.getComputedStyle(first).display ?? '';
-  return display.includes('flex') ? first : label;
 }
 
 export function createDescriptionMarkdownCopyRuntime(): FeatureRuntime {
@@ -143,7 +127,7 @@ export function createDescriptionMarkdownCopyRuntime(): FeatureRuntime {
 
     reconcile(context: PageContext): void {
       const body = findDescriptionBody(context.document);
-      const anchor = findLabelRow(context.document);
+      const anchor = findDescriptionLabelRow(context.document);
       if (!body || !anchor) {
         dispose();
         return;

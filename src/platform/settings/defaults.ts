@@ -42,6 +42,11 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
               customTags: [],
             },
           },
+          descriptionEditCancel: {
+            // 아래쪽 취소 버튼을 대신 누를 뿐이다. 새로운 동작을 만들지 않는다.
+            enabled: true,
+            options: {},
+          },
           descriptionMarkdownCopy: {
             // 복사는 아무것도 바꾸지 않는다.
             enabled: true,

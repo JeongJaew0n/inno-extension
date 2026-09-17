@@ -1250,6 +1250,22 @@ test('Markdown 변환은 벗기기 · 문단 · 사이트 전용 단계 순서�
   assert.match(runtimeSource, /if \(paragraphRuns > 0\) editor = getEditor\(\);/);
 });
 
+test('설명 편집 취소는 아래쪽 취소 버튼을 대신 누른다', async () => {
+  const source = await readFile(
+    'src/sites/jira/features/descriptionEditCancel/runtime.ts',
+    'utf8',
+  );
+
+  // 새 동작을 만들지 않는다. 확인 대화상자 여부까지 Jira 가 정하던 대로 둔다.
+  assert.match(source, /cancel\.click\(\);/);
+  // `comment-cancel-button` 은 이름과 달리 설명 편집기의 것이다. 반드시 설명 컨테이너 안에서
+  // 찾아야 진짜 댓글 편집기의 취소를 누르지 않는다.
+  assert.match(source, /container\?\.querySelector<HTMLButtonElement>\(DESCRIPTION_EDITOR_CANCEL_BUTTON\)/);
+  assert.doesNotMatch(source, /document\.querySelector<HTMLButtonElement>\(DESCRIPTION_EDITOR_CANCEL_BUTTON\)/);
+  // 편집 중이 아니면 붙이지 않는다.
+  assert.match(source, /if \(!cancel \|\| !anchor\)/);
+});
+
 test('Jira 설명 Markdown 복사는 설명 필드 안에서만 본문을 찾는다', async () => {
   const source = await readFile(
     'src/sites/jira/features/descriptionMarkdownCopy/runtime.ts',
