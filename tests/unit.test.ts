@@ -1250,20 +1250,46 @@ test('Markdown 변환은 벗기기 · 문단 · 사이트 전용 단계 순서�
   assert.match(runtimeSource, /if \(paragraphRuns > 0\) editor = getEditor\(\);/);
 });
 
-test('설명 편집 취소는 아래쪽 취소 버튼을 대신 누른다', async () => {
+test('설명 편집 버튼은 아래쪽 취소·저장을 대신 누른다', async () => {
   const source = await readFile(
-    'src/sites/jira/features/descriptionEditCancel/runtime.ts',
+    'src/sites/jira/features/descriptionEditActions/runtime.ts',
     'utf8',
   );
 
   // 새 동작을 만들지 않는다. 확인 대화상자 여부까지 Jira 가 정하던 대로 둔다.
-  assert.match(source, /cancel\.click\(\);/);
-  // `comment-cancel-button` 은 이름과 달리 설명 편집기의 것이다. 반드시 설명 컨테이너 안에서
-  // 찾아야 진짜 댓글 편집기의 취소를 누르지 않는다.
-  assert.match(source, /container\?\.querySelector<HTMLButtonElement>\(DESCRIPTION_EDITOR_CANCEL_BUTTON\)/);
-  assert.doesNotMatch(source, /document\.querySelector<HTMLButtonElement>\(DESCRIPTION_EDITOR_CANCEL_BUTTON\)/);
+  assert.match(source, /target\.click\(\);/);
+  assert.match(source, /forwardClick\(DESCRIPTION_EDITOR_CANCEL_BUTTON, '취소'\)/);
+  assert.match(source, /forwardClick\(DESCRIPTION_EDITOR_SAVE_BUTTON, '저장'\)/);
   // 편집 중이 아니면 붙이지 않는다.
   assert.match(source, /if \(!cancel \|\| !anchor\)/);
+});
+
+test('설명 편집 버튼은 댓글 편집기의 버튼을 누르지 않는다', async () => {
+  const source = await readFile(
+    'src/sites/jira/features/descriptionEditActions/runtime.ts',
+    'utf8',
+  );
+
+  // `comment-cancel-button` · `comment-save-button` 은 이름과 달리 설명 편집기의 것이다.
+  // 진짜 댓글 편집기에도 같은 testid 가 있어서, 문서 전체에서 찾으면 남의 댓글을 등록시킨다.
+  assert.match(source, /container\?\.querySelector<HTMLButtonElement>\(selector\)/);
+  assert.doesNotMatch(source, /document\.querySelector<HTMLButtonElement>\(DESCRIPTION_EDITOR_(?:CANCEL|SAVE)_BUTTON\)/);
+});
+
+test('저장 버튼은 취소와 다르게 그린다', async () => {
+  const source = await readFile(
+    'src/sites/jira/features/descriptionEditActions/runtime.ts',
+    'utf8',
+  );
+
+  // 저장은 되돌릴 수 없다. 두 버튼이 같은 모양이면 위쪽에서 잘못 누를 위험이 커진다.
+  assert.match(source, /\.save \{ background: #0c66e4/);
+  assert.match(source, /\.cancel \{ background: transparent/);
+  // 순서는 취소 다음 저장이다.
+  assert.ok(
+    source.indexOf('data-action="cancel"') < source.indexOf('data-action="save"'),
+    '취소가 저장보다 앞에 와야 한다',
+  );
 });
 
 test('Jira 설명 Markdown 복사는 설명 필드 안에서만 본문을 찾는다', async () => {

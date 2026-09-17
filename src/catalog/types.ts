@@ -14,7 +14,7 @@ export const FEATURE_IDS = [
   'pageMarkdownAppend',
   'editorMarkdownToAdf',
   'descriptionMarkdownCopy',
-  'descriptionEditCancel',
+  'descriptionEditActions',
   'pullRequestTitleCopy',
   'commitShaCopy',
   'githubCommitShaCopy',

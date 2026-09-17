@@ -3,7 +3,7 @@
  *
  * 라벨은 읽기 중에도 편집 중에도 그대로 있다. 실측으로 확인했다.
  *
- * docs/plans/jira-description-edit-cancel/context.md
+ * docs/plans/jira-description-edit-actions/context.md
  */
 
 import { DESCRIPTION_LABEL } from './selectors';

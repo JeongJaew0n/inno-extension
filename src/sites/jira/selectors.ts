@@ -99,7 +99,7 @@ export const DESCRIPTION_RENDERER = '.ak-renderer-document';
 export const DESCRIPTION_LABEL = '[data-testid="issue.views.issue-base.common.description.label"]';
 
 /** 설명 편집 취소 기능. */
-export const DESCRIPTION_EDIT_CANCEL_ROOT = 'jira-description-edit-cancel';
+export const DESCRIPTION_EDIT_ACTIONS_ROOT = 'jira-description-edit-actions';
 
 /**
  * 설명 **편집** 상태를 담는 컨테이너. 읽기 상태의 `DESCRIPTION_FIELD` 와 다른 요소다.
@@ -120,3 +120,6 @@ export const DESCRIPTION_EDITOR_CONTAINER_FIELD =
  * 전체에서 찾으면 진짜 댓글 편집기의 취소 버튼을 누르게 된다.
  */
 export const DESCRIPTION_EDITOR_CANCEL_BUTTON = '[data-testid="comment-cancel-button"]';
+
+/** 편집기 아래쪽 `저장` 버튼. 이름이 `comment-` 인 이유는 위와 같다. */
+export const DESCRIPTION_EDITOR_SAVE_BUTTON = '[data-testid="comment-save-button"]';

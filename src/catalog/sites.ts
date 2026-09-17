@@ -80,9 +80,9 @@ export const SITES = [
         hasDetails: false,
       },
       {
-        id: 'descriptionEditCancel',
-        name: '설명 편집 취소 버튼',
-        description: '설명을 편집 중일 때 `설명` 제목 옆에 취소 버튼을 추가합니다. 문서 끝까지 내려가지 않아도 됩니다.',
+        id: 'descriptionEditActions',
+        name: '설명 편집 버튼',
+        description: '설명을 편집 중일 때 `설명` 제목 옆에 취소·저장 버튼을 추가합니다. 문서 끝까지 내려가지 않아도 됩니다.',
         routeSummary: 'Jira 업무 설명 편집 상태',
         defaultEnabled: true,
         hasDetails: false,
