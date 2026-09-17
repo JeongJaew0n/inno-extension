@@ -42,6 +42,11 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
               customTags: [],
             },
           },
+          editorMarkdownToAdf: {
+            // 문서를 통째로 바꾸는 동작이라 사용자가 직접 켜야 한다. Confluence 쪽과 같다.
+            enabled: false,
+            options: {},
+          },
         },
       },
       githubEnterprise: {

@@ -36,6 +36,16 @@
         "https://pms-innogrid.atlassian.net/browse/*",
         "https://pms-innogrid.atlassian.net/issues/*"
       ],
+      "js": ["src/sites/jira/main.ts"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://pms-innogrid.atlassian.net/jira/*",
+        "https://pms-innogrid.atlassian.net/browse/*",
+        "https://pms-innogrid.atlassian.net/issues/*"
+      ],
       "js": ["src/sites/jira/content.ts"],
       "run_at": "document_idle"
     },

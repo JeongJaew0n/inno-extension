@@ -54,3 +54,24 @@ export const BACKLOG_SLASH_TEMPLATE_ROOT = 'jira-backlog-slash-template';
  */
 export const BACKLOG_SUMMARY_INPUT = 'input[aria-label="Work item summary"]';
 export const BACKLOG_CARD_LIST_CONTAINER = '[data-testid^="software-backlog.card-list.container"]';
+
+/** 설명 Markdown 변환 기능. */
+export const EDITOR_MARKDOWN_TO_ADF_ROOT = 'jira-editor-markdown-to-adf';
+
+/**
+ * 업무 **설명** 편집기를 담은 컨테이너.
+ *
+ * Jira는 한 화면에 편집기가 여럿이다. 설명과 댓글이 동시에 열릴 수 있고 **각각 자기
+ * `editor-primary-toolbar`를 만든다.** 문서 전체에서 툴바를 찾으면 댓글 편집기에 버튼이 붙는다.
+ *
+ * | 편집기 | 구분되는 조상 |
+ * | --- | --- |
+ * | 설명 | `issue.views.field.rich-text.editor-container` |
+ * | 댓글 | `issue.activity.comment` |
+ *
+ * `aria-label`("설명 영역입니다…")은 한국어라 언어 설정에 따라 바뀐다. 앵커로 쓰지 않는다.
+ *
+ * docs/plans/jira-editor-markdown-to-adf/context.md
+ */
+export const DESCRIPTION_EDITOR_CONTAINER =
+  '[data-testid="issue.views.field.rich-text.editor-container"]';

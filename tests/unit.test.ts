@@ -1250,6 +1250,32 @@ test('Markdown 변환은 벗기기 · 문단 · 사이트 전용 단계 순서�
   assert.match(runtimeSource, /if \(paragraphRuns > 0\) editor = getEditor\(\);/);
 });
 
+test('Jira 는 Mermaid 단계를 붙이지 않는다', async () => {
+  const jiraSource = await readFile(
+    'src/sites/jira/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+  const confluenceSource = await readFile(
+    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+
+  // Jira 에는 Mermaid 앱이 없다. 같은 노드를 넣어도 그릴 주체가 없다.
+  assert.doesNotMatch(jiraSource, /extraPhase/);
+  assert.match(confluenceSource, /extraPhase: \{ name: 'Mermaid', run: runMermaidPhase \}/);
+});
+
+test('Jira 는 설명 편집기 컨테이너 안에서만 툴바를 찾는다', async () => {
+  const jiraSource = await readFile(
+    'src/sites/jira/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+
+  // 문서 전체에서 찾으면 동시에 열린 댓글 편집기의 툴바를 잡는다.
+  assert.match(jiraSource, /container\.querySelector<HTMLElement>\(EDITOR_PRIMARY_TOOLBAR\)/);
+  assert.doesNotMatch(jiraSource, /document\.querySelector<HTMLElement>\(EDITOR_PRIMARY_TOOLBAR\)/);
+});
+
 test('Mermaid 교체 판정은 노드 재사용에 기대지 않는다', async () => {
   const runtimeSource = await readFile(
     'src/sites/confluence/features/editorMarkdownToAdf/mermaid-phase.ts',

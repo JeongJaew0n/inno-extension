@@ -9,7 +9,10 @@ export const FEATURE_IDS = [
   'issueModalWidth',
   'backlogSlashTemplate',
   'pageMarkdownCopy',
+  // Confluence 편집기의 Markdown 변환. 이름이 실제 동작과 어긋나지만 그대로 둔다.
+  // 바꾸면 `chrome.storage.sync` 의 키가 달라져 이미 켜둔 사용자의 설정이 사라진다.
   'pageMarkdownAppend',
+  'editorMarkdownToAdf',
   'pullRequestTitleCopy',
   'commitShaCopy',
   'githubCommitShaCopy',
