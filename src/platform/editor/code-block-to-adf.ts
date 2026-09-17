@@ -1,4 +1,4 @@
-import { markdownToConfluenceAdf } from '../../adf';
+import { markdownToAdf } from '../adf';
 import { adfDocumentToEditorHtml } from './adf-to-editor-html';
 
 export interface CodeBlockAdfPayload {
@@ -8,7 +8,7 @@ export interface CodeBlockAdfPayload {
 }
 
 export function codeBlockMarkdownToAdfPayload(markdown: string): CodeBlockAdfPayload {
-  const conversion = markdownToConfluenceAdf(markdown);
+  const conversion = markdownToAdf(markdown);
   if (conversion.doc.content.length === 0) {
     throw new Error('변환 가능한 Markdown 내용이 없는 코드블럭이 있습니다.');
   }

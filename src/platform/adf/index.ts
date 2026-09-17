@@ -1,4 +1,4 @@
-export { markdownToConfluenceAdf } from './markdown-to-adf';
+export { markdownToAdf } from './markdown-to-adf';
 export type {
   AdfDocument,
   AdfMark,

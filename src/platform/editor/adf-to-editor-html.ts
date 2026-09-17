@@ -1,4 +1,4 @@
-import type { AdfDocument, AdfMark, AdfNode } from '../../adf';
+import type { AdfDocument, AdfMark, AdfNode } from '../adf';
 
 export function adfDocumentToEditorHtml(doc: AdfDocument): string {
   return doc.content.map(renderNode).join('');

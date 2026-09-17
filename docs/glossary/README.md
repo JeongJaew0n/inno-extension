@@ -31,8 +31,8 @@
 | **카탈로그 (catalog)** | 사이트·기능 목록의 정본. `src/catalog/` | 설정 기본값·Popup·content script 매칭이 전부 여기서 파생된다 |
 | **reconcile** | "지금 화면에 무엇이 있어야 하는가"를 판단해 맞추는 동작. `FeatureRuntime.reconcile(context)` | 여러 번 불려도 결과가 같아야 한다(멱등) |
 | **host** | 사이트 화면에 주입하는 Shadow DOM 컨테이너. `data-inno-extension-feature` 속성으로 표시한다 | 사이트 스타일과 섞이지 않게 격리하는 것이 목적 |
-| **MAIN world 브리지** | content script(ISOLATED)가 닿을 수 없는 페이지 내부 객체를 다루려고 MAIN world에 심는 스크립트. `CustomEvent`로 주고받는다 | 현재 Confluence의 ProseMirror 조작에 쓴다 |
-| **ADF** | Atlassian Document Format. Confluence 편집기의 문서 표현 | Markdown과 상호 변환 대상 |
+| **MAIN world 브리지** | content script(ISOLATED)가 닿을 수 없는 페이지 내부 객체를 다루려고 MAIN world에 심는 스크립트. `CustomEvent`로 주고받는다 | Confluence·Jira의 ProseMirror 조작에 쓴다. 대상 노드는 우리가 붙이는 **임시 표식 속성**으로 지정한다 |
+| **ADF** | Atlassian Document Format. Confluence·Jira 편집기가 공유하는 문서 표현 | Markdown과 상호 변환 대상. 변환기는 `src/platform/adf/` 에 있다 |
 | **미변환 Markdown** | Confluence 본문에 Markdown 문법이 문단 텍스트로 남아 있는 상태 | 변환되면 문법 문자가 소비돼 사라진다. 그 차이로 판정한다 |
 | **압축해제 확장** | Chrome 웹 스토어가 아니라 폴더에서 직접 로드한 확장 | `manifest.json`에 `key`가 없어 **확장 ID가 폴더 경로에서 파생된다.** 경로가 바뀌면 저장한 설정을 잃는다 |
 

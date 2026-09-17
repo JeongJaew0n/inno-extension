@@ -3,7 +3,7 @@ import type { AdfMark, AdfNode, MarkdownToAdfResult } from './types';
 
 type ExpandOpenTag = { title: string };
 
-export function markdownToConfluenceAdf(markdown: string): MarkdownToAdfResult {
+export function markdownToAdf(markdown: string): MarkdownToAdfResult {
   return new Converter().convert(markdown);
 }
 

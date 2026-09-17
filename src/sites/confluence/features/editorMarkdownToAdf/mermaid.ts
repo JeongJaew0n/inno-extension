@@ -1,4 +1,4 @@
-import { escapeEditorHtml } from './adf-to-editor-html';
+import { escapeEditorHtml } from '../../../../platform/editor/adf-to-editor-html';
 
 export const CONFLUENCE_MERMAID_EXTENSION_KEY =
   '23392b90-4271-4239-98ca-a3e96c663cbb/63d4d207-ac2f-4273-865c-0240d37f044a/static/mermaid-diagram';

@@ -55,9 +55,9 @@ import {
   describeUnconvertedMarkdown,
   findUnconvertedMarkdown,
   looksLikeMarkdownDocument,
-} from '../src/sites/confluence/features/editorMarkdownToAdf/markdown-detection';
-import { adfDocumentToEditorHtml } from '../src/sites/confluence/features/editorMarkdownToAdf/adf-to-editor-html';
-import { codeBlockMarkdownToAdfPayload } from '../src/sites/confluence/features/editorMarkdownToAdf/code-block-to-adf';
+} from '../src/platform/editor/markdown-detection';
+import { adfDocumentToEditorHtml } from '../src/platform/editor/adf-to-editor-html';
+import { codeBlockMarkdownToAdfPayload } from '../src/platform/editor/code-block-to-adf';
 import {
   buildCollapsedMermaidSourceHtml,
   buildConfluenceMermaidExtensionHtml,
@@ -106,7 +106,7 @@ import {
   ISSUE_DIALOG,
   ISSUE_PREVIEW_PANEL,
 } from '../src/sites/jira/selectors';
-import './confluence-adf.test';
+import './adf.test';
 
 function createFakeIssueLink(href: string): HTMLAnchorElement {
   return {
@@ -1055,7 +1055,7 @@ test('Jira host 판정은 업무 번호가 바뀌거나 host가 분리되면 재
   assert.equal(isIssueHostCurrent(detached, target), false, '분리된 host는 재마운트한다');
 });
 
-/** `.cm-content .cm-line` 구조만 흉내낸 코드블럭. readConfluenceCodeBlockText가 이 경로를 읽는다. */
+/** `.cm-content .cm-line` 구조만 흉내낸 코드블럭. readEditorCodeBlockText가 이 경로를 읽는다. */
 function createFakeCodeBlock(lines: string[] | null): HTMLElement {
   const lineNodes = (lines ?? []).map((text) => ({ textContent: text }));
   return {

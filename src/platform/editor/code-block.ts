@@ -1,4 +1,4 @@
-export function readConfluenceCodeBlockText(codeBlock: HTMLElement): string {
+export function readEditorCodeBlockText(codeBlock: HTMLElement): string {
   const lines = Array.from(codeBlock.querySelectorAll<HTMLElement>('.cm-content .cm-line'));
   if (lines.length > 0) return lines.map((line) => line.textContent ?? '').join('\n');
 

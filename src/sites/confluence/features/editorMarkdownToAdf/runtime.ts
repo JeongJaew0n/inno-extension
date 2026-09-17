@@ -7,13 +7,13 @@ import {
   EDITOR_MARKDOWN_TO_ADF_ROOT,
   EDITOR_PRIMARY_TOOLBAR,
 } from '../../selectors';
-import type { CodeBlockAdfPayload } from './code-block-to-adf';
-import { readConfluenceCodeBlockText } from './code-block';
+import type { CodeBlockAdfPayload } from '../../../../platform/editor/code-block-to-adf';
+import { readEditorCodeBlockText } from '../../../../platform/editor/code-block';
 import {
   describeUnconvertedMarkdown,
   findUnconvertedMarkdown,
   looksLikeMarkdownDocument,
-} from './markdown-detection';
+} from '../../../../platform/editor/markdown-detection';
 import {
   buildConfluenceMermaidReplacementHtml,
   CONFLUENCE_MERMAID_EXTENSION_KEY,
@@ -37,7 +37,7 @@ let codeBlockConverterPromise: Promise<
 > | null = null;
 
 function loadCodeBlockConverter(): Promise<(markdown: string) => CodeBlockAdfPayload> {
-  codeBlockConverterPromise ??= import('./code-block-to-adf')
+  codeBlockConverterPromise ??= import('../../../../platform/editor/code-block-to-adf')
     .then((module) => module.codeBlockMarkdownToAdfPayload)
     .catch((error) => {
       // 실패한 Promise를 남겨두면 이후 시도가 모두 같은 오류로 막힌다.
@@ -189,7 +189,7 @@ export async function readCodeBlockSources(
  * 사라지므로 확실히 Mermaid가 아닌 경우에만 제외한다.
  */
 export function mayBeMermaidCodeBlock(codeBlock: HTMLElement): boolean {
-  const domSource = readConfluenceCodeBlockText(codeBlock);
+  const domSource = readEditorCodeBlockText(codeBlock);
   if (!domSource.trim()) return true;
   return isMermaidCodeBlockSource(domSource);
 }
@@ -450,7 +450,7 @@ function shouldUnwrapCodeBlocks(editor: HTMLElement): boolean {
   if (codeBlocks.length === 0) return false;
   if (!codeBlocks.some((codeBlock) => isTopLevelCodeBlock(editor, codeBlock))) return false;
   return codeBlocks.every(
-    (codeBlock) => looksLikeMarkdownDocument(readConfluenceCodeBlockText(codeBlock)),
+    (codeBlock) => looksLikeMarkdownDocument(readEditorCodeBlockText(codeBlock)),
   );
 }
 
@@ -474,7 +474,7 @@ function findEditorTopLevelNode(editor: HTMLElement, node: HTMLElement): HTMLEle
  * DOM에서 읽은 코드블럭 원문이 `source`와 같은 내용인지 판정한다.
  *
  * CodeMirror는 코드블럭을 30줄 안팎까지만 DOM에 렌더한다. 그래서 긴 블록에서는
- * `readConfluenceCodeBlockText()`가 원문의 일부만 돌려준다. 붙여넣을 `source`는 브리지로
+ * `readEditorCodeBlockText()`가 원문의 일부만 돌려준다. 붙여넣을 `source`는 브리지로
  * ProseMirror node에서 전체를 읽으므로, 등호로 비교하면 31줄 이상인 블록은 검증을 영원히
  * 통과하지 못한다. 실측에서 35줄(748자) 블록의 DOM 읽기가 30줄(631자)에서 끊겼다.
  *
@@ -490,7 +490,7 @@ function findEditorTopLevelNode(editor: HTMLElement, node: HTMLElement): HTMLEle
  * docs/issue/2026-09-04-mermaid-verification-reads-truncated-dom.md
  */
 export function matchesCodeBlockSource(codeBlock: HTMLElement, source: string): boolean {
-  const domSource = readConfluenceCodeBlockText(codeBlock);
+  const domSource = readEditorCodeBlockText(codeBlock);
   if (!domSource) return source === '';
   return source === domSource || source.includes(domSource);
 }

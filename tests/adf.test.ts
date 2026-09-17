@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  markdownToConfluenceAdf,
-} from '../src/sites/confluence/adf';
+  markdownToAdf,
+} from '../src/platform/adf';
 
 test('markdown를 Confluence ADF로 변환한다', () => {
   const markdown = [
@@ -33,7 +33,7 @@ test('markdown를 Confluence ADF로 변환한다', () => {
     '</details>',
   ].join('\n');
 
-  const result = markdownToConfluenceAdf(markdown);
+  const result = markdownToAdf(markdown);
 
   assert.equal(result.warnings.length, 0);
   assert.equal(result.mermaidCount, 0);
@@ -56,7 +56,7 @@ test('markdown를 Confluence ADF로 변환한다', () => {
 // docs/issue/2026-09-02-mermaid-conversion-fails-inside-expand.md
 test('mermaid fence는 최상위 codeBlock으로 보존한다', () => {
   const markdown = '```mermaid\ngraph TD;\nA-->B;\n```';
-  const adf = markdownToConfluenceAdf(markdown);
+  const adf = markdownToAdf(markdown);
 
   assert.equal(adf.mermaidCount, 1);
   assert.deepEqual(adf.doc.content[0], {
@@ -67,7 +67,7 @@ test('mermaid fence는 최상위 codeBlock으로 보존한다', () => {
 });
 
 test('mermaid fence를 expand로 감싸지 않는다', () => {
-  const adf = markdownToConfluenceAdf('```mermaid\ngraph TD;\nA-->B;\n```');
+  const adf = markdownToAdf('```mermaid\ngraph TD;\nA-->B;\n```');
 
   assert.equal(
     JSON.stringify(adf.doc).includes('expand'),
@@ -77,7 +77,7 @@ test('mermaid fence를 expand로 감싸지 않는다', () => {
 });
 
 test('지원하지 않는 HTML과 이미지 변환 제외는 warnings에 남긴다', () => {
-  const result = markdownToConfluenceAdf([
+  const result = markdownToAdf([
     '<div>raw html</div>',
     '',
     '텍스트 ![inline](./inline.png) more',
@@ -93,7 +93,7 @@ test('지원하지 않는 HTML과 이미지 변환 제외는 warnings에 남긴�
 });
 
 test('인라인 HTML br은 ADF hardBreak으로 보존한다', () => {
-  const result = markdownToConfluenceAdf('첫째<br>둘째<br />셋째');
+  const result = markdownToAdf('첫째<br>둘째<br />셋째');
 
   assert.deepEqual(result.warnings, []);
   assert.deepEqual(result.doc.content[0], {
@@ -109,7 +109,7 @@ test('인라인 HTML br은 ADF hardBreak으로 보존한다', () => {
 });
 
 test('외부 HTTP 이미지는 ADF external media로 보존한다', () => {
-  const converted = markdownToConfluenceAdf('![구성도](https://example.com/diagram.png)');
+  const converted = markdownToAdf('![구성도](https://example.com/diagram.png)');
   assert.deepEqual(converted.warnings, []);
   assert.equal(converted.doc.content[0]?.type, 'mediaSingle');
 });
