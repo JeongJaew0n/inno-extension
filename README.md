@@ -131,6 +131,19 @@ npm run build
 - 목록 맨 아래의 `＋ prefix 태그 추가·관리…` 를 **마우스로 누르면** 설정 화면이 창으로 뜬다. 키보드로는 선택되지 않아 `Enter` 로 잘못 눌릴 일이 없다.
 - Popup의 기능 상세에 `이름 · 표시 · 관리` 표로 전체 목록이 나온다. 표시를 켜고 끄거나 직접 추가·수정·삭제한다. **기본 제공 태그는 숨길 수만 있고 삭제할 수 없다.**
 
+#### 설명 Markdown 변환
+
+기본값은 OFF다. Popup에서 켜면 업무 **설명** 편집기 toolbar에 **Markdown 변환** 버튼이 나타난다.
+
+버튼 하나가 두 단계를 순서대로 수행한다.
+
+1. **코드블럭 벗기기** — 본문의 코드 블록이 전부 Markdown 문서로 보일 때만 실행한다. 실제 소스 코드는 건드리지 않는다.
+2. **문단 Markdown 변환** — 문단으로 남은 Markdown을 평문으로 다시 붙여넣어 Jira 파서가 제목·표·목록으로 만들게 한다.
+
+- **Mermaid 다이어그램은 만들지 않는다.** Jira에는 Mermaid 앱이 설치돼 있지 않다. Mermaid 코드 블록은 코드 블록으로 남는다.
+- **댓글 편집기에는 붙지 않는다.** 설명만 대상이다.
+- 변환은 편집 중인 내용만 바꾼다. **저장은 사용자가 누른다.** 마음에 들지 않으면 `취소`로 통째로 버릴 수 있다.
+
 ### Confluence
 
 #### 본문 Markdown 복사
@@ -153,6 +166,8 @@ npm run build
 - 잘못된 변환은 Confluence 실행 취소로 되돌릴 수 있다.
 
 > 1단계는 대상 코드 블록이 모두 Markdown 문서로 보일 때만 실행되지만, 판정이 완벽하지는 않다. 저장 전 결과를 검토해야 한다.
+
+1·2단계는 Jira의 `설명 Markdown 변환`과 같은 구현을 쓴다. 3단계만 Confluence 전용이다.
 
 ### GitHub Enterprise
 
@@ -264,8 +279,12 @@ Manifest V3의 `storage` 권한만 사용한다. 별도 `host_permissions`, `scr
 ```text
 src/
 ├── catalog/          서비스·기능 메타데이터
+├── background/       설정 창을 여는 service worker
 ├── platform/
+│   ├── adf/          Markdown -> ADF 변환기
 │   ├── clipboard/    일반 텍스트·리치 클립보드 출력
+│   ├── editor/       Atlassian ADF 편집기 공용 — MAIN world 브리지, Markdown 변환 단계
+│   ├── messaging/    content script <-> service worker 메시지
 │   ├── runtime/      서비스 runtime과 기능 lifecycle
 │   └── settings/     버전화된 설정 schema와 저장소
 ├── popup/            서비스 목록·상세·기능 설정 UI
