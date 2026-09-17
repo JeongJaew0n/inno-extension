@@ -1265,6 +1265,21 @@ test('Jira 는 Mermaid 단계를 붙이지 않는다', async () => {
   assert.match(confluenceSource, /extraPhase: \{ name: 'Mermaid', run: runMermaidPhase \}/);
 });
 
+test('Jira 버튼은 툴바 오른쪽 끝에 붙는다', async () => {
+  const jiraSource = await readFile(
+    'src/sites/jira/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+  const runtimeSource = await readFile(
+    'src/platform/editor/markdown-to-adf-runtime.ts',
+    'utf8',
+  );
+
+  assert.match(jiraSource, /toolbarAlign: 'end'/);
+  // 툴바가 flex 라 auto 마진이 남은 공간을 먹고 버튼을 오른쪽으로 민다.
+  assert.match(runtimeSource, /site\.toolbarAlign === 'end' \? 'auto' : '4px'/);
+});
+
 test('Jira 는 설명 편집기 컨테이너 안에서만 툴바를 찾는다', async () => {
   const jiraSource = await readFile(
     'src/sites/jira/features/editorMarkdownToAdf/runtime.ts',

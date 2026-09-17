@@ -89,6 +89,16 @@ export interface EditorMarkdownToAdfSite {
    * `key`가 바뀌면 버튼을 다시 만든다.
    */
   resolveTarget(context: PageContext): { toolbar: HTMLElement; container: HTMLElement; key: string } | null;
+  /**
+   * 툴바 안에서 버튼이 놓일 자리.
+   *
+   * `end`는 툴바 오른쪽 끝으로 민다. Jira 설명 편집기의 툴바는 폭이 862px인데 마지막 항목이
+   * 600px 언저리에서 끝나 오른쪽이 260px 넘게 비어 있다. 아이콘 줄에 바짝 붙이면 편집기 자체
+   * 버튼과 섞여 보인다.
+   *
+   * 기본값 `start`는 마지막 항목 바로 뒤다. Confluence가 이 배치를 쓴다.
+   */
+  toolbarAlign?: 'start' | 'end';
   /** 벗기기에서 제외할 코드블럭. Confluence의 이미 변환된 Mermaid 원본이 여기 해당한다 */
   isProtectedCodeBlock?(editor: HTMLElement, codeBlock: HTMLElement): boolean;
   /** 1단계 전에 확인할 것. 던지면 아무것도 바꾸지 않고 중단한다 */
@@ -614,7 +624,8 @@ export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite):
     nextHost.style.all = 'initial';
     nextHost.style.display = 'inline-flex';
     nextHost.style.alignItems = 'center';
-    nextHost.style.marginInlineStart = '4px';
+    // 툴바가 flex 라 `auto` 마진이 남은 공간을 전부 먹어 버튼을 오른쪽 끝으로 민다.
+    nextHost.style.marginInlineStart = site.toolbarAlign === 'end' ? 'auto' : '4px';
     nextHost.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
     const shadow = nextHost.attachShadow({ mode: 'open' });

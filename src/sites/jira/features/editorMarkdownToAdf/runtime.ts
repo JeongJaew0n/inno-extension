@@ -32,6 +32,8 @@ export function createEditorMarkdownToAdfRuntimeForJira(): FeatureRuntime {
     featureId: 'editorMarkdownToAdf',
     rootAttributeValue: EDITOR_MARKDOWN_TO_ADF_ROOT,
     siteName: 'Jira',
+    // 툴바 오른쪽이 260px 넘게 비어 있다. 아이콘 줄에 붙이지 않고 그 자리로 민다.
+    toolbarAlign: 'end',
 
     resolveTarget(context: PageContext) {
       // 설명 편집기가 열려 있을 때만 대상이 된다. 읽기 모드에는 편집기가 없다.
