@@ -20,11 +20,11 @@ import {
   type JiraBoardIssue,
   type JiraSprint,
 } from '../../api/sprints';
+import { BOARD_TOOL_ORDER, ensureBoardToolSlot, releaseBoardToolSlot } from '../../boardToolRow';
 import { isJiraBoardRoute, parseJiraBoardUrl } from '../../routes';
 import { requestActiveSprints } from '../../sprintState/client';
 import {
   BOARD_CONTENT,
-  BOARD_FILTER_CONTAINER,
   PAST_SPRINT_PANEL_ROOT,
   PAST_SPRINT_VIEW_ROOT,
 } from '../../selectors';
@@ -53,6 +53,8 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+const SLOT_NAME = 'sprint-picker';
+
 export function createPastSprintViewRuntime(): FeatureRuntime {
   let host: HTMLSpanElement | null = null;
   let panel: HTMLDivElement | null = null;
@@ -63,6 +65,7 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
   /** 패널에 지금 그려 둔 업무. 보기 방식을 바꿀 때 다시 부르지 않는다 */
   let shownIssues: JiraBoardIssue[] = [];
   let groupMode: 'all' | 'assignee' = 'all';
+  let activeDocument: Document | null = null;
 
   function closePanel(): void {
     panel?.remove();
@@ -76,6 +79,8 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     host = null;
     sprints = null;
     loadingSprints = false;
+    if (activeDocument) releaseBoardToolSlot(activeDocument, SLOT_NAME);
+    activeDocument = null;
   }
 
   function panelShadow(): ShadowRoot | null {
@@ -370,7 +375,6 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     next.style.all = 'initial';
     next.style.display = 'inline-flex';
     next.style.alignItems = 'center';
-    next.style.marginInlineStart = '8px';
     next.style.position = 'relative';
 
     const shadow = next.attachShadow({ mode: 'open' });
@@ -455,7 +459,8 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
         return;
       }
 
-      const anchor = context.document.querySelector<HTMLElement>(BOARD_FILTER_CONTAINER);
+      activeDocument = context.document;
+      const anchor = ensureBoardToolSlot(context.document, SLOT_NAME, BOARD_TOOL_ORDER.sprintPicker);
       if (!anchor) {
         dispose();
         return;

@@ -1469,6 +1469,25 @@ test('목표가 없으면 같은 문구가 두 번 나오지 않는다', () => {
   assert.deepEqual(summary?.labels, ['9/9 ~ 9/30 · 8일 남음', '8일 남음', '']);
 });
 
+test('보드 UI 는 Jira 필터 줄이 아니라 우리 줄에 붙는다', async () => {
+  const row = await readFile('src/sites/jira/boardToolRow.ts', 'utf8');
+  const info = await readFile('src/sites/jira/features/boardSprintInfo/runtime.ts', 'utf8');
+  const picker = await readFile('src/sites/jira/features/pastSprintView/runtime.ts', 'utf8');
+
+  // 필터 줄에 끼우면 화면이 좁을 때 밀려서 아예 안 보이는 수준까지 줄어든다.
+  for (const source of [info, picker]) {
+    assert.doesNotMatch(source, /BOARD_FILTER_CONTAINER/);
+    assert.match(source, /ensureBoardToolSlot\(/);
+    assert.match(source, /releaseBoardToolSlot\(/);
+  }
+  // 컨트롤 바 바로 뒤에 새 줄을 만든다.
+  assert.match(row, /bar\.insertAdjacentElement\('afterend', row\)/);
+  // DOM 순서는 reconcile 순서에 달려 있어 들쭉날쭉하다. order 로 고정한다.
+  assert.match(row, /slot\.style\.order = String\(order\)/);
+  // 우리가 만든 것을 남기지 않는다.
+  assert.match(row, /if \(row\.children\.length === 0\) row\.remove\(\)/);
+});
+
 test('칩은 잘리지 않고 줄어들 수 있어야 한다', async () => {
   const source = await readFile(
     'src/sites/jira/features/boardSprintInfo/runtime.ts',

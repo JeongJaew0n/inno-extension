@@ -127,13 +127,6 @@ export const DESCRIPTION_EDITOR_SAVE_BUTTON = '[data-testid="comment-save-button
 /** 보드 활성 스프린트 정보 기능. */
 export const BOARD_SPRINT_INFO_ROOT = 'jira-board-sprint-info';
 
-/**
- * 보드 상단 바의 필터 목록.
- *
- * `버전 · Epic · 유형 · 레이블 · 빠른 필터` 가 이 안의 `<ul>` 에 들어 있다. 이 컨테이너 끝에
- * 붙이면 **`빠른 필터` 오른쪽**이 된다. 실측에서 오른쪽으로 369px 가 비어 있었다.
- */
-export const BOARD_FILTER_CONTAINER = '[data-testid="software-filters.ui.list-filter-container"]';
 
 /** 지난 스프린트 보기 기능. */
 export const PAST_SPRINT_VIEW_ROOT = 'jira-past-sprint-view';
@@ -152,3 +145,14 @@ export const PAST_SPRINT_PANEL_ROOT = 'jira-past-sprint-panel';
  * docs/plans/jira-past-sprint-view/spec.md
  */
 export const BOARD_CONTENT = '[data-testid="software-board.board-area"]';
+
+/** 보드 상단 컨트롤 바. 우리 UI 줄을 이 바로 뒤에 넣는다. */
+export const BOARD_CONTROLS_BAR = '[data-testid="software-board.header.controls-bar"]';
+
+/**
+ * 우리 UI 전용 줄.
+ *
+ * Jira 필터 줄에 끼워 넣으면 화면이 좁을 때 밀려서 **아예 안 보이는 수준까지** 줄어든다.
+ * Jira 는 자기 필터를 `더 보기` 로 접어 버티지만 우리 것은 그럴 수 없다.
+ */
+export const BOARD_TOOL_ROW_ROOT = 'jira-board-tool-row';

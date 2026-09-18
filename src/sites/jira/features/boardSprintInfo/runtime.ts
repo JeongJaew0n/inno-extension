@@ -12,10 +12,13 @@
 
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
+import { BOARD_TOOL_ORDER, ensureBoardToolSlot, releaseBoardToolSlot } from '../../boardToolRow';
 import { isJiraBoardRoute, parseJiraBoardUrl } from '../../routes';
-import { BOARD_FILTER_CONTAINER, BOARD_SPRINT_INFO_ROOT } from '../../selectors';
+import { BOARD_SPRINT_INFO_ROOT } from '../../selectors';
 import { requestActiveSprints } from '../../sprintState/client';
 import { summarizeSprint } from './format';
+
+const SLOT_NAME = 'sprint-info';
 
 export function createBoardSprintInfoRuntime(): FeatureRuntime {
   let host: HTMLSpanElement | null = null;
@@ -24,6 +27,7 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
   /** 진행 중인 요청의 보드. 같은 보드로 요청이 겹치지 않게 한다 */
   let pendingBoardId: string | null = null;
   let resizeObserver: ResizeObserver | null = null;
+  let activeDocument: Document | null = null;
 
   function dispose(): void {
     resizeObserver?.disconnect();
@@ -32,6 +36,8 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
     host = null;
     renderedKey = '';
     pendingBoardId = null;
+    if (activeDocument) releaseBoardToolSlot(activeDocument, SLOT_NAME);
+    activeDocument = null;
   }
 
   function ensureHost(context: PageContext, anchor: HTMLElement): HTMLSpanElement | null {
@@ -43,7 +49,6 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
     nextHost.style.all = 'initial';
     nextHost.style.display = 'inline-flex';
     nextHost.style.alignItems = 'center';
-    nextHost.style.marginInlineStart = '8px';
     // flex 항목이 줄어들려면 min-width 를 0 으로 풀어야 한다. 안 그러면 내용 폭 그대로
     // 버티다가 **바깥에서 잘린다.** 말줄임도 자기가 넉넉하다고 믿어 작동하지 않는다.
     nextHost.style.minWidth = '0';
@@ -128,7 +133,8 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
         return;
       }
 
-      const anchor = context.document.querySelector<HTMLElement>(BOARD_FILTER_CONTAINER);
+      activeDocument = context.document;
+      const anchor = ensureBoardToolSlot(context.document, SLOT_NAME, BOARD_TOOL_ORDER.sprintInfo);
       if (!anchor) {
         dispose();
         return;
@@ -153,7 +159,9 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
         }
 
         const key = `${boardId}:${summary.label}`;
-        const currentAnchor = context.document.querySelector<HTMLElement>(BOARD_FILTER_CONTAINER);
+        const currentAnchor = ensureBoardToolSlot(
+          context.document, SLOT_NAME, BOARD_TOOL_ORDER.sprintInfo,
+        );
         if (!currentAnchor) return;
         if (key === renderedKey && host?.isConnected) return;
 
