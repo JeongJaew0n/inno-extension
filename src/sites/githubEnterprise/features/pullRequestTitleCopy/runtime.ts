@@ -1,5 +1,7 @@
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
+import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
+import { BUTTON_CSS } from '../../../../platform/design/parts';
 import {
   PULL_REQUEST_DETAIL_TITLE,
   PULL_REQUEST_ROW,
@@ -101,30 +103,12 @@ function createCopyHost(context: PageContext, target: CopyTarget): HTMLSpanEleme
   host.style.marginInlineStart = '4px';
 
   const shadow = host.attachShadow({ mode: 'open' });
-  // GitHub의 Primer 커스텀 속성은 shadow 경계를 그대로 넘어오므로 테마를 따라간다.
-  // 변수가 없는 환경을 위해 리터럴 fallback을 함께 둔다.
+  // 예전에는 Primer 의 `--fgColor-*` 를 읽어 사이트 테마를 따라갔다. 이제 우리 토큰만 쓴다.
+  // 사이트마다 다른 색을 쓰면 우리 기능끼리 안 맞는 쪽이 더 큰 문제였다.
   shadow.innerHTML = `
-    <style>
-      :host { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-      button {
-        box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
-        width: 26px; height: 26px; padding: 0;
-        border: 1px solid transparent; border-radius: 6px;
-        background: transparent; color: var(--fgColor-muted, #59636e);
-        cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-      }
-      button:hover {
-        background: var(--bgColor-muted, #f6f8fa);
-        border-color: var(--borderColor-default, #d1d9e0);
-        color: var(--fgColor-default, #1f2328);
-      }
-      button:focus-visible { outline: 2px solid var(--focus-outlineColor, #0969da); outline-offset: 1px; }
-      button:disabled { cursor: default; }
-      button.copied { color: var(--fgColor-success, #1a7f37); }
-      button.failed { color: var(--fgColor-danger, #d1242f); }
-    </style>
-    <button type="button" data-copy-mode="link" aria-label="PR 제목 Markdown 링크 복사" title="PR 제목 Markdown 링크 복사">${COPY_ICON}</button>
-    <button type="button" data-copy-mode="title" aria-label="PR 제목만 복사" title="PR 제목만 복사">${TEXT_ICON}</button>
+    <style>${DESIGN_TOKENS}${BUTTON_CSS}:host{gap:var(--inno-space-1)}</style>
+    <button type="button" class="inno-btn inno-btn--icon" data-copy-mode="link" aria-label="PR 제목 Markdown 링크 복사" title="PR 제목 Markdown 링크 복사">${COPY_ICON}</button>
+    <button type="button" class="inno-btn inno-btn--icon" data-copy-mode="title" aria-label="PR 제목만 복사" title="PR 제목만 복사">${TEXT_ICON}</button>
   `;
 
   const linkButton = shadow.querySelector<HTMLButtonElement>('[data-copy-mode="link"]');
@@ -152,19 +136,19 @@ function createCopyHost(context: PageContext, target: CopyTarget): HTMLSpanEleme
       try {
         await copy();
         button.innerHTML = CHECK_ICON;
-        button.classList.remove('failed');
-        button.classList.add('copied');
+        button.classList.remove('inno-btn--fail');
+        button.classList.add('inno-btn--ok');
       } catch {
         button.innerHTML = FAIL_ICON;
-        button.classList.remove('copied');
-        button.classList.add('failed');
+        button.classList.remove('inno-btn--ok');
+        button.classList.add('inno-btn--fail');
       }
 
       resetTimer = window.setTimeout(() => {
         resetTimer = null;
         if (!host.isConnected) return;
         button.innerHTML = idleIcon;
-        button.classList.remove('copied', 'failed');
+        button.classList.remove('inno-btn--ok', 'inno-btn--fail');
         button.disabled = false;
       }, COPY_FEEDBACK_MS);
     });
