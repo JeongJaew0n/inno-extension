@@ -40,6 +40,7 @@ import {
   escapeMarkdownText,
   isRedundantHeaderOnlyTable,
 } from '../src/platform/editor/renderer-to-markdown';
+import { adfToMarkdown } from '../src/platform/adf';
 import {
   parseConfluenceEditPageUrl,
   parseConfluencePageUrl,
@@ -1343,6 +1344,117 @@ test('저장 버튼은 취소와 다르게 그린다', async () => {
   assert.ok(
     source.indexOf('data-action="save"') < source.indexOf('data-action="cancel"'),
     '저장이 취소보다 앞에 와야 한다',
+  );
+});
+
+test('ADF 를 Markdown 으로 옮긴다', () => {
+  const { markdown } = adfToMarkdown({
+    type: 'doc',
+    version: 1,
+    content: [
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: '제목' }] },
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: '굵게', marks: [{ type: 'strong' }] },
+          { type: 'text', text: ' 와 ' },
+          { type: 'text', text: '링크', marks: [{ type: 'link', attrs: { href: 'https://e.com' } }] },
+          { type: 'text', text: ' 와 ' },
+          { type: 'text', text: 'a*b', marks: [{ type: 'code' }] },
+        ],
+      },
+      {
+        type: 'table',
+        content: [
+          {
+            type: 'tableRow',
+            content: [
+              { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A' }] }] },
+              { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'B' }] }] },
+            ],
+          },
+          {
+            type: 'tableRow',
+            content: [
+              { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: '1' }] }] },
+              { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: '2' }] }] },
+            ],
+          },
+        ],
+      },
+      { type: 'codeBlock', attrs: { language: 'yaml' }, content: [{ type: 'text', text: 'a: 1' }] },
+    ],
+  });
+
+  assert.match(markdown, /^## 제목$/m);
+  assert.match(markdown, /\*\*굵게\*\* 와 \[링크\]\(https:\/\/e\.com\) 와 `a\*b`/);
+  assert.match(markdown, /^\| A \| B \|$/m);
+  assert.match(markdown, /^\| --- \| --- \|$/m);
+  assert.match(markdown, /^```yaml$/m);
+});
+
+test('매크로는 옮기지 않고 원본 코드블럭만 남긴다', () => {
+  // Mermaid 매크로는 원본 코드블럭이 바로 옆에 남아 있다. 둘 다 옮기면 같은 내용이 두 번 나온다.
+  const { markdown, warnings } = adfToMarkdown({
+    type: 'doc',
+    version: 1,
+    content: [
+      { type: 'extension', attrs: { extensionKey: 'mermaid' } },
+      {
+        type: 'expand',
+        attrs: { title: 'Mermaid 원본' },
+        content: [{ type: 'codeBlock', content: [{ type: 'text', text: 'flowchart TD' }] }],
+      },
+    ],
+  });
+
+  assert.doesNotMatch(markdown, /extension/);
+  assert.match(markdown, /flowchart TD/);
+  // expand 껍데기는 벗기고 제목만 굵은 줄로 남긴다.
+  assert.match(markdown, /\*\*Mermaid 원본\*\*/);
+  assert.ok(warnings.some((w) => w.includes('매크로')));
+});
+
+test('Markdown 에 대응물이 없는 노드는 글자만 남긴다', () => {
+  const { markdown } = adfToMarkdown({
+    type: 'doc',
+    version: 1,
+    content: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'status', attrs: { text: '진행중' } },
+          { type: 'text', text: ' ' },
+          { type: 'mention', attrs: { text: '@정재원' } },
+        ],
+      },
+      { type: 'panel', attrs: { panelType: 'info' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: '안내' }] }] },
+      { type: 'taskList', content: [
+        { type: 'taskItem', attrs: { state: 'DONE' }, content: [{ type: 'text', text: '끝' }] },
+        { type: 'taskItem', attrs: { state: 'TODO' }, content: [{ type: 'text', text: '아직' }] },
+      ] },
+    ],
+  });
+
+  assert.match(markdown, /진행중 @정재원/);
+  assert.match(markdown, /^안내$/m);
+  assert.match(markdown, /^- \[x\] 끝$/m);
+  assert.match(markdown, /^- \[ \] 아직$/m);
+});
+
+test('편집 중에는 ADF 를 읽고 읽기 중에는 렌더러를 옮긴다', async () => {
+  const source = await readFile(
+    'src/sites/jira/features/descriptionMarkdownCopy/runtime.ts',
+    'utf8',
+  );
+
+  // 편집기 DOM 을 긁으면 코드블럭이 CodeMirror 라 깨지고 긴 블록은 잘린다.
+  assert.match(source, /readProseMirrorDocument\(editor\)/);
+  assert.match(source, /adfToMarkdown\(doc\)/);
+  assert.match(source, /convertRendererToMarkdown\(body\)/);
+  // 읽기가 먼저다. 렌더러가 있으면 그쪽을 쓴다.
+  assert.ok(
+    source.indexOf('convertRendererToMarkdown(body)') < source.indexOf('readProseMirrorDocument(editor)'),
   );
 });
 

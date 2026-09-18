@@ -1,14 +1,21 @@
 import { MARKDOWN_IGNORED_ELEMENTS } from './selectors';
+import {
+  escapeMarkdownText,
+  longestBacktickRun,
+  normalizeListItem,
+  normalizeMarkdown,
+  normalizeTableCell,
+  renderInlineCode,
+  renderMarkdownTable,
+} from '../markdown/format';
+
+export { escapeMarkdownText };
 
 interface RenderContext {
   preserveWhitespace: boolean;
 }
 
 const DEFAULT_CONTEXT: RenderContext = { preserveWhitespace: false };
-
-export function escapeMarkdownText(value: string): string {
-  return value.replace(/([\\`*_[\]])/g, '\\$1');
-}
 
 function normalizeText(value: string, preserveWhitespace: boolean): string {
   if (preserveWhitespace) return value;
@@ -24,16 +31,6 @@ function renderChildren(element: Element, context: RenderContext = DEFAULT_CONTE
 function wrapInline(marker: string, content: string): string {
   const normalized = content.trim();
   return normalized ? `${marker}${normalized}${marker}` : '';
-}
-
-function longestBacktickRun(value: string): number {
-  return Math.max(0, ...Array.from(value.matchAll(/`+/g), (match) => match[0].length));
-}
-
-function renderInlineCode(value: string): string {
-  const fence = '`'.repeat(Math.max(1, longestBacktickRun(value) + 1));
-  const padding = value.startsWith('`') || value.endsWith('`') ? ' ' : '';
-  return `${fence}${padding}${value}${padding}${fence}`;
 }
 
 function readCodeLanguage(element: Element): string {
@@ -67,13 +64,6 @@ function isNestedList(element: Element): boolean {
   return element.tagName === 'UL' || element.tagName === 'OL';
 }
 
-function normalizeListItem(value: string): string {
-  return value
-    .trim()
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{2,}/g, '\n');
-}
-
 function renderList(list: Element, depth: number): string {
   const ordered = list.tagName === 'OL';
   const listItems = Array.from(list.children).filter((child) => child.tagName === 'LI');
@@ -100,14 +90,6 @@ function renderList(list: Element, depth: number): string {
   });
 
   return lines.join('\n');
-}
-
-function normalizeTableCell(value: string): string {
-  return value
-    .trim()
-    .replace(/\n{2,}/g, '\n')
-    .replace(/\n/g, '<br>')
-    .replace(/\|/g, '\\|');
 }
 
 function directTableRows(table: HTMLTableElement): HTMLTableRowElement[] {
@@ -181,20 +163,8 @@ function renderTable(table: HTMLTableElement): string {
   const renderedRows = rows.map((row) => Array.from(row.children)
     .filter((cell) => cell.tagName === 'TH' || cell.tagName === 'TD')
     .map((cell) => normalizeTableCell(renderChildren(cell))));
-  const columnCount = Math.max(...renderedRows.map((row) => row.length));
-  if (columnCount === 0) return '';
 
-  const pad = (row: string[]): string[] => [
-    ...row,
-    ...Array.from({ length: columnCount - row.length }, () => ''),
-  ];
-  const markdownRows = [
-    pad(renderedRows[0]),
-    Array.from({ length: columnCount }, () => '---'),
-    ...renderedRows.slice(1).map(pad),
-  ];
-
-  return `\n\n${markdownRows.map((row) => `| ${row.join(' | ')} |`).join('\n')}\n\n`;
+  return renderMarkdownTable(renderedRows);
 }
 
 function renderLink(element: HTMLAnchorElement): string {
@@ -262,14 +232,6 @@ function renderNode(node: Node, context: RenderContext): string {
     default:
       return renderChildren(element, context);
   }
-}
-
-function normalizeMarkdown(value: string): string {
-  return value
-    .replace(/\u00a0/g, ' ')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
 }
 
 /**

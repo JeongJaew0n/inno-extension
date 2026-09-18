@@ -25,8 +25,12 @@ interface ProseMirrorTransaction {
   scrollIntoView(): ProseMirrorTransaction;
 }
 
+interface ProseMirrorDoc {
+  toJSON(): unknown;
+}
+
 interface ProseMirrorEditorState {
-  doc: unknown;
+  doc: ProseMirrorDoc;
   selection: ProseMirrorSelection & { constructor: Function };
   tr: ProseMirrorTransaction;
 }
@@ -167,7 +171,9 @@ export function installProseMirrorBridge(): void {
       }
     }
     const requestId = typeof detail.requestId === 'string' ? detail.requestId : '';
-    const action: BridgeAction = detail.action === 'read-node' || detail.action === 'select-range'
+    const action: BridgeAction = detail.action === 'read-node'
+      || detail.action === 'read-doc'
+      || detail.action === 'select-range'
       ? detail.action
       : 'select-node';
     const targetMark = typeof detail.target === 'string' ? detail.target : '';
@@ -184,6 +190,21 @@ export function installProseMirrorBridge(): void {
           ? findNodeDescByName(target, editor, nodeName)
           : target.pmViewDesc)
         : undefined;
+
+      /**
+       * 편집 중인 문서를 ADF 그대로 돌려준다.
+       *
+       * 편집기 DOM 을 긁으면 코드블럭이 CodeMirror 라 깨지고 긴 블록은 30줄 안팎에서 잘린다.
+       * ProseMirror 에서 직접 꺼내면 추측도 잘림도 없다.
+       */
+      if (action === 'read-doc') {
+        const editorElement = target?.closest<ProseMirrorElement>('.ProseMirror') ?? undefined;
+        const view = findEditorView(editorElement?.pmViewDesc)
+          ?? (editorElement ? findEditorViewFromReact(editorElement) : undefined);
+        if (!view) throw new Error('편집기 상태를 찾을 수 없습니다.');
+        respond(requestId, true, undefined, JSON.stringify(view.state.doc.toJSON()));
+        return;
+      }
 
       if (action === 'read-node') {
         const text = desc?.node?.textContent;

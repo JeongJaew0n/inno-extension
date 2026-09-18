@@ -19,7 +19,7 @@ export const BRIDGE_RESPONSE_EVENT = 'inno-extension:prosemirror-bridge:response
 /** 브리지가 찾을 대상에 임시로 붙이는 속성. 요청이 끝나면 지운다. */
 export const BRIDGE_TARGET_ATTRIBUTE = 'data-inno-bridge-target';
 
-export type BridgeAction = 'read-node' | 'select-node' | 'select-range';
+export type BridgeAction = 'read-node' | 'read-doc' | 'select-node' | 'select-range';
 
 export interface BridgeRequest {
   action: BridgeAction;

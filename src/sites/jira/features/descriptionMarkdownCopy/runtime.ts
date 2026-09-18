@@ -7,13 +7,18 @@
  * docs/plans/jira-description-markdown-copy/spec.md
  */
 
+import { adfToMarkdown } from '../../../../platform/adf';
+import type { AdfDocument } from '../../../../platform/adf';
 import { writePlainText } from '../../../../platform/clipboard/writePlainText';
+import { readProseMirrorDocument } from '../../../../platform/editor/bridge-client';
 import { convertRendererToMarkdown } from '../../../../platform/editor/renderer-to-markdown';
+import { EDITOR_PROSEMIRROR } from '../../../../platform/editor/selectors';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { findDescriptionLabelRow } from '../../descriptionLabel';
 import { parseJiraBoardUrl, parseJiraIssueUrl } from '../../routes';
 import {
+  DESCRIPTION_EDITOR_CONTAINER_FIELD,
   DESCRIPTION_FIELD,
   DESCRIPTION_MARKDOWN_COPY_ROOT,
   DESCRIPTION_RENDERER,
@@ -39,6 +44,40 @@ function currentIssueKey(url: URL): string {
 function findDescriptionBody(document: Document): HTMLElement | null {
   const field = document.querySelector<HTMLElement>(DESCRIPTION_FIELD);
   return field?.querySelector<HTMLElement>(DESCRIPTION_RENDERER) ?? null;
+}
+
+/** 편집 중인 설명 편집기. 읽기 모드에서는 없다. */
+function findDescriptionEditor(document: Document): HTMLElement | null {
+  const container = document.querySelector<HTMLElement>(DESCRIPTION_EDITOR_CONTAINER_FIELD);
+  return container?.querySelector<HTMLElement>(EDITOR_PROSEMIRROR) ?? null;
+}
+
+/**
+ * 지금 화면에서 Markdown 을 만든다.
+ *
+ * 읽기 중이면 렌더러를 옮기고, 편집 중이면 **ProseMirror 에서 ADF 를 직접 읽어** 옮긴다.
+ * 편집기 DOM 을 긁으면 코드블럭이 CodeMirror 라 깨지고 긴 블록은 30줄 안팎에서 잘린다.
+ *
+ * docs/plans/adf-to-markdown/spec.md
+ */
+async function buildMarkdown(document: Document): Promise<string> {
+  const body = findDescriptionBody(document);
+  if (body) {
+    const markdown = convertRendererToMarkdown(body);
+    if (!markdown) throw new Error('복사할 업무 설명이 비어 있습니다.');
+    return markdown;
+  }
+
+  const editor = findDescriptionEditor(document);
+  if (!editor) throw new Error('복사할 업무 설명을 찾을 수 없습니다.');
+
+  const doc = await readProseMirrorDocument(editor) as AdfDocument;
+  const { markdown, warnings } = adfToMarkdown(doc);
+  if (warnings.length > 0) {
+    console.warn('[Inno Extension] Jira 설명 Markdown 복사 안내', warnings);
+  }
+  if (!markdown) throw new Error('복사할 업무 설명이 비어 있습니다.');
+  return markdown;
 }
 
 export function createDescriptionMarkdownCopyRuntime(): FeatureRuntime {
@@ -97,11 +136,8 @@ export function createDescriptionMarkdownCopyRuntime(): FeatureRuntime {
       button.disabled = true;
       buttonLabel.textContent = '복사 중';
       try {
-        // 클릭 시점의 본문을 다시 찾는다. 그 사이 다른 업무로 바뀌었을 수 있다.
-        const body = findDescriptionBody(context.document);
-        if (!body) throw new Error('복사할 업무 설명을 찾을 수 없습니다.');
-        const markdown = convertRendererToMarkdown(body);
-        if (!markdown) throw new Error('복사할 업무 설명이 비어 있습니다.');
+        // 클릭 시점에 다시 본다. 그 사이 다른 업무로 바뀌었거나 편집을 시작했을 수 있다.
+        const markdown = await buildMarkdown(context.document);
         await writePlainText(markdown);
         buttonLabel.textContent = '복사됨';
       } catch (error) {
@@ -126,9 +162,11 @@ export function createDescriptionMarkdownCopyRuntime(): FeatureRuntime {
     id: 'descriptionMarkdownCopy',
 
     reconcile(context: PageContext): void {
-      const body = findDescriptionBody(context.document);
+      // 읽기 중이면 렌더러가, 편집 중이면 편집기가 있다. 둘 다 없으면 붙이지 않는다.
+      const hasBody = findDescriptionBody(context.document) !== null
+        || findDescriptionEditor(context.document) !== null;
       const anchor = findDescriptionLabelRow(context.document);
-      if (!body || !anchor) {
+      if (!hasBody || !anchor) {
         dispose();
         return;
       }

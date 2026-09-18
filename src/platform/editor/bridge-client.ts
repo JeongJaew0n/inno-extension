@@ -111,3 +111,16 @@ export async function readProseMirrorCodeBlockText(
   }
   return response.text.replace(/\r\n?/g, '\n');
 }
+
+/**
+ * 편집 중인 문서를 ADF 로 읽는다.
+ *
+ * `editor` 는 `.ProseMirror` 자신이거나 그 안의 아무 요소면 된다.
+ */
+export async function readProseMirrorDocument(editor: HTMLElement): Promise<unknown> {
+  const response = await requestBridge(editor, 'read-doc', editor);
+  if (typeof response.text !== 'string') {
+    throw new Error('편집 중인 문서를 읽지 못했습니다.');
+  }
+  return JSON.parse(response.text) as unknown;
+}
