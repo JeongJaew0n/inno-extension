@@ -23,8 +23,11 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
   let renderedKey = '';
   /** 진행 중인 요청의 보드. 같은 보드로 요청이 겹치지 않게 한다 */
   let pendingBoardId: string | null = null;
+  let resizeObserver: ResizeObserver | null = null;
 
   function dispose(): void {
+    resizeObserver?.disconnect();
+    resizeObserver = null;
     host?.remove();
     host = null;
     renderedKey = '';
@@ -41,7 +44,11 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
     nextHost.style.display = 'inline-flex';
     nextHost.style.alignItems = 'center';
     nextHost.style.marginInlineStart = '8px';
+    // flex 항목이 줄어들려면 min-width 를 0 으로 풀어야 한다. 안 그러면 내용 폭 그대로
+    // 버티다가 **바깥에서 잘린다.** 말줄임도 자기가 넉넉하다고 믿어 작동하지 않는다.
     nextHost.style.minWidth = '0';
+    nextHost.style.flex = '0 1 auto';
+    nextHost.style.overflow = 'hidden';
 
     const shadow = nextHost.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
@@ -49,13 +56,15 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
         :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         .chip {
           display: inline-flex; align-items: center; gap: 6px;
-          box-sizing: border-box; max-width: 320px; min-height: 24px; padding: 0 9px;
-          border-radius: 3px; background: #091e420f; color: #44546f;
+          box-sizing: border-box; max-width: 320px; min-width: 0; min-height: 24px;
+          padding: 0 9px; border-radius: 3px; background: #091e420f; color: #44546f;
           font-size: 12px; line-height: 24px;
         }
+        /* 글자가 하나도 안 들어가면 아이콘만 남기고 여백을 줄인다 */
+        .chip.icon-only { padding: 0 6px; gap: 0; }
         svg { width: 14px; height: 14px; flex: 0 0 auto; }
         /* 목표가 길 수 있다. 넘치면 말줄임하고 전체는 hover 로 본다 */
-        .text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       </style>
       <span class="chip">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -71,13 +80,41 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
     return nextHost;
   }
 
-  function render(context: PageContext, anchor: HTMLElement, label: string, title: string): void {
-    const current = ensureHost(context, anchor);
-    const text = current?.shadowRoot?.querySelector<HTMLElement>('[data-sprint-text]');
-    const chip = current?.shadowRoot?.querySelector<HTMLElement>('.chip');
+  /**
+   * 들어가는 것 중 가장 자세한 것을 고른다.
+   *
+   * 보드 상단은 자리가 좁다. 넘치면 **잘라내는 대신 덜 중요한 것부터 뺀다.** 전체 내용은 hover 에
+   * 항상 남아 있으므로 잃는 정보는 없다.
+   */
+  function applyBestLabel(host: HTMLElement, labels: string[]): void {
+    const text = host.shadowRoot?.querySelector<HTMLElement>('[data-sprint-text]');
+    const chip = host.shadowRoot?.querySelector<HTMLElement>('.chip');
     if (!text || !chip) return;
-    text.textContent = label;
+
+    for (const candidate of labels) {
+      text.textContent = candidate;
+      chip.classList.toggle('icon-only', candidate === '');
+      // 마지막 후보(아이콘만)까지 왔으면 더 줄일 것이 없다.
+      if (candidate === '' || text.scrollWidth <= text.clientWidth) return;
+    }
+  }
+
+  function render(
+    context: PageContext,
+    anchor: HTMLElement,
+    labels: string[],
+    title: string,
+  ): void {
+    const current = ensureHost(context, anchor);
+    const chip = current?.shadowRoot?.querySelector<HTMLElement>('.chip');
+    if (!current || !chip) return;
     chip.title = title;
+    applyBestLabel(current, labels);
+
+    // 창 크기나 필터 개수가 바뀌면 다시 고른다.
+    resizeObserver?.disconnect();
+    resizeObserver = new ResizeObserver(() => applyBestLabel(current, labels));
+    resizeObserver.observe(current);
   }
 
   return {
@@ -120,7 +157,7 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
         if (!currentAnchor) return;
         if (key === renderedKey && host?.isConnected) return;
 
-        render(context, currentAnchor, summary.label, summary.title);
+        render(context, currentAnchor, summary.labels, summary.title);
         renderedKey = key;
       });
     },

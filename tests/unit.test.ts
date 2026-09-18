@@ -1441,6 +1441,47 @@ test('활성 스프린트 요약은 기간을 보여주고 목표가 있으면 �
   assert.match(withGoal?.title ?? '', /목표: ArgoCD 정리/);
 });
 
+test('좁아지면 덜 중요한 것부터 뺀다', () => {
+  const summary = summarizeSprint({
+    id: 1, name: 'S1', goal: 'ArgoCD 정리',
+    isoStartDate: '2026-09-09T16:31:24+0900',
+    isoEndDate: '2026-09-30T13:00:00+0900',
+    daysRemaining: 8,
+  });
+
+  // 자세한 것부터 짧은 것 순서. 마지막은 아이콘만(빈 문자열)이다.
+  assert.deepEqual(summary?.labels, [
+    '9/9 ~ 9/30 · 8일 남음 · ArgoCD 정리',
+    '9/9 ~ 9/30 · 8일 남음',
+    '8일 남음',
+    '',
+  ]);
+  assert.equal(summary?.label, summary?.labels[0]);
+});
+
+test('목표가 없으면 같은 문구가 두 번 나오지 않는다', () => {
+  const summary = summarizeSprint({
+    id: 1, name: 'S1', goal: '',
+    isoStartDate: '2026-09-09T16:31:24+0900',
+    isoEndDate: '2026-09-30T13:00:00+0900',
+    daysRemaining: 8,
+  });
+  assert.deepEqual(summary?.labels, ['9/9 ~ 9/30 · 8일 남음', '8일 남음', '']);
+});
+
+test('칩은 잘리지 않고 줄어들 수 있어야 한다', async () => {
+  const source = await readFile(
+    'src/sites/jira/features/boardSprintInfo/runtime.ts',
+    'utf8',
+  );
+
+  // min-width 를 풀지 않으면 flex 항목이 내용 폭으로 버티다가 바깥에서 잘린다.
+  assert.match(source, /nextHost\.style\.minWidth = '0';/);
+  assert.match(source, /min-width: 0; overflow: hidden; text-overflow: ellipsis/);
+  // 창 크기가 바뀌면 다시 고른다.
+  assert.match(source, /new ResizeObserver/);
+});
+
 test('날짜를 읽지 못하면 아무것도 보여주지 않는다', () => {
   // 절반만 맞는 기간을 띄우는 것보다 낫다.
   assert.equal(

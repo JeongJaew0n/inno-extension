@@ -29,8 +29,17 @@ function fullDate(date: Date): string {
 }
 
 export interface SprintSummary {
-  /** 칩에 보일 짧은 문구 */
+  /** 칩에 보일 짧은 문구. `labels[0]` 과 같다 */
   label: string;
+  /**
+   * 자세한 것부터 짧은 것 순서의 후보들.
+   *
+   * 보드 상단은 자리가 좁고 Jira 가 자기 필터도 `더 보기` 로 접는다. 넘치면 **잘라내는 대신
+   * 덜 중요한 것부터 뺀다.** 마지막은 빈 문자열(아이콘만)이다.
+   *
+   * 무엇을 먼저 버리는가 — 목표, 그다음 기간. `남은 일수` 가 한눈에 가장 쓸모 있다.
+   */
+  labels: string[];
   /** hover 로 보일 전체 문구 */
   title: string;
   /** 목표가 설정돼 있는지. 없으면 기간만 보여준다 */
@@ -65,5 +74,17 @@ export function summarizeSprint(sprint: ActiveSprintInfo): SprintSummary | null 
   // 것인지 구분되지 않는다.
   titleLines.push(goal ? `목표: ${goal}` : '목표: 설정되지 않음');
 
-  return { label: labelParts.join(' · '), title: titleLines.join('\n'), hasGoal: Boolean(goal) };
+  const labels = [
+    labelParts.join(' · '),
+    [period, remaining].filter(Boolean).join(' · '),
+    remaining ?? period,
+    '',
+  ].filter((value, index, all) => index === 0 || value !== all[index - 1]);
+
+  return {
+    label: labels[0],
+    labels,
+    title: titleLines.join('\n'),
+    hasGoal: Boolean(goal),
+  };
 }
