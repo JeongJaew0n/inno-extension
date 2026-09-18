@@ -2,104 +2,152 @@
  * Inno Extension 디자인 토큰
  * ==========================
  *
- * 값을 직접 쓰지 않는다. 컴포넌트는 반드시 이 토큰을 거친다.
+ * **손으로 쓰지 않는다. `design/generate-tokens.py` 가 만든다.**
+ *
+ *     python3 design/generate-tokens.py > design/tokens.css
+ *
+ * ## Material 3 의 전략을 따른다
+ *
+ * 색을 하나씩 고르지 않는다. **시드 한 색에서 색조 팔레트를 뽑고, 색조를 역할에 배정한다.**
+ * 새 색이 필요하면 값을 찍는 게 아니라 어느 역할인지를 정한다.
+ *
+ * | M3 개념 | 여기서 |
+ * | --- | --- |
+ * | 색조 팔레트 | 시드에서 계산. primary·secondary·tertiary·neutral·neutral-variant·error |
+ * | 역할 | `primary` / `on-primary` / `primary-container` … 밝은 배색 배정 규칙 그대로 |
+ * | 표면 단계 | 그림자 대신 `surface-container-*` 로 높이를 표현 |
+ * | 상태 레이어 | hover·focus·pressed 를 `on-*` 색의 불투명도로. 색을 따로 만들지 않는다 |
+ * | 모양 스케일 | none → full 단계 |
+ * | 4dp 격자 | 간격을 4의 배수로 |
+ *
+ * ## 우리 맥락에 맞춘 것
+ *
+ * 타입 스케일은 M3 이름(label/body/title)을 쓰되 **크기를 줄였다.** M3 의 display·headline 은
+ * 앱 화면용이고, 우리 UI 는 남의 화면에 얹히는 작은 조각이라 쓸 자리가 없다.
+ *
+ * 어두운 배색은 아직 만들지 않았다. Jira·Confluence 다크 모드를 지원할 때 같은 팔레트에서
+ * 배정만 바꿔 뽑으면 된다.
+ *
+ * 시드 #654cf2 — hue 304.2° / chroma 96.5
  *
  * ## 이름에 `--inno-` 를 붙이는 이유
  *
  * 우리 UI 는 Shadow DOM 안에 산다. 그런데 **CSS 사용자 지정 속성은 shadow 경계를 넘어
  * 상속된다.** 호스트에 `all: initial` 을 걸어도 마찬가지다 — `all` 은 사용자 지정 속성을
- * 건드리지 않는다. Jira 나 Confluence 가 `--surface` 같은 이름을 쓰고 있으면 우리 것과 섞인다.
- * 그래서 전부 접두사를 붙인다.
- *
- * ## 색을 두 벌 쓰지 않는다
- *
- * 지금 제품은 주입 UI(Atlassian 색)와 Popup(보라 브랜드)이 서로 다른 색을 쓴다. 한 벌로
- * 합친다. Jira·Confluence 와 똑같아 보일 필요는 없다 — **우리 것이라는 게 티나는 편이 낫다.**
+ * 건드리지 않는다. Jira 가 `--surface` 를 쓰고 있으면 우리 것과 섞인다.
  */
 
 :root,
 :host {
-  /* ---------- 브랜드 ---------- */
-  --inno-brand: #5b4bf0;
-  --inno-brand-hover: #4a3ad6;
-  --inno-brand-active: #3d2fb8;
-  --inno-brand-subtle: #eeebff;
-  --inno-brand-text: #4a3ad6;
-  --inno-on-brand: #ffffff;
+  /* ===== 색조 팔레트 (참고용. 역할을 쓰고 이걸 직접 쓰지 않는다) ===== */
+  /* primary */
+  --inno-primary-0: #000001; --inno-primary-10: #000965; --inno-primary-20: #00149e; --inno-primary-30: #2e28c7; --inno-primary-40: #5540e4; --inno-primary-50: #775aff; --inno-primary-60: #9a7aff; --inno-primary-70: #b79bff; --inno-primary-80: #d1bcff; --inno-primary-90: #e9ddff; --inno-primary-95: #f4eeff; --inno-primary-100: #ffffff;
+  /* secondary */
+  --inno-secondary-0: #000001; --inno-secondary-10: #1e182d; --inno-secondary-20: #342d44; --inno-secondary-30: #4b435b; --inno-secondary-40: #635a74; --inno-secondary-50: #7c738d; --inno-secondary-60: #968ca8; --inno-secondary-70: #b0a7c3; --inno-secondary-80: #ccc2df; --inno-secondary-90: #e8defc; --inno-secondary-95: #f4eeff; --inno-secondary-100: #ffffff;
+  /* tertiary */
+  --inno-tertiary-0: #000000; --inno-tertiary-10: #380a1a; --inno-tertiary-20: #50212f; --inno-tertiary-30: #6a3745; --inno-tertiary-40: #844f5c; --inno-tertiary-50: #9e6875; --inno-tertiary-60: #ba818e; --inno-tertiary-70: #d69ba9; --inno-tertiary-80: #f3b6c4; --inno-tertiary-90: #ffd9e1; --inno-tertiary-95: #ffecf0; --inno-tertiary-100: #ffffff;
+  /* neutral */
+  --inno-neutral-0: #000001; --inno-neutral-10: #1c1b20; --inno-neutral-20: #312f35; --inno-neutral-30: #48464c; --inno-neutral-40: #605d64; --inno-neutral-50: #78767d; --inno-neutral-60: #929096; --inno-neutral-70: #adaab1; --inno-neutral-80: #c8c5cd; --inno-neutral-90: #e4e1e9; --inno-neutral-95: #f2eff7; --inno-neutral-100: #ffffff;
+  /* neutral-variant */
+  --inno-neutral-variant-0: #000001; --inno-neutral-variant-10: #1d1a24; --inno-neutral-variant-20: #322f3a; --inno-neutral-variant-30: #494551; --inno-neutral-variant-40: #615c69; --inno-neutral-variant-50: #7a7582; --inno-neutral-variant-60: #938e9c; --inno-neutral-variant-70: #aea9b7; --inno-neutral-variant-80: #c9c4d3; --inno-neutral-variant-90: #e5e0ef; --inno-neutral-variant-95: #f4eefd; --inno-neutral-variant-100: #ffffff;
+  /* error */
+  --inno-error-0: #000000; --inno-error-10: #3e0400; --inno-error-20: #68000f; --inno-error-30: #91071b; --inno-error-40: #af2d31; --inno-error-50: #ce4a47; --inno-error-60: #ed655f; --inno-error-70: #ff8980; --inno-error-80: #ffb4ab; --inno-error-90: #ffdad6; --inno-error-95: #ffedea; --inno-error-100: #ffffff;
 
-  /* ---------- 중립 ---------- */
-  --inno-surface: #ffffff;
-  --inno-surface-sunken: #f4f5f7;
-  --inno-surface-hover: #ebecf0;
-  --inno-border: #dcdfe4;
-  --inno-border-strong: #8993a4;
+  /* ===== 역할 — 실제로 쓰는 것 ===== */
+  --inno-primary: #5540e4;  /* primary-40 */
+  --inno-on-primary: #ffffff;  /* primary-100 */
+  --inno-primary-container: #e9ddff;  /* primary-90 */
+  --inno-on-primary-container: #000965;  /* primary-10 */
+  --inno-secondary: #635a74;  /* secondary-40 */
+  --inno-on-secondary: #ffffff;  /* secondary-100 */
+  --inno-secondary-container: #e8defc;  /* secondary-90 */
+  --inno-on-secondary-container: #1e182d;  /* secondary-10 */
+  --inno-tertiary: #844f5c;  /* tertiary-40 */
+  --inno-on-tertiary: #ffffff;  /* tertiary-100 */
+  --inno-tertiary-container: #ffd9e1;  /* tertiary-90 */
+  --inno-on-tertiary-container: #380a1a;  /* tertiary-10 */
+  --inno-error: #af2d31;  /* error-40 */
+  --inno-on-error: #ffffff;  /* error-100 */
+  --inno-error-container: #ffdad6;  /* error-90 */
+  --inno-on-error-container: #3e0400;  /* error-10 */
+  --inno-surface: #fbf8ff;  /* neutral-98 */
+  --inno-on-surface: #1c1b20;  /* neutral-10 */
+  --inno-surface-variant: #e5e0ef;  /* neutral-variant-90 */
+  --inno-on-surface-variant: #494551;  /* neutral-variant-30 */
+  --inno-surface-container-lowest: #ffffff;  /* neutral-100 */
+  --inno-surface-container-low: #f5f2fa;  /* neutral-96 */
+  --inno-surface-container: #efedf4;  /* neutral-94 */
+  --inno-surface-container-high: #eae7ee;  /* neutral-92 */
+  --inno-surface-container-highest: #e4e1e9;  /* neutral-90 */
+  --inno-outline: #7a7582;  /* neutral-variant-50 */
+  --inno-outline-variant: #c9c4d3;  /* neutral-variant-80 */
 
-  --inno-text: #1d2233;
-  --inno-text-subtle: #5a6173;
-  --inno-text-faint: #8a91a3;
+  /*
+   * ===== 상태 레이어 =====
+   *
+   * M3 는 hover 색을 따로 만들지 않는다. **바탕 위에 `on-*` 색을 옅게 덮는다.**
+   * 어떤 배경에 올려도 같은 규칙이 먹고, 색이 두 배로 늘지 않는다.
+   */
+  --inno-state-hover: 0.08;
+  --inno-state-focus: 0.10;
+  --inno-state-pressed: 0.12;
 
-  /* ---------- 의미색 ---------- */
-  --inno-danger: #c9372c;
-  --inno-danger-subtle: #ffecea;
-  --inno-success: #1f845a;
-  --inno-success-subtle: #dcfff1;
-  --inno-warning: #a54800;
-  --inno-warning-subtle: #fff0e6;
-  --inno-info: #0055cc;
-  --inno-info-subtle: #e9f2ff;
-
-  /* ---------- 글자 ---------- */
+  /* ===== 타입 스케일 (M3 이름, 우리 크기) ===== */
   --inno-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
     "Malgun Gothic", sans-serif;
   --inno-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --inno-text-xs: 11px;
-  --inno-text-sm: 12px;
-  --inno-text-md: 13px;
-  --inno-text-lg: 15px;
-  --inno-leading-tight: 1.35;
-  --inno-leading: 1.55;
+  --inno-label-sm: 11px;   --inno-label-sm-lh: 16px;   --inno-label-sm-weight: 500;
+  --inno-label-md: 12px;   --inno-label-md-lh: 16px;   --inno-label-md-weight: 500;
+  --inno-label-lg: 13px;   --inno-label-lg-lh: 20px;   --inno-label-lg-weight: 600;
+  --inno-body-sm: 11px;    --inno-body-sm-lh: 16px;
+  --inno-body-md: 12px;    --inno-body-md-lh: 18px;
+  --inno-body-lg: 13px;    --inno-body-lg-lh: 20px;
+  --inno-title-sm: 13px;   --inno-title-sm-lh: 20px;   --inno-title-sm-weight: 600;
+  --inno-title-md: 15px;   --inno-title-md-lh: 22px;   --inno-title-md-weight: 600;
 
-  /* ---------- 간격 ---------- */
+  /* ===== 모양 스케일 ===== */
+  --inno-shape-none: 0;
+  --inno-shape-xs: 4px;
+  --inno-shape-sm: 6px;
+  --inno-shape-md: 10px;
+  --inno-shape-lg: 14px;
+  --inno-shape-full: 999px;
+
+  /* ===== 간격 — 4dp 격자 ===== */
   --inno-space-1: 4px;
-  --inno-space-2: 6px;
-  --inno-space-3: 8px;
-  --inno-space-4: 12px;
-  --inno-space-5: 16px;
+  --inno-space-2: 8px;
+  --inno-space-3: 12px;
+  --inno-space-4: 16px;
+  --inno-space-5: 20px;
   --inno-space-6: 24px;
 
-  /* ---------- 모서리 ---------- */
-  --inno-radius-sm: 4px;
-  --inno-radius-md: 6px;
-  --inno-radius-lg: 10px;
-  --inno-radius-pill: 999px;
-
   /*
-   * ---------- 조작 요소 높이 ----------
+   * ===== 높이 =====
    *
-   * 남의 화면에 얹히므로 크게 만들지 않는다. `sm` 이 기본이고 `md` 는 편집기 툴바처럼 주변
-   * 버튼이 클 때만 쓴다.
+   * M3 는 그림자 대신 **표면 단계**로 높이를 표현한다. 떠 있는 것일수록 진한 표면을 쓴다.
+   * 다만 남의 화면 위에 덮는 판은 경계가 분명해야 해서 그림자를 함께 쓴다.
    */
+  --inno-elevation-0: var(--inno-surface);
+  --inno-elevation-1: var(--inno-surface-container-low);
+  --inno-elevation-2: var(--inno-surface-container);
+  --inno-elevation-3: var(--inno-surface-container-high);
+  --inno-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --inno-shadow-3: 0 8px 20px rgba(0, 0, 0, 0.16);
+
+  /* ===== 조작 요소 높이 =====
+   * 남의 화면에 얹히므로 크게 만들지 않는다. `sm` 이 기본이다. */
   --inno-control-sm: 24px;
   --inno-control-md: 32px;
-
-  /* ---------- 그림자 ---------- */
-  --inno-shadow-raised: 0 1px 2px rgba(29, 34, 51, 0.16);
-  --inno-shadow-overlay: 0 8px 20px rgba(29, 34, 51, 0.18);
-
-  /* ---------- 초점 ---------- */
-  --inno-focus-ring: 2px solid var(--inno-brand);
-  --inno-focus-offset: 2px;
 }
 
 /*
  * 주입 UI 의 껍데기.
  *
- * 남의 페이지 스타일이 새어 들어오지 않게 `all: initial` 로 끊고, 우리가 필요한 것만 다시 켠다.
- * 이 클래스를 shadow host 에 준다.
+ * 남의 페이지 스타일이 새어 들어오지 않게 `all: initial` 로 끊고 필요한 것만 다시 켠다.
  */
 .inno-root {
   all: initial;
   font-family: var(--inno-font);
-  color: var(--inno-text);
+  color: var(--inno-on-surface);
 }
