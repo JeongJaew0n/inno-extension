@@ -67,6 +67,10 @@ import {
   CONFLUENCE_MERMAID_EXTENSION_KEY,
   isMermaidCodeBlockSource,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
+import {
+  parseJiraIsoDate,
+  summarizeSprint,
+} from '../src/sites/jira/features/boardSprintInfo/format';
 import { resolveCopyTargets } from '../src/sites/gitlab/features/commitShaCopy/runtime';
 import {
   buildMergeRequestMarkdown,
@@ -1248,6 +1252,56 @@ test('Markdown 변환은 벗기기 · 문단 · 사이트 전용 단계 순서�
   assert.ok(paragraph < extra, '문단 변환이 사이트 전용 단계보다 먼저여야 한다');
   // 단계마다 본문을 다시 잡아야 순번과 노드 참조가 어긋나지 않는다.
   assert.match(runtimeSource, /if \(paragraphRuns > 0\) editor = getEditor\(\);/);
+});
+
+test('Jira 가 주는 ISO 문자열은 오프셋에 콜론이 없다', () => {
+  // ES 명세의 Date.parse 는 `+09:00` 을 요구한다. V8 이 관대할 뿐이므로 정규화한다.
+  const parsed = parseJiraIsoDate('2026-09-09T16:31:24+0900');
+  assert.ok(parsed);
+  assert.equal(parsed?.toISOString(), '2026-09-09T07:31:24.000Z');
+  assert.equal(parseJiraIsoDate('말이 안 되는 값'), null);
+});
+
+test('활성 스프린트 요약은 기간을 보여주고 목표가 있으면 덧붙인다', () => {
+  const base = {
+    id: 2177,
+    name: 'Jazz-v1.0-Sprint1',
+    isoStartDate: '2026-09-09T16:31:24+0900',
+    isoEndDate: '2026-09-30T13:00:00+0900',
+    daysRemaining: 8,
+  };
+
+  const withoutGoal = summarizeSprint({ ...base, goal: '' });
+  assert.equal(withoutGoal?.label, '9/9 ~ 9/30 · 8일 남음');
+  assert.equal(withoutGoal?.hasGoal, false);
+  // 목표가 없다는 것과 못 읽은 것은 구분돼야 한다.
+  assert.match(withoutGoal?.title ?? '', /목표: 설정되지 않음/);
+
+  const withGoal = summarizeSprint({ ...base, goal: '  ArgoCD\n  정리  ' });
+  assert.equal(withGoal?.label, '9/9 ~ 9/30 · 8일 남음 · ArgoCD 정리');
+  assert.equal(withGoal?.hasGoal, true);
+  assert.match(withGoal?.title ?? '', /목표: ArgoCD 정리/);
+});
+
+test('날짜를 읽지 못하면 아무것도 보여주지 않는다', () => {
+  // 절반만 맞는 기간을 띄우는 것보다 낫다.
+  assert.equal(
+    summarizeSprint({
+      id: 1, name: 'x', goal: '', daysRemaining: 3,
+      isoStartDate: '깨진 값', isoEndDate: '2026-09-30T13:00:00+0900',
+    }),
+    null,
+  );
+});
+
+test('활성 스프린트 정보는 SPA_STATE 만 읽고 네트워크를 쓰지 않는다', async () => {
+  const bridge = await readFile('src/sites/jira/sprintState/mainBridge.ts', 'utf8');
+  const runtime = await readFile('src/sites/jira/features/boardSprintInfo/runtime.ts', 'utf8');
+
+  assert.match(bridge, /SPA_STATE/);
+  for (const source of [bridge, runtime]) {
+    assert.doesNotMatch(source, /\bfetch\(|XMLHttpRequest|axios/);
+  }
 });
 
 test('설명 편집 버튼은 아래쪽 취소·저장을 대신 누른다', async () => {

@@ -80,6 +80,14 @@ export const SITES = [
         hasDetails: false,
       },
       {
+        id: 'boardSprintInfo',
+        name: '활성 스프린트 정보',
+        description: '보드 상단 `빠른 필터` 옆에 활성 스프린트의 기간·남은 일수·목표를 보여줍니다.',
+        routeSummary: 'Jira 활성 스프린트 보드',
+        defaultEnabled: true,
+        hasDetails: false,
+      },
+      {
         id: 'descriptionEditActions',
         name: '설명 편집 버튼',
         description: '설명을 편집 중일 때 `설명` 제목 옆에 취소·저장 버튼을 추가합니다. 문서 끝까지 내려가지 않아도 됩니다.',

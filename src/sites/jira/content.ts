@@ -5,6 +5,7 @@ import { createBacklogSlashTemplateRuntime } from './features/backlogSlashTempla
 import { createEditorMarkdownToAdfRuntimeForJira } from './features/editorMarkdownToAdf/runtime';
 import { createDescriptionMarkdownCopyRuntime } from './features/descriptionMarkdownCopy/runtime';
 import { createDescriptionEditActionsRuntime } from './features/descriptionEditActions/runtime';
+import { createBoardSprintInfoRuntime } from './features/boardSprintInfo/runtime';
 
 const runtime = createSiteRuntime({
   siteId: 'jira',
@@ -15,6 +16,7 @@ const runtime = createSiteRuntime({
     createEditorMarkdownToAdfRuntimeForJira(),
     createDescriptionMarkdownCopyRuntime(),
     createDescriptionEditActionsRuntime(),
+    createBoardSprintInfoRuntime(),
   ],
   debounceMs: 180,
 });

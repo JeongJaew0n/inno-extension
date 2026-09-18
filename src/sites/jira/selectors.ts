@@ -123,3 +123,14 @@ export const DESCRIPTION_EDITOR_CANCEL_BUTTON = '[data-testid="comment-cancel-bu
 
 /** 편집기 아래쪽 `저장` 버튼. 이름이 `comment-` 인 이유는 위와 같다. */
 export const DESCRIPTION_EDITOR_SAVE_BUTTON = '[data-testid="comment-save-button"]';
+
+/** 보드 활성 스프린트 정보 기능. */
+export const BOARD_SPRINT_INFO_ROOT = 'jira-board-sprint-info';
+
+/**
+ * 보드 상단 바의 필터 목록.
+ *
+ * `버전 · Epic · 유형 · 레이블 · 빠른 필터` 가 이 안의 `<ul>` 에 들어 있다. 이 컨테이너 끝에
+ * 붙이면 **`빠른 필터` 오른쪽**이 된다. 실측에서 오른쪽으로 369px 가 비어 있었다.
+ */
+export const BOARD_FILTER_CONTAINER = '[data-testid="software-filters.ui.list-filter-container"]';

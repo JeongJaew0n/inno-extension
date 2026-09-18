@@ -42,6 +42,11 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
               customTags: [],
             },
           },
+          boardSprintInfo: {
+            // 읽어서 보여주기만 한다.
+            enabled: true,
+            options: {},
+          },
           descriptionEditActions: {
             // 아래쪽 취소·저장 버튼을 대신 누를 뿐이다. 새로운 동작을 만들지 않는다.
             enabled: true,
