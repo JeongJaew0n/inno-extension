@@ -142,9 +142,13 @@ export const PAST_SPRINT_PANEL_ROOT = 'jira-past-sprint-panel';
 /**
  * 보드 본문. 패널을 이 위에 덮는다.
  *
+ * 실측으로 고른 값이다. 처음에 `software-board.board-container.board` 로 넣었다가 **그런 요소가
+ * 없어서** 패널이 조용히 안 뜨는 버그를 만들었다. 실제로 있는 것은 `software-board.board` 와
+ * `software-board.board-area` 둘이고, 뒤가 이미 `position: relative` 라 덮기에 알맞다.
+ *
  * **보드 DOM 을 건드리지 않는다.** 카드를 지우면 React 의 가상 DOM 과 실제 화면이 어긋난 채
  * 남아서, 나중에 드래그나 `스프린트 완료` 가 보이는 것과 다른 대상에 걸린다.
  *
  * docs/plans/jira-past-sprint-view/spec.md
  */
-export const BOARD_CONTENT = '[data-testid="software-board.board-container.board"]';
+export const BOARD_CONTENT = '[data-testid="software-board.board-area"]';

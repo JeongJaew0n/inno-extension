@@ -21,6 +21,7 @@ import {
   type JiraSprint,
 } from '../../api/sprints';
 import { isJiraBoardRoute, parseJiraBoardUrl } from '../../routes';
+import { requestActiveSprints } from '../../sprintState/client';
 import {
   BOARD_CONTENT,
   BOARD_FILTER_CONTAINER,
@@ -28,8 +29,6 @@ import {
   PAST_SPRINT_VIEW_ROOT,
 } from '../../selectors';
 import { closedSprintsNewestFirst, groupIssuesByStatus } from './columns';
-
-const ACTIVE_VALUE = 'active';
 
 function formatPeriod(sprint: JiraSprint): string {
   const format = (value: string | null): string => {
@@ -76,7 +75,11 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
   function ensurePanel(context: PageContext): ShadowRoot | null {
     const board = context.document.querySelector<HTMLElement>(BOARD_CONTENT);
-    if (!board) return null;
+    if (!board) {
+      // 조용히 실패하지 않는다. 앵커를 못 찾으면 아무 일도 안 일어난 것처럼 보여 원인을 못 찾는다.
+      console.error('[Inno Extension] 지난 스프린트 패널을 붙일 보드 영역을 찾지 못했습니다.', BOARD_CONTENT);
+      return null;
+    }
     if (panel?.isConnected) return panelShadow();
 
     const next = context.document.createElement('div');
@@ -149,8 +152,9 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
     shadow.querySelector('[data-panel-close]')?.addEventListener('click', () => {
       closePanel();
-      const select = host?.shadowRoot?.querySelector<HTMLSelectElement>('select');
-      if (select) select.value = ACTIVE_VALUE;
+      // 트리거 이름을 활성 스프린트로 되돌린다.
+      const active = sprints?.find((entry) => entry.state === 'active');
+      if (active) setTriggerLabel(active.name);
     });
 
     // 보드가 `position: static` 이면 절대 위치가 엉뚱한 곳을 기준으로 잡는다.
@@ -218,33 +222,76 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     }
   }
 
-  function renderOptions(select: HTMLSelectElement, list: JiraSprint[]): void {
-    const closed = closedSprintsNewestFirst(list);
-    const current = select.value;
-    select.innerHTML = [
-      `<option value="${ACTIVE_VALUE}">활성 스프린트</option>`,
-      ...closed.map((sprint) => (
-        `<option value="${sprint.id}">${escapeHtml(sprint.name || `스프린트 ${sprint.id}`)}</option>`
-      )),
-    ].join('');
-    select.value = current || ACTIVE_VALUE;
-    if (closed.length === 0) {
-      select.innerHTML += '<option disabled>종료된 스프린트가 없습니다</option>';
-    }
+  /** 트리거에 보일 이름. 아직 목록을 안 불러왔어도 활성 스프린트 이름은 보여준다. */
+  function setTriggerLabel(text: string): void {
+    const label = host?.shadowRoot?.querySelector<HTMLElement>('[data-trigger-label]');
+    if (label) label.textContent = text;
   }
 
-  /** 셀렉트를 처음 열 때만 목록을 불러온다. **보드를 여는 것만으로 요청하지 않는다.** */
-  async function ensureSprints(select: HTMLSelectElement): Promise<void> {
-    if (sprints || loadingSprints) return;
+  function closeMenu(): void {
+    const menu = host?.shadowRoot?.querySelector<HTMLElement>('[data-menu]');
+    if (menu) menu.hidden = true;
+  }
+
+  /**
+   * 목록을 그린다.
+   *
+   * 네이티브 `select` 로는 **오른쪽에 `활성` 을 세울 수 없다.** 그래서 직접 그린다.
+   * 왼쪽이 이름, 오른쪽이 상태다.
+   */
+  function renderMenu(context: PageContext, list: JiraSprint[]): void {
+    const menu = host?.shadowRoot?.querySelector<HTMLElement>('[data-menu]');
+    if (!menu) return;
+
+    const active = list.filter((sprint) => sprint.state === 'active');
+    const closed = closedSprintsNewestFirst(list);
+
+    const row = (sprint: JiraSprint, isActive: boolean): string => `
+      <button type="button" class="row" data-sprint-id="${sprint.id}" data-active="${isActive}">
+        <span class="name">${escapeHtml(sprint.name || `스프린트 ${sprint.id}`)}</span>
+        <span class="state">${isActive ? '활성' : formatPeriod(sprint)}</span>
+      </button>
+    `;
+
+    menu.innerHTML = [
+      ...active.map((sprint) => row(sprint, true)),
+      closed.length > 0 ? '<div class="divider"></div>' : '',
+      ...closed.map((sprint) => row(sprint, false)),
+      closed.length === 0 ? '<div class="empty">종료된 스프린트가 없습니다</div>' : '',
+    ].join('');
+
+    menu.querySelectorAll<HTMLButtonElement>('[data-sprint-id]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const id = Number(button.dataset.sprintId);
+        const sprint = list.find((entry) => entry.id === id);
+        closeMenu();
+        if (!sprint) return;
+        setTriggerLabel(sprint.name || `스프린트 ${sprint.id}`);
+        if (sprint.state === 'active') {
+          closePanel();
+          return;
+        }
+        void showSprint(context, sprint);
+      });
+    });
+  }
+
+  /** 메뉴를 처음 열 때만 목록을 불러온다. **보드를 여는 것만으로 요청하지 않는다.** */
+  async function ensureSprints(context: PageContext): Promise<void> {
+    if (sprints) { renderMenu(context, sprints); return; }
+    if (loadingSprints) return;
+
     loadingSprints = true;
+    const menu = host?.shadowRoot?.querySelector<HTMLElement>('[data-menu]');
+    if (menu) menu.innerHTML = '<div class="empty">불러오는 중…</div>';
     try {
       const list = await fetchBoardSprints(boardId);
       sprints = list;
-      renderOptions(select, list);
+      renderMenu(context, list);
     } catch (error) {
       console.error('[Inno Extension] 스프린트 목록 조회 실패', error);
       const message = error instanceof JiraApiError ? error.message : '스프린트 목록을 불러오지 못했습니다.';
-      select.innerHTML = `<option value="${ACTIVE_VALUE}">활성 스프린트</option><option disabled>${escapeHtml(message)}</option>`;
+      if (menu) menu.innerHTML = `<div class="empty error">${escapeHtml(message)}</div>`;
     } finally {
       loadingSprints = false;
     }
@@ -257,41 +304,78 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     next.style.display = 'inline-flex';
     next.style.alignItems = 'center';
     next.style.marginInlineStart = '8px';
+    next.style.position = 'relative';
 
     const shadow = next.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
       <style>
         :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        select {
-          box-sizing: border-box; min-height: 24px; max-width: 220px; padding: 0 6px;
+        .trigger {
+          display: inline-flex; align-items: center; gap: 6px;
+          box-sizing: border-box; min-height: 24px; max-width: 240px; padding: 0 8px;
           border: 1px solid #8590a2; border-radius: 3px; background: #ffffff;
           color: #172b4d; font: inherit; font-size: 12px; cursor: pointer;
         }
+        .trigger:hover { background: #f1f2f4; }
+        .trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .caret { color: #626f86; }
+        .menu {
+          position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
+          min-width: 300px; max-height: 320px; overflow-y: auto; padding: 4px;
+          border: 1px solid #dfe1e6; border-radius: 6px; background: #ffffff;
+          box-shadow: 0 8px 16px #091e4229;
+        }
+        .row {
+          display: flex; align-items: center; gap: 12px; width: 100%;
+          padding: 6px 8px; border: 0; border-radius: 3px; background: transparent;
+          color: #172b4d; font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+        }
+        .row:hover { background: #f1f2f4; }
+        /* 왼쪽 이름, 오른쪽 상태. 네이티브 select 로는 이 배치가 안 된다 */
+        .row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .row .state { flex: 0 0 auto; color: #626f86; font-size: 11px; }
+        .row[data-active="true"] .state {
+          padding: 1px 6px; border-radius: 8px; background: #dcfff1; color: #216e4e; font-weight: 700;
+        }
+        .divider { height: 1px; margin: 4px 0; background: #dfe1e6; }
+        .empty { padding: 10px 8px; color: #626f86; font-size: 12px; }
+        .empty.error { color: #ae2e24; }
       </style>
-      <select aria-label="스프린트 선택">
-        <option value="${ACTIVE_VALUE}">활성 스프린트</option>
-      </select>
+      <button type="button" class="trigger" data-trigger>
+        <span data-trigger-label>스프린트</span>
+        <span class="caret">▾</span>
+      </button>
+      <div class="menu" data-menu hidden></div>
     `;
 
-    const select = shadow.querySelector<HTMLSelectElement>('select');
-    if (!select) return null;
+    const trigger = shadow.querySelector<HTMLButtonElement>('[data-trigger]');
+    const menu = shadow.querySelector<HTMLElement>('[data-menu]');
+    if (!trigger || !menu) return null;
 
-    // 목록을 여는 순간 불러온다. 이 기능에서 네트워크가 나가는 첫 지점이다.
-    select.addEventListener('mousedown', () => { void ensureSprints(select); }, { once: false });
-    select.addEventListener('focus', () => { void ensureSprints(select); });
+    trigger.addEventListener('click', () => {
+      const opening = menu.hidden;
+      menu.hidden = !opening;
+      if (opening) void ensureSprints(context);
+    });
 
-    select.addEventListener('change', () => {
-      if (select.value === ACTIVE_VALUE) {
-        closePanel();
-        return;
-      }
-      const sprint = sprints?.find((entry) => String(entry.id) === select.value);
-      if (!sprint) return;
-      void showSprint(context, sprint);
+    // 바깥을 누르면 닫는다.
+    context.document.addEventListener('click', (event) => {
+      if (!next.isConnected) return;
+      if (event.composedPath().includes(next)) return;
+      menu.hidden = true;
     });
 
     anchor.append(next);
     return next;
+  }
+
+  /** 활성 스프린트 이름을 요청 없이 채운다. 페이지가 이미 들고 있는 값을 읽는다. */
+  function fillActiveName(context: PageContext): void {
+    void requestActiveSprints(context.document, boardId).then((active) => {
+      if (!host?.isConnected || active.length === 0) return;
+      const label = host.shadowRoot?.querySelector<HTMLElement>('[data-trigger-label]');
+      if (label && label.textContent === '스프린트') label.textContent = active[0].name;
+    });
   }
 
   return {
@@ -318,6 +402,7 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
       host?.remove();
       host = createHost(context, anchor);
+      if (host) fillActiveName(context);
     },
 
     dispose,

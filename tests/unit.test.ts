@@ -443,7 +443,9 @@ test('지난 스프린트 보기는 보드 DOM 을 건드리지 않는다', asyn
   assert.doesNotMatch(source, /card-with-icc/);
   assert.doesNotMatch(source, /\.remove\(\)\s*;?\s*\/\/\s*카드/);
   // 보드를 여는 것만으로 요청하지 않는다.
-  assert.match(source, /셀렉트를 처음 열 때만/);
+  assert.match(source, /메뉴를 처음 열 때만/);
+  // 앵커를 못 찾으면 조용히 끝나지 않는다. 그 버그로 아무 일도 안 일어난 적이 있다.
+  assert.match(source, /console\.error\('\[Inno Extension\] 지난 스프린트 패널을 붙일 보드 영역/);
 });
 
 test('네트워크를 쓰는 기능은 카탈로그에 표시돼 있어야 한다', async () => {
