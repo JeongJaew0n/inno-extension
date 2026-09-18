@@ -1,13 +1,20 @@
 import { INJECTED_ID, STYLE_ID } from '../../selectors';
+import { designTokensFor } from '../../../../platform/design/tokens';
+
+/**
+ * 아마란스는 Shadow DOM 을 쓰지 않는다. 페이지에 style 을 직접 넣고 주입 루트 id 로
+ * 범위를 잡으므로 토큰도 그 선택자에 선언한다. 자세한 사정은 titleAutofill/styles.ts 에 적었다.
+ */
 
 const STYLE_TEXT = `
+${designTokensFor(`#${INJECTED_ID}`)}
 #${INJECTED_ID} {
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
   width: 100%;
-  gap: 6px;
-  margin-top: 8px;
+  gap: var(--inno-space-1);
+  margin-top: var(--inno-space-2);
   clear: both;
   box-sizing: border-box;
 }
@@ -16,51 +23,51 @@ const STYLE_TEXT = `
   flex: 0 0 auto;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: var(--inno-space-1);
 }
 #${INJECTED_ID} .inno-amaranth-attendance-button {
   appearance: none;
-  border: 1px solid #c8ccd4;
-  background: #ffffff;
-  color: #3b4048;
-  font-size: 12px;
+  border: 1px solid var(--inno-outline);
+  background: var(--inno-surface-container-lowest);
+  color: var(--inno-on-surface);
+  font-size: var(--inno-label-md);
   line-height: 1;
   font-weight: 600;
-  padding: 7px 12px;
-  border-radius: 14px;
+  padding: var(--inno-space-2) var(--inno-space-3);
+  border-radius: var(--inno-shape-full);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   white-space: nowrap;
 }
 #${INJECTED_ID} .inno-amaranth-attendance-button:hover {
-  border-color: #4a7dff;
-  color: #4a7dff;
+  border-color: var(--inno-primary);
+  color: var(--inno-primary);
 }
 #${INJECTED_ID} .inno-amaranth-attendance-button.is-active {
-  background: #4a7dff;
-  border-color: #4a7dff;
-  color: #ffffff;
+  background: var(--inno-primary);
+  border-color: var(--inno-primary);
+  color: var(--inno-on-primary);
 }
 #${INJECTED_ID} .inno-amaranth-attendance-greeting-copy {
   appearance: none;
-  border: 1px solid #b9c5cf;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #59636d;
+  border: 1px solid var(--inno-outline-variant);
+  border-radius: var(--inno-shape-full);
+  background: var(--inno-surface-container-lowest);
+  color: var(--inno-on-surface-variant);
   font-family: inherit;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--inno-label-sm);
+  font-weight: var(--inno-label-sm-weight);
   line-height: 1;
-  padding: 5px 8px;
+  padding: var(--inno-space-1) var(--inno-space-2);
   white-space: nowrap;
   cursor: pointer;
 }
 #${INJECTED_ID} .inno-amaranth-attendance-greeting-copy:hover:not(:disabled) {
-  border-color: #4a7dff;
-  color: #4a7dff;
+  border-color: var(--inno-primary);
+  color: var(--inno-primary);
 }
 #${INJECTED_ID} .inno-amaranth-attendance-greeting-copy:focus-visible {
-  outline: 2px solid #4a7dff;
+  outline: 2px solid var(--inno-primary);
   outline-offset: 1px;
 }
 #${INJECTED_ID} .inno-amaranth-attendance-greeting-copy:disabled {
@@ -68,12 +75,12 @@ const STYLE_TEXT = `
   opacity: 0.8;
 }
 #${INJECTED_ID} .inno-amaranth-attendance-greeting-copy[data-state="success"] {
-  border-color: #70ad8b;
-  color: #327552;
+  border-color: var(--inno-primary);
+  color: var(--inno-primary);
 }
 #${INJECTED_ID} .inno-amaranth-attendance-greeting-copy[data-state="error"] {
-  border-color: #d88a8a;
-  color: #b33d3d;
+  border-color: var(--inno-error);
+  color: var(--inno-error);
 }
 `;
 

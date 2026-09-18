@@ -88,8 +88,12 @@ PALETTES = {
     'primary': palette(SEED_HUE, SEED_CHROMA),
     # M3 는 보조색을 같은 색상에서 채도만 낮춰 뽑는다
     'secondary': palette(SEED_HUE, 16),
-    # 강조색은 색상환에서 60도 돌린다
-    'tertiary': palette((SEED_HUE + 60) % 360, 24),
+    # 강조색은 색상환에서 60도 돌린다.
+    #
+    # **빼는 쪽으로 돈다.** M3 는 더하는 쪽을 쓰지만 우리 시드(304°)에 60을 더하면 4° 로
+    # 빨강 근처에 떨어져 오류색(30°)과 거의 같아진다. 실제로 `tertiary-90`(#ffd9e1)과
+    # `error-90`(#ffdad6)이 구분되지 않아, 안내문이 오류처럼 보였다. Popup 에서 눈으로 잡았다.
+    'tertiary': palette((SEED_HUE - 60) % 360, 24),
     # 중립은 시드 색상의 흔적만 남긴다. 화면 전체가 미묘하게 같은 계열이 된다
     'neutral': palette(SEED_HUE, 4),
     'neutral-variant': palette(SEED_HUE, 8),
@@ -349,9 +353,38 @@ export function designTokensFor(selector: string): string {{
 """
 
 
+def emit_popup_css() -> str:
+    """
+    Popup 이 `@import` 할 토큰 파일.
+
+    Popup 은 **우리 확장의 페이지**라 남의 CSS 와 싸울 일이 없다. 그래서 Shadow DOM 도,
+    `--inno-` 범위를 좁히는 일도 필요 없이 `:root` 에 그대로 선언한다.
+
+    `design/tokens.css` 를 그대로 쓰지 않는 이유는 그 폴더가 빌드에 들어가지 않기 때문이다.
+    생성물만 `src/` 로 보낸다.
+    """
+    import re
+    body = re.sub(r'/\*.*?\*/', '', emit_css(), flags=re.S)
+    # 선택자(`:root, :host`)까지 그대로 가져온다. Popup 에는 `:root` 가 걸린다.
+    block = re.search(r'(:root[^{]*\{.*?\n\})', body, flags=re.S).group(1)
+    # 생성물이지만 우리 페이지에서만 쓰므로 사람이 읽을 수 있게 줄을 살려 둔다.
+    block = re.sub(r'\n\s*\n+', '\n', block)
+    return (
+        '/*\n'
+        ' * Popup 디자인 토큰\n'
+        ' *\n'
+        ' * **손으로 쓰지 않는다.** `npm run design:sync` 가 만든다.\n'
+        ' * 값의 뜻과 배정 규칙은 `design/tokens.css` 와 `design/README.md` 에 있다.\n'
+        ' */\n\n'
+        + block + '\n'
+    )
+
+
 if __name__ == '__main__':
     import json, sys
-    if '--ts' in sys.argv:
+    if '--popup-css' in sys.argv:
+        print(emit_popup_css(), end='')
+    elif '--ts' in sys.argv:
         print(emit_ts(), end='')
     elif '--json' in sys.argv:
         print(json.dumps({

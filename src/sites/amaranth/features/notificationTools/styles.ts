@@ -4,37 +4,47 @@ import {
   NOTIFICATION_REFRESH_BUTTON_ID,
   NOTIFICATION_TOOLS_STYLE_ID,
 } from '../../selectors';
+import { designTokensFor } from '../../../../platform/design/tokens';
 
+/**
+ * 아마란스는 Shadow DOM 을 쓰지 않는다. 자세한 사정은 titleAutofill/styles.ts 에 적었다.
+ *
+ * 여기는 한 가지가 더 있다. **복사 버튼은 주입 루트 밑이 아니라 알림 행 안에 붙는다.**
+ * 그래서 토큰을 두 선택자 모두에 선언한다. 한쪽만 선언하면 나머지가 값을 못 찾는다.
+ */
 const STYLE_TEXT = `
+${designTokensFor(
+  `#${NOTIFICATION_REFRESH_BUTTON_ID}, .${NOTIFICATION_COPY_BUTTON_CLASS}`,
+)}
 #${NOTIFICATION_REFRESH_BUTTON_ID} {
   appearance: none;
   position: absolute;
   top: 4px;
   right: 12px;
   z-index: 2;
-  height: 22px;
+  min-height: var(--inno-control-sm);
   min-width: 66px;
-  padding: 0 8px;
-  border: 1px solid #b9c5cf;
-  border-radius: 3px;
-  background: #ffffff;
-  color: #43515e;
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 20px;
+  padding: 0 var(--inno-space-2);
+  border: 1px solid var(--inno-outline-variant);
+  border-radius: var(--inno-shape-xs);
+  background: var(--inno-surface-container-lowest);
+  color: var(--inno-on-surface-variant);
+  font-family: var(--inno-font);
+  font-size: var(--inno-label-sm);
+  font-weight: var(--inno-label-sm-weight);
+  line-height: 1;
   text-align: center;
   white-space: nowrap;
   cursor: pointer;
 }
 #${NOTIFICATION_REFRESH_BUTTON_ID}:hover:not(:disabled) {
-  border-color: #4588df;
-  color: #276fca;
-  background: #f4f9ff;
+  border-color: var(--inno-primary);
+  color: var(--inno-primary);
+  background: var(--inno-surface-container);
 }
 #${NOTIFICATION_REFRESH_BUTTON_ID}:focus-visible,
 .${NOTIFICATION_COPY_BUTTON_CLASS}:focus-visible {
-  outline: 2px solid #276fca;
+  outline: 2px solid var(--inno-primary);
   outline-offset: 1px;
 }
 #${NOTIFICATION_REFRESH_BUTTON_ID}:disabled {
@@ -42,12 +52,12 @@ const STYLE_TEXT = `
   opacity: 0.7;
 }
 #${NOTIFICATION_REFRESH_BUTTON_ID}[data-state="success"] {
-  border-color: #4f9a72;
-  color: #327552;
+  border-color: var(--inno-primary);
+  color: var(--inno-primary);
 }
 #${NOTIFICATION_REFRESH_BUTTON_ID}[data-state="error"] {
-  border-color: #d36a6a;
-  color: #b33d3d;
+  border-color: var(--inno-error);
+  color: var(--inno-error);
 }
 .${NOTIFICATION_CODE_ROW_CLASS} {
   align-items: center;
@@ -59,38 +69,37 @@ const STYLE_TEXT = `
 .${NOTIFICATION_COPY_BUTTON_CLASS} {
   appearance: none;
   flex: 0 0 auto;
-  height: 20px;
+  min-height: 20px;
   min-width: 34px;
-  margin-left: 5px;
-  padding: 0 6px;
-  border: 1px solid #91b9e8;
-  border-radius: 3px;
-  background: #f4f9ff;
-  color: #276fca;
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 18px;
+  margin-left: var(--inno-space-1);
+  padding: 0 var(--inno-space-1);
+  border: 1px solid transparent;
+  border-radius: var(--inno-shape-xs);
+  background: var(--inno-primary-container);
+  color: var(--inno-on-primary-container);
+  font-family: var(--inno-font);
+  font-size: var(--inno-label-sm);
+  font-weight: var(--inno-label-sm-weight);
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
 }
 .${NOTIFICATION_COPY_BUTTON_CLASS}:hover:not(:disabled) {
-  border-color: #4588df;
-  background: #eaf4ff;
+  border-color: var(--inno-primary);
 }
 .${NOTIFICATION_COPY_BUTTON_CLASS}:disabled {
   cursor: default;
   opacity: 0.82;
 }
 .${NOTIFICATION_COPY_BUTTON_CLASS}[data-state="success"] {
-  border-color: #70ad8b;
-  background: #f0faf4;
-  color: #327552;
+  border-color: var(--inno-primary);
+  background: var(--inno-primary-container);
+  color: var(--inno-on-primary-container);
 }
 .${NOTIFICATION_COPY_BUTTON_CLASS}[data-state="error"] {
-  border-color: #d88a8a;
-  background: #fff5f5;
-  color: #b33d3d;
+  border-color: var(--inno-error);
+  background: var(--inno-error-container);
+  color: var(--inno-on-error-container);
 }
 `;
 

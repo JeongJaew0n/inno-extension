@@ -1,49 +1,73 @@
 import { TITLE_AUTOFILL_BUTTON_ID, TITLE_AUTOFILL_STYLE_ID } from '../../selectors';
+import { designTokensFor } from '../../../../platform/design/tokens';
 
+/**
+ * 아마란스는 **Shadow DOM 을 쓰지 않는다.** 페이지에 `<style>` 을 직접 넣고 주입한 요소의
+ * id 로 범위를 잡는다.
+ *
+ * 그래서 두 가지가 다른 사이트와 다르다.
+ *
+ * | | 이유 |
+ * | --- | --- |
+ * | 토큰을 `:host` 가 아니라 `#id` 에 선언한다 | shadow 가 없으니 `:host` 가 걸리지 않는다 |
+ * | 공용 컴포넌트 CSS(`.inno-btn`)를 쓰지 않는다 | 클래스는 페이지의 `#id` 규칙에 특이도로 밀린다 |
+ *
+ * 값은 전부 토큰이다. 모양 규칙만 여기서 직접 쓴다.
+ */
 const STYLE_TEXT = `
+${designTokensFor(`#${TITLE_AUTOFILL_BUTTON_ID}`)}
 #${TITLE_AUTOFILL_BUTTON_ID} {
   appearance: none;
   position: relative;
   flex: 0 0 auto;
-  height: 24px;
-  margin-right: 8px;
-  padding: 0 8px;
-  border: 1px solid #2196f3;
-  border-radius: 3px;
-  background: #ffffff;
-  color: #1675c1;
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 22px;
+  align-self: center;
+  box-sizing: border-box;
+  min-height: var(--inno-control-sm);
+  margin-right: var(--inno-space-2);
+  padding: 0 var(--inno-space-2);
+  border: 1px solid var(--inno-outline);
+  border-radius: var(--inno-shape-xs);
+  background: var(--inno-surface-container-lowest);
+  color: var(--inno-primary);
+  font-family: var(--inno-font);
+  font-size: var(--inno-label-sm);
+  font-weight: var(--inno-label-sm-weight);
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
 }
 #${TITLE_AUTOFILL_BUTTON_ID}:hover:not(.is-disabled) {
-  background: #eef7ff;
+  background: var(--inno-surface-container);
 }
 #${TITLE_AUTOFILL_BUTTON_ID}:focus-visible {
-  outline: 2px solid #1675c1;
+  outline: 2px solid var(--inno-primary);
   outline-offset: 2px;
 }
 #${TITLE_AUTOFILL_BUTTON_ID}.is-disabled {
-  border-color: #c9cdd2;
-  color: #a4a8ad;
+  border-color: var(--inno-outline-variant);
+  color: var(--inno-outline);
   cursor: not-allowed;
 }
+
+/*
+ * 말풍선. 어두운 판에 밝은 글씨라 배경·글자를 뒤집어 쓴다.
+ *
+ * 이 자리를 말풍선이 쓰므로 이 버튼에는 상태 레이어를 얹지 않는다. 둘 다 ::after 를 쓰기
+ * 때문에 겹치면 하나가 가려진다.
+ */
 #${TITLE_AUTOFILL_BUTTON_ID}[data-inno-tooltip]::after {
   content: attr(data-inno-tooltip);
   position: absolute;
   z-index: 2147483647;
-  bottom: calc(100% + 8px);
-  left: -8px;
+  bottom: calc(100% + var(--inno-space-2));
+  left: calc(var(--inno-space-2) * -1);
   width: 250px;
-  padding: 8px 10px;
-  border-radius: 5px;
-  background: rgba(35, 40, 48, 0.96);
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  font-size: 11px;
+  padding: var(--inno-space-2) var(--inno-space-3);
+  border-radius: var(--inno-shape-sm);
+  background: var(--inno-on-surface);
+  color: var(--inno-surface);
+  box-shadow: var(--inno-shadow-3);
+  font-size: var(--inno-body-sm);
   font-weight: 400;
   line-height: 1.45;
   text-align: left;

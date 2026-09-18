@@ -1,12 +1,24 @@
+@import './design-tokens.css';
+
+/*
+ * Popup 스타일.
+ *
+ * **값은 전부 디자인 토큰이다.** 색·모서리·글꼴을 여기서 직접 정하지 않는다.
+ *
+ * 주입 UI 의 컴포넌트 CSS(`.inno-btn` 등)는 쓰지 않는다. 그쪽은 남의 화면에 얹히는 작은
+ * 조각용으로 모양이 잡혀 있고 여기는 520px 짜리 독립 화면이라 레이아웃이 다르다.
+ * **같은 토큰을 쓰는 것이 일관성이고, 클래스 이름을 맞추는 것이 일관성은 아니다.**
+ */
+
 :root {
   color-scheme: light;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #ffffff;
-  color: #25272b;
+  font-family: var(--inno-font);
+  background: var(--inno-surface);
+  color: var(--inno-on-surface);
 }
 
 * { box-sizing: border-box; }
-body { width: 520px; min-height: 600px; max-height: 600px; margin: 0; overflow-y: auto; background: #fff; }
+body { width: 520px; min-height: 600px; max-height: 600px; margin: 0; overflow-y: auto; background: var(--inno-surface); }
 button, input, textarea { font: inherit; }
 button { color: inherit; }
 
@@ -16,12 +28,12 @@ button { color: inherit; }
   align-items: center;
   justify-content: center;
   height: 48px;
-  background: linear-gradient(110deg, #5548eb, #7c2ff1);
-  color: #fff;
+  background: linear-gradient(110deg, var(--inno-primary-40), var(--inno-primary-30));
+  color: var(--inno-on-primary);
 }
 
 .brand-header h1,
-.page-header h1 { margin: 0; font-size: 15px; font-weight: 700; }
+.page-header h1 { margin: 0; font-size: var(--inno-title-md); font-weight: 700; }
 
 .page-header { position: relative; }
 .back-button {
@@ -31,12 +43,12 @@ button { color: inherit; }
   width: 34px;
   height: 34px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--inno-shape-sm);
   background: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  color: var(--inno-on-primary);
   cursor: pointer;
   font-size: 27px;
-  line-height: 28px;
+  line-height: 1;
 }
 
 .tabs {
@@ -45,21 +57,21 @@ button { color: inherit; }
   gap: 2px;
   margin: 8px;
   padding: 2px;
-  border-radius: 12px;
-  background: #eff0f3;
+  border-radius: var(--inno-shape-md);
+  background: var(--inno-surface-container);
 }
 
 .tab {
-  height: 32px;
+  height: var(--inno-control-md);
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--inno-shape-sm);
   background: transparent;
-  color: #6a6d73;
+  color: var(--inno-on-surface-variant);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--inno-label-md);
 }
 
-.tab.is-active { background: #fff; color: #5a45e8; box-shadow: 0 1px 4px rgba(20, 20, 40, 0.15); font-weight: 700; }
+.tab.is-active { background: var(--inno-surface-container-lowest); color: var(--inno-primary); box-shadow: var(--inno-shadow-1); font-weight: 700; }
 .page-content { padding: 18px 14px; }
 .site-list, .feature-list { display: grid; gap: 10px; }
 
@@ -68,8 +80,8 @@ button { color: inherit; }
   display: flex;
   align-items: center;
   min-height: 76px;
-  border-radius: 11px;
-  background: #f6f7f8;
+  border-radius: var(--inno-shape-lg);
+  background: var(--inno-surface-container-low);
   overflow: hidden;
 }
 
@@ -95,70 +107,70 @@ button { color: inherit; }
   width: 38px;
   height: 38px;
   flex: 0 0 auto;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(30, 30, 50, 0.08);
+  border-radius: var(--inno-shape-md);
+  background: var(--inno-surface-container-lowest);
+  box-shadow: var(--inno-shadow-1);
 }
 .site-icon-image { display: block; width: 32px; height: 32px; object-fit: contain; }
 
 .card-copy { display: grid; min-width: 0; gap: 5px; }
-.card-copy strong { font-size: 14px; }
-.host-row { overflow: hidden; color: #85888e; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.card-copy strong { font-size: var(--inno-title-sm); }
+.host-row { overflow: hidden; color: var(--inno-on-surface-variant); font-size: var(--inno-label-sm); text-overflow: ellipsis; white-space: nowrap; }
 .external-symbol { margin-left: 3px; }
-.feature-count { margin: 0 8px; padding: 3px 6px; border-radius: 10px; background: #e8eaee; color: #7e8289; font-size: 10px; font-weight: 700; }
-.icon-button { width: 27px; border: 0; background: transparent; color: #bdc0c5; cursor: pointer; font-size: 25px; }
-.site-open-button { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #8c9097; cursor: pointer; }
-.site-open-button:hover { background: #e8eaee; color: #5542ce; }
+.feature-count { margin: 0 8px; padding: 3px 6px; border-radius: var(--inno-shape-full); background: var(--inno-surface-container-high); color: var(--inno-on-surface-variant); font-size: var(--inno-label-sm); font-weight: 700; }
+.icon-button { width: 27px; border: 0; background: transparent; color: var(--inno-outline); cursor: pointer; font-size: 25px; }
+.site-open-button { width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--inno-shape-sm); background: transparent; color: var(--inno-on-surface-variant); cursor: pointer; }
+.site-open-button:hover { background: var(--inno-surface-container-high); color: var(--inno-primary); }
 
 .switch { position: relative; display: inline-flex; width: 44px; height: 24px; flex: 0 0 auto; cursor: pointer; }
 .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.switch-track { width: 44px; height: 24px; border-radius: 999px; background: #c8cbd1; transition: background 0.15s; }
-.switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: transform 0.15s; }
-.switch input:checked + .switch-track { background: #654cf2; }
+.switch-track { width: 44px; height: 24px; border-radius: var(--inno-shape-full); background: var(--inno-outline); transition: background 0.15s; }
+.switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--inno-surface-container-lowest); box-shadow: var(--inno-shadow-1); transition: transform 0.15s; }
+.switch input:checked + .switch-track { background: var(--inno-primary); }
 .switch input:checked + .switch-track::after { transform: translateX(20px); }
-.switch input:focus-visible + .switch-track { outline: 2px solid #3221cf; outline-offset: 2px; }
+.switch input:focus-visible + .switch-track { outline: 2px solid var(--inno-primary); outline-offset: 2px; }
 
-.section-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 12px; color: #6f737a; font-size: 12px; font-weight: 700; }
-.notice { margin: 0 0 12px; padding: 10px 12px; border-radius: 8px; background: #fff6d8; color: #715b00; font-size: 11px; line-height: 16px; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 4px 12px; color: var(--inno-on-surface-variant); font-size: 12px; font-weight: 700; }
+.notice { margin: 0 0 12px; padding: 10px 12px; border-radius: var(--inno-shape-sm); background: var(--inno-tertiary-container); color: var(--inno-on-tertiary-container); font-size: 11px; line-height: 16px; }
 .feature-card { min-height: 96px; padding: 11px 7px 11px 13px; }
 .feature-body { flex-direction: column; gap: 5px; padding: 0; }
 .feature-body strong { font-size: 13px; }
-.feature-body span { color: #696d73; font-size: 11px; line-height: 16px; }
-.feature-body small { color: #92969d; font-size: 10px; }
-code { padding: 2px 5px; border-radius: 4px; background: #eceff5; color: #5542ce; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.feature-body span { color: var(--inno-on-surface-variant); font-size: 11px; line-height: 16px; }
+.feature-body small { color: var(--inno-outline); font-size: 10px; }
+code { padding: 2px 5px; border-radius: var(--inno-shape-xs); background: var(--inno-surface-container); color: var(--inno-primary); font-family: var(--inno-font-mono); }
 
 .feature-detail { display: grid; gap: 12px; }
 .detail-summary,
 .route-box,
-.settings-card { border-radius: 11px; background: #f6f7f8; padding: 14px; }
+.settings-card { border-radius: var(--inno-shape-lg); background: var(--inno-surface-container-low); padding: 14px; }
 .detail-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.detail-summary p { margin: 8px 0 0; color: #666a71; font-size: 12px; line-height: 18px; }
-.eyebrow { color: #654cf2; font-size: 11px; font-weight: 700; }
-.route-box { display: grid; gap: 8px; color: #777b82; font-size: 11px; }
+.detail-summary p { margin: 8px 0 0; color: var(--inno-on-surface-variant); font-size: 12px; line-height: 18px; }
+.eyebrow { color: var(--inno-primary); font-size: 11px; font-weight: 700; }
+.route-box { display: grid; gap: 8px; color: var(--inno-on-surface-variant); font-size: 11px; }
 .route-box code { overflow-wrap: anywhere; line-height: 17px; }
 .settings-card h2 { margin: 0 0 12px; font-size: 13px; }
-.empty-options, .settings-card p { margin: 0; color: #767a81; font-size: 11px; line-height: 17px; }
+.empty-options, .settings-card p { margin: 0; color: var(--inno-on-surface-variant); font-size: 11px; line-height: 17px; }
 .option-fields { display: grid; gap: 12px; }
-.option-fields label { display: grid; gap: 5px; color: #4f5359; font-size: 11px; font-weight: 700; }
-.option-fields input { width: 100%; padding: 8px 10px; border: 1px solid #d5d8de; border-radius: 7px; background: #fff; color: #25272b; font-size: 12px; }
-.option-fields textarea { width: 100%; min-height: 240px; resize: vertical; padding: 10px 12px; border: 1px solid #d5d8de; border-radius: 7px; background: #fff; color: #25272b; font: 12px/18px ui-monospace, SFMono-Regular, Menlo, monospace; }
-.option-fields small { color: #8d9198; font-weight: 400; }
-.secondary-button { width: 100%; padding: 9px 12px; border: 1px solid #d8dbe1; border-radius: 8px; background: #fff; cursor: pointer; font-size: 11px; font-weight: 700; }
-.secondary-button:hover { border-color: #654cf2; color: #5542ce; }
+.option-fields label { display: grid; gap: 5px; color: var(--inno-on-surface-variant); font-size: 11px; font-weight: 700; }
+.option-fields input { width: 100%; padding: 8px 10px; border: 1px solid var(--inno-outline-variant); border-radius: var(--inno-shape-sm); background: var(--inno-surface-container-lowest); color: var(--inno-on-surface); font-size: 12px; }
+.option-fields textarea { width: 100%; min-height: 240px; resize: vertical; padding: 10px 12px; border: 1px solid var(--inno-outline-variant); border-radius: var(--inno-shape-sm); background: var(--inno-surface-container-lowest); color: var(--inno-on-surface); font: 12px/18px var(--inno-font-mono); }
+.option-fields small { color: var(--inno-outline); font-weight: 400; }
+.secondary-button { width: 100%; padding: 9px 12px; border: 1px solid var(--inno-outline-variant); border-radius: var(--inno-shape-sm); background: var(--inno-surface-container-lowest); cursor: pointer; font-size: 11px; font-weight: 700; }
+.secondary-button:hover { border-color: var(--inno-primary); color: var(--inno-primary); }
 .option-save-button {
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
-.option-save-button.is-saving { color: #6f737a; cursor: wait; }
+.option-save-button.is-saving { color: var(--inno-on-surface-variant); cursor: wait; }
 .option-save-button.is-saved {
-  border-color: #41a878;
-  background: #eaf8f1;
-  color: #167249;
+  border-color: var(--inno-primary);
+  background: var(--inno-primary-container);
+  color: var(--inno-on-primary-container);
   animation: save-confirmation 0.28s ease-out;
 }
 .option-save-button.is-error {
-  border-color: #d85a5a;
-  background: #fff1f1;
-  color: #a12f2f;
+  border-color: var(--inno-error);
+  background: var(--inno-error-container);
+  color: var(--inno-on-error-container);
 }
 @keyframes save-confirmation {
   0% { transform: scale(0.98); }
@@ -178,46 +190,46 @@ code { padding: 2px 5px; border-radius: 4px; background: #eceff5; color: #5542ce
 .option-fields input:focus-visible,
 .option-fields textarea:focus-visible,
 .primary-action:focus-visible {
-  outline: 2px solid #4935df;
+  outline: 2px solid var(--inno-primary);
   outline-offset: 2px;
 }
 .settings-page { display: grid; gap: 12px; }
 .settings-card dl { margin: 0; }
 .settings-card dl div { display: flex; justify-content: space-between; padding: 6px 0; font-size: 11px; }
-.settings-card dt { color: #777b82; }
+.settings-card dt { color: var(--inno-on-surface-variant); }
 .settings-card dd { margin: 0; font-weight: 700; }
 .danger-zone .secondary-button { margin-top: 12px; }
 
-.editor-converter-guide { padding: 10px; border: 1px solid #d9d4fb; border-radius: 8px; background: #f4f1ff; }
-.editor-converter-guide strong { color: #4935df; font-size: 11px; }
-.editor-converter-guide p { margin: 5px 0 0; color: #5f6370; font-size: 10px; line-height: 15px; }
-.field-help { margin: 0; color: #7d8188; font-size: 10px; line-height: 15px; }
-.primary-action { width: 100%; padding: 9px 12px; border: 0; border-radius: 8px; background: #654cf2; color: #fff; cursor: pointer; font-size: 11px; font-weight: 700; }
-.primary-action:hover { background: #5542ce; }
+.editor-converter-guide { padding: 10px; border: 1px solid var(--inno-primary-80); border-radius: var(--inno-shape-sm); background: var(--inno-primary-container); }
+.editor-converter-guide strong { color: var(--inno-primary); font-size: 11px; }
+.editor-converter-guide p { margin: 5px 0 0; color: var(--inno-on-surface-variant); font-size: 10px; line-height: 15px; }
+.field-help { margin: 0; color: var(--inno-outline); font-size: 10px; line-height: 15px; }
+.primary-action { width: 100%; padding: 9px 12px; border: 0; border-radius: var(--inno-shape-sm); background: var(--inno-primary); color: var(--inno-surface-container-lowest); cursor: pointer; font-size: 11px; font-weight: 700; }
+.primary-action:hover { background: var(--inno-primary); }
 .primary-action:disabled, .secondary-button:disabled { cursor: default; opacity: 0.48; }
 .file-input-label input { padding: 5px; font-family: inherit; font-weight: 400; }
 
 .prefix-tag-panel { display: grid; gap: 9px; }
 .prefix-tag-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.prefix-tag-head strong { color: #34373c; font-size: 12px; }
-.prefix-tag-head span { color: #7d8188; font-size: 9px; }
-.prefix-tag-panel > p { margin: 0; color: #5f6370; font-size: 10px; line-height: 15px; }
-.prefix-tag-panel > small { color: #7d8188; font-size: 9px; line-height: 14px; }
+.prefix-tag-head strong { color: var(--inno-on-surface); font-size: 12px; }
+.prefix-tag-head span { color: var(--inno-outline); font-size: 9px; }
+.prefix-tag-panel > p { margin: 0; color: var(--inno-on-surface-variant); font-size: 10px; line-height: 15px; }
+.prefix-tag-panel > small { color: var(--inno-outline); font-size: 9px; line-height: 14px; }
 
 .prefix-tag-table {
   width: 100%;
   /* collapse 로 두면 border-radius 가 무시된다. separate + spacing 0 이 같은 모양을 낸다. */
   border-collapse: separate;
   border-spacing: 0;
-  border: 1px solid #e0e2e6;
-  border-radius: 7px;
+  border: 1px solid var(--inno-outline-variant);
+  border-radius: var(--inno-shape-sm);
   overflow: hidden;
   table-layout: fixed;
 }
 .prefix-tag-table th {
   padding: 6px 8px;
-  background: #f1f2f4;
-  color: #6b7079;
+  background: var(--inno-surface-container);
+  color: var(--inno-on-surface-variant);
   font-size: 9px;
   font-weight: 700;
   text-align: left;
@@ -226,14 +238,14 @@ code { padding: 2px 5px; border-radius: 4px; background: #eceff5; color: #5542ce
 .prefix-tag-table th:nth-child(3) { width: 74px; text-align: right; }
 .prefix-tag-table td {
   padding: 5px 8px;
-  border-top: 1px solid #edeef0;
+  border-top: 1px solid var(--inno-outline-variant);
   vertical-align: middle;
 }
 .prefix-tag-table tbody tr.is-hidden .prefix-tag-name { opacity: 0.45; }
 
 .prefix-tag-name code {
-  color: #34373c;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--inno-on-surface);
+  font-family: var(--inno-font-mono);
   font-size: 11px;
   overflow-wrap: anywhere;
 }
@@ -241,30 +253,36 @@ code { padding: 2px 5px; border-radius: 4px; background: #eceff5; color: #5542ce
 .prefix-tag-manage { text-align: right; white-space: nowrap; }
 
 .prefix-tag-badge {
-  padding: 1px 6px; border-radius: 9px; background: #e4e6ea;
-  color: #6b7079; font-size: 9px; font-weight: 700;
+  padding: 1px 6px; border-radius: var(--inno-shape-full); background: var(--inno-surface-container-high);
+  color: var(--inno-on-surface-variant); font-size: 9px; font-weight: 700;
 }
 .link-button {
-  padding: 1px 5px; border: 0; border-radius: 4px; background: transparent;
-  color: #4935df; font-size: 10px; font-weight: 600; cursor: pointer;
+  padding: 1px 5px; border: 0; border-radius: var(--inno-shape-xs); background: transparent;
+  color: var(--inno-primary); font-size: 10px; font-weight: 600; cursor: pointer;
 }
-.link-button:hover { background: #ebe8ff; }
-.link-button.is-danger { color: #b3261e; }
-.link-button.is-danger:hover { background: #fdeceb; }
+.link-button:hover { background: var(--inno-primary-container); }
+.link-button.is-danger { color: var(--inno-error); }
+.link-button.is-danger:hover { background: var(--inno-error-container); }
 
 .prefix-tag-add { display: flex; gap: 6px; }
 .prefix-tag-add input {
   flex: 1;
   min-width: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--inno-font-mono);
   font-size: 11px;
 }
 /* .secondary-button 은 기본이 width:100% 라 flex 안에서 입력칸을 밀어낸다. */
 .prefix-tag-add .secondary-button { width: auto; flex: 0 0 auto; }
 
-/* API 를 쓰는 기능은 한눈에 보이게 한다. 표시 없이 네트워크를 쓰면 테스트가 깨진다. */
+/*
+ * API 를 쓰는 기능은 한눈에 보이게 한다. 표시 없이 네트워크를 쓰면 테스트가 깨진다.
+ *
+ * `.feature-body span` 이 특이도(0,1,1)로 이 규칙(0,1,0)을 이겨서 글자색이 짝에서 벗어났다.
+ * `*-container` 와 `on-*` 는 짝으로 써야 대비가 배정 규칙으로 보장된다. 선택자를 맞춰 되찾는다.
+ */
+.feature-body .network-badge,
 .network-badge {
-  margin-inline-start: 6px; padding: 1px 5px; border-radius: 8px;
-  background: #fff0e6; color: #a54800; font-size: 9px; font-weight: 700;
+  margin-inline-start: 6px; padding: 1px 5px; border-radius: var(--inno-shape-sm);
+  background: var(--inno-tertiary-container); color: var(--inno-on-tertiary-container); font-size: 9px; font-weight: 700;
   vertical-align: middle;
 }

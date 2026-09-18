@@ -45,7 +45,7 @@
   /* secondary */
   --inno-secondary-0: #000001; --inno-secondary-10: #1e182d; --inno-secondary-20: #342d44; --inno-secondary-30: #4b435b; --inno-secondary-40: #635a74; --inno-secondary-50: #7c738d; --inno-secondary-60: #968ca8; --inno-secondary-70: #b0a7c3; --inno-secondary-80: #ccc2df; --inno-secondary-90: #e8defc; --inno-secondary-95: #f4eeff; --inno-secondary-100: #ffffff;
   /* tertiary */
-  --inno-tertiary-0: #000000; --inno-tertiary-10: #380a1a; --inno-tertiary-20: #50212f; --inno-tertiary-30: #6a3745; --inno-tertiary-40: #844f5c; --inno-tertiary-50: #9e6875; --inno-tertiary-60: #ba818e; --inno-tertiary-70: #d69ba9; --inno-tertiary-80: #f3b6c4; --inno-tertiary-90: #ffd9e1; --inno-tertiary-95: #ffecf0; --inno-tertiary-100: #ffffff;
+  --inno-tertiary-0: #000000; --inno-tertiary-10: #001e2b; --inno-tertiary-20: #003548; --inno-tertiary-30: #004d67; --inno-tertiary-40: #256581; --inno-tertiary-50: #437e9b; --inno-tertiary-60: #5e98b6; --inno-tertiary-70: #79b2d2; --inno-tertiary-80: #95ceee; --inno-tertiary-90: #c2e8ff; --inno-tertiary-95: #e1f3ff; --inno-tertiary-100: #ffffff;
   /* neutral */
   --inno-neutral-0: #000001; --inno-neutral-10: #1c1b20; --inno-neutral-20: #312f35; --inno-neutral-30: #48464c; --inno-neutral-40: #605d64; --inno-neutral-50: #78767d; --inno-neutral-60: #929096; --inno-neutral-70: #adaab1; --inno-neutral-80: #c8c5cd; --inno-neutral-90: #e4e1e9; --inno-neutral-95: #f2eff7; --inno-neutral-100: #ffffff;
   /* neutral-variant */
@@ -62,10 +62,10 @@
   --inno-on-secondary: #ffffff;  /* secondary-100 */
   --inno-secondary-container: #e8defc;  /* secondary-90 */
   --inno-on-secondary-container: #1e182d;  /* secondary-10 */
-  --inno-tertiary: #844f5c;  /* tertiary-40 */
+  --inno-tertiary: #256581;  /* tertiary-40 */
   --inno-on-tertiary: #ffffff;  /* tertiary-100 */
-  --inno-tertiary-container: #ffd9e1;  /* tertiary-90 */
-  --inno-on-tertiary-container: #380a1a;  /* tertiary-10 */
+  --inno-tertiary-container: #c2e8ff;  /* tertiary-90 */
+  --inno-on-tertiary-container: #001e2b;  /* tertiary-10 */
   --inno-error: #af2d31;  /* error-40 */
   --inno-on-error: #ffffff;  /* error-100 */
   --inno-error-container: #ffdad6;  /* error-90 */
