@@ -28,7 +28,12 @@ import {
   PAST_SPRINT_PANEL_ROOT,
   PAST_SPRINT_VIEW_ROOT,
 } from '../../selectors';
-import { closedSprintsNewestFirst, groupIssuesByStatus } from './columns';
+import {
+  closedSprintsNewestFirst,
+  groupIssuesByAssignee,
+  groupIssuesByStatus,
+  type SprintColumn,
+} from './columns';
 
 function formatPeriod(sprint: JiraSprint): string {
   const format = (value: string | null): string => {
@@ -55,10 +60,14 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
   /** 스프린트 목록은 셀렉트를 처음 열 때만 불러온다. 보드를 여는 것만으로 요청하지 않는다. */
   let sprints: JiraSprint[] | null = null;
   let loadingSprints = false;
+  /** 패널에 지금 그려 둔 업무. 보기 방식을 바꿀 때 다시 부르지 않는다 */
+  let shownIssues: JiraBoardIssue[] = [];
+  let groupMode: 'all' | 'assignee' = 'all';
 
   function closePanel(): void {
     panel?.remove();
     panel = null;
+    shownIssues = [];
   }
 
   function dispose(): void {
@@ -110,6 +119,11 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
         }
         .period { color: #626f86; font-size: 12px; }
         .spacer { flex: 1; }
+        .group {
+          box-sizing: border-box; min-height: 24px; padding: 0 6px;
+          border: 1px solid #8590a2; border-radius: 3px; background: #ffffff;
+          color: #172b4d; font: inherit; font-size: 12px; cursor: pointer;
+        }
         .close {
           border: 0; border-radius: 3px; background: transparent; color: #44546f;
           cursor: pointer; font: inherit; font-size: 12px; padding: 4px 8px;
@@ -126,15 +140,23 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
         }
         .column h3 span { color: #8590a2; font-weight: 400; }
         .card {
-          display: block; margin-bottom: 8px; padding: 10px; border-radius: 4px;
-          background: #ffffff; box-shadow: 0 1px 1px #091e4240; color: #172b4d;
-          font-size: 13px; line-height: 18px; text-decoration: none;
+          display: block; width: 100%; margin-bottom: 8px; padding: 10px;
+          border: 0; border-radius: 4px; background: #ffffff; box-shadow: 0 1px 1px #091e4240;
+          color: #172b4d; font: inherit; font-size: 13px; line-height: 18px;
+          text-align: left; cursor: pointer;
         }
         .card:hover { background: #f1f2f4; }
         .card .parent { color: #626f86; font-size: 11px; }
         .card .meta { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #626f86; font-size: 11px; }
         .card .meta img { width: 16px; height: 16px; border-radius: 50%; }
+        .card .meta .spacer { flex: 1; }
         .card .key { font-weight: 600; }
+        .swimlane { margin-bottom: 18px; }
+        .swimlane > h2 {
+          display: flex; align-items: center; gap: 8px;
+          margin: 0 0 8px; color: #172b4d; font-size: 13px; font-weight: 600;
+        }
+        .swimlane > h2 .count { color: #626f86; font-size: 11px; font-weight: 400; }
         .state { padding: 24px; color: #626f86; font-size: 13px; text-align: center; }
         .state.error { color: #ae2e24; }
       </style>
@@ -144,11 +166,21 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
           <span class="period" data-panel-period></span>
           <span class="readonly">읽기 전용</span>
           <span class="spacer"></span>
+          <select class="group" data-panel-group aria-label="보기 방식">
+            <option value="all">전체 보기</option>
+            <option value="assignee">담당자별 보기</option>
+          </select>
           <button type="button" class="close" data-panel-close>닫기</button>
         </header>
         <div class="body"><div class="state">불러오는 중…</div></div>
       </div>
     `;
+
+    shadow.querySelector<HTMLSelectElement>('[data-panel-group]')?.addEventListener('change', (event) => {
+      groupMode = (event.target as HTMLSelectElement).value === 'assignee' ? 'assignee' : 'all';
+      // 이미 받아 둔 업무로 다시 그린다. **요청을 새로 보내지 않는다.**
+      renderIssues(context, shadow);
+    });
 
     shadow.querySelector('[data-panel-close]')?.addEventListener('click', () => {
       closePanel();
@@ -169,34 +201,68 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     if (body) body.innerHTML = html;
   }
 
-  function renderIssues(shadow: ShadowRoot, issues: JiraBoardIssue[]): void {
-    if (issues.length === 0) {
+  function renderCard(issue: JiraBoardIssue): string {
+    return `
+      <button type="button" class="card" data-issue-key="${escapeHtml(issue.key)}">
+        ${issue.parentKey ? `<div class="parent">${escapeHtml(issue.parentSummary || issue.parentKey)}</div>` : ''}
+        <div>${escapeHtml(issue.summary)}</div>
+        <div class="meta">
+          ${issue.issueTypeIconUrl ? `<img src="${escapeHtml(issue.issueTypeIconUrl)}" alt="${escapeHtml(issue.issueTypeName)}" />` : ''}
+          <span class="key">${escapeHtml(issue.key)}</span>
+          <span class="spacer"></span>
+          ${issue.assigneeAvatarUrl ? `<img src="${escapeHtml(issue.assigneeAvatarUrl)}" alt="${escapeHtml(issue.assigneeName)}" title="${escapeHtml(issue.assigneeName)}" />` : ''}
+        </div>
+      </button>
+    `;
+  }
+
+  function renderColumns(columns: SprintColumn[]): string {
+    const sections = columns.map((column) => `
+      <section class="column">
+        <h3>${escapeHtml(column.name)} <span>${column.issues.length}</span></h3>
+        ${column.issues.map(renderCard).join('')}
+      </section>
+    `).join('');
+    return `<div class="columns">${sections}</div>`;
+  }
+
+  /**
+   * 업무를 Jira **자기 모달**로 연다.
+   *
+   * 새 탭을 띄우지 않는다. 보드가 `?selectedIssue=` 를 보고 모달을 여는데, 주소만 바꾸면
+   * SPA 라우터가 알아채지 못해서 `popstate` 를 함께 쏜다. 실측으로 확인했다 — 새로고침 없이
+   * Jira 모달이 그대로 뜬다.
+   *
+   * 우리 모달을 만들지 않는 이유는 간단하다. Jira 모달이 훨씬 많은 일을 하고, 우리가 흉내 내면
+   * 계속 뒤처진다.
+   */
+  function openIssue(context: PageContext, issueKey: string): void {
+    const url = new URL(context.document.location.href);
+    url.searchParams.set('selectedIssue', issueKey);
+    history.pushState({}, '', `${url.pathname}${url.search}`);
+    window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+  }
+
+  function renderIssues(context: PageContext, shadow: ShadowRoot): void {
+    if (shownIssues.length === 0) {
       renderPanelState(shadow, '<div class="state">이 스프린트에는 업무가 없습니다.</div>');
       return;
     }
 
-    const columns = groupIssuesByStatus(issues).map((column) => {
-      const cards = column.issues.map((issue) => `
-        <a class="card" href="/browse/${escapeHtml(issue.key)}" target="_blank" rel="noreferrer">
-          ${issue.parentKey ? `<div class="parent">${escapeHtml(issue.parentSummary || issue.parentKey)}</div>` : ''}
-          <div>${escapeHtml(issue.summary)}</div>
-          <div class="meta">
-            ${issue.issueTypeIconUrl ? `<img src="${escapeHtml(issue.issueTypeIconUrl)}" alt="${escapeHtml(issue.issueTypeName)}" />` : ''}
-            <span class="key">${escapeHtml(issue.key)}</span>
-            <span class="spacer"></span>
-            ${issue.assigneeAvatarUrl ? `<img src="${escapeHtml(issue.assigneeAvatarUrl)}" alt="${escapeHtml(issue.assigneeName)}" title="${escapeHtml(issue.assigneeName)}" />` : ''}
-          </div>
-        </a>
-      `).join('');
-      return `
-        <section class="column">
-          <h3>${escapeHtml(column.name)} <span>${column.issues.length}</span></h3>
-          ${cards}
-        </section>
-      `;
-    }).join('');
+    const html = groupMode === 'assignee'
+      ? groupIssuesByAssignee(shownIssues).map((group) => `
+          <section class="swimlane">
+            <h2>${escapeHtml(group.name || '담당자 없음')} <span class="count">${group.total}</span></h2>
+            ${renderColumns(group.columns)}
+          </section>
+        `).join('')
+      : renderColumns(groupIssuesByStatus(shownIssues));
 
-    renderPanelState(shadow, `<div class="columns">${columns}</div>`);
+    renderPanelState(shadow, html);
+
+    shadow.querySelectorAll<HTMLButtonElement>('[data-issue-key]').forEach((card) => {
+      card.addEventListener('click', () => openIssue(context, card.dataset.issueKey ?? ''));
+    });
   }
 
   async function showSprint(context: PageContext, sprint: JiraSprint): Promise<void> {
@@ -211,7 +277,8 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
       const issues = await fetchSprintIssues(sprint.id);
       // 그 사이 사용자가 닫았거나 다른 것을 골랐을 수 있다.
       if (!panel?.isConnected) return;
-      renderIssues(shadow, issues);
+      shownIssues = issues;
+      renderIssues(context, shadow);
     } catch (error) {
       if (!panel?.isConnected) return;
       const message = error instanceof JiraApiError

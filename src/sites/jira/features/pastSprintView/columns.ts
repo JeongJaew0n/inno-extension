@@ -67,3 +67,37 @@ export function closedSprintsNewestFirst<T extends { state: string; endDate: str
       return b.id - a.id;
     });
 }
+
+export interface AssigneeGroup {
+  /** 담당자 이름. 없으면 빈 문자열이다 */
+  name: string;
+  columns: SprintColumn[];
+  total: number;
+}
+
+/**
+ * 담당자별로 묶고, 그 안에서 다시 상태별로 나눈다. 보드의 `그룹: 담당자` 와 같은 모양이다.
+ *
+ * 담당자 없는 업무는 **맨 뒤**로 보낸다. 있는 사람부터 보는 것이 자연스럽다.
+ */
+export function groupIssuesByAssignee(issues: readonly JiraBoardIssue[]): AssigneeGroup[] {
+  const buckets = new Map<string, JiraBoardIssue[]>();
+  for (const issue of issues) {
+    const name = issue.assigneeName || '';
+    const bucket = buckets.get(name);
+    if (bucket) bucket.push(issue);
+    else buckets.set(name, [issue]);
+  }
+
+  return [...buckets.entries()]
+    .sort(([left], [right]) => {
+      if (!left) return 1;
+      if (!right) return -1;
+      return left.localeCompare(right, 'ko');
+    })
+    .map(([name, list]) => ({
+      name,
+      columns: groupIssuesByStatus(list),
+      total: list.length,
+    }));
+}

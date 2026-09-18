@@ -43,6 +43,7 @@ import {
 import { adfToMarkdown } from '../src/platform/adf';
 import {
   closedSprintsNewestFirst,
+  groupIssuesByAssignee,
   groupIssuesByStatus,
 } from '../src/sites/jira/features/pastSprintView/columns';
 import {
@@ -422,6 +423,53 @@ test('종료된 스프린트만 최근 순으로 고른다', () => {
     { id: 3, state: 'closed', endDate: '2026-09-01T00:00:00.000Z' },
   ];
   assert.deepEqual(closedSprintsNewestFirst(list).map((s) => s.id), [3, 1]);
+});
+
+test('담당자별 보기는 담당자 없는 업무를 맨 뒤로 보낸다', () => {
+  const issue = (key: string, assigneeName: string, statusName: string) => ({
+    key, summary: key, statusName, statusCategory: 'new',
+    issueTypeName: '', issueTypeIconUrl: '', assigneeName, assigneeAvatarUrl: '',
+    parentKey: '', parentSummary: '',
+  });
+
+  const groups = groupIssuesByAssignee([
+    issue('A-1', '', '해야 할 일'),
+    issue('A-2', '정재원', '해야 할 일'),
+    issue('A-3', '고세미', '해야 할 일'),
+    issue('A-4', '정재원', '해야 할 일'),
+  ]);
+
+  assert.deepEqual(groups.map((g) => g.name), ['고세미', '정재원', '']);
+  assert.deepEqual(groups.map((g) => g.total), [1, 2, 1]);
+  // 담당자 안에서 다시 상태별로 나뉜다.
+  assert.deepEqual(groups[1].columns.map((c) => c.name), ['해야 할 일']);
+});
+
+test('업무는 새 탭이 아니라 Jira 모달로 연다', async () => {
+  const source = await readFile(
+    'src/sites/jira/features/pastSprintView/runtime.ts',
+    'utf8',
+  );
+
+  // 주소만 바꾸면 SPA 라우터가 알아채지 못한다. popstate 를 함께 쏴야 모달이 뜬다.
+  assert.match(source, /history\.pushState/);
+  assert.match(source, /new PopStateEvent\('popstate'/);
+  assert.match(source, /selectedIssue/);
+  // 새 탭을 띄우지 않는다.
+  assert.doesNotMatch(source, /target="_blank"/);
+  assert.doesNotMatch(source, /window\.open\(/);
+});
+
+test('보기 방식을 바꿔도 요청을 새로 보내지 않는다', async () => {
+  const source = await readFile(
+    'src/sites/jira/features/pastSprintView/runtime.ts',
+    'utf8',
+  );
+  const handler = source.slice(source.indexOf("'[data-panel-group]'"));
+  const next = handler.slice(0, handler.indexOf('[data-panel-close]'));
+  // 이미 받아 둔 업무로 다시 그린다.
+  assert.match(next, /renderIssues\(context, shadow\)/);
+  assert.doesNotMatch(next, /fetchSprintIssues/);
 });
 
 test('Jira API 클라이언트는 읽기만 하고 상대 경로만 쓴다', async () => {
