@@ -271,3 +271,19 @@ Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위�
 - [Confluence Mermaid 동작 분석](../../docs/confluence-mermaid-runtime-analysis.md)
 - [코드블럭 벗기기 및 Markdown -> ADF 데이터 유실 분석](../../docs/confluence-markdown-adf-data-loss-analysis.md)
 - [용어사전](../glossary.md)
+
+## Mermaid 매크로 순번 (2026-09-18 추가)
+
+매크로는 원문을 담지 않고 `guestParams.index` 로 **페이지의 N번째 코드블럭**을 읽는다.
+**매크로가 세는 N 은 우리가 세는 N 과 다르다** — 목록 안의 코드블럭을 세지 않는다.
+
+| 자리 | 매크로가 세나 |
+| --- | --- |
+| 최상위 · `expand` 안 | 센다 |
+| 목록 안 | **세지 않는다** |
+| 그 외(표·인용 등) | 확인하지 못했다 |
+
+확인하지 못한 자리의 코드블럭이 앞쪽에 있으면 **매크로를 만들지 않고** 이유를 알린다. 순번을
+맞출 수 없는데 만들면 깨진 다이어그램이 된다.
+
+[troubleshooting 기록](../../docs/troubleshootings/reusable/2026-09-18-confluence-mermaid-macro-index-skips-lists.md)
