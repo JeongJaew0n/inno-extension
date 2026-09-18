@@ -1496,9 +1496,13 @@ test('칩은 잘리지 않고 줄어들 수 있어야 한다', async () => {
 
   // min-width 를 풀지 않으면 flex 항목이 내용 폭으로 버티다가 바깥에서 잘린다.
   assert.match(source, /nextHost\.style\.minWidth = '0';/);
-  assert.match(source, /min-width: 0; overflow: hidden; text-overflow: ellipsis/);
   // 창 크기가 바뀌면 다시 고른다.
   assert.match(source, /new ResizeObserver/);
+
+  // 말줄임 규칙은 디자인 시스템이 쥐고 있다. 기능은 그 클래스를 쓰기만 한다.
+  assert.match(source, /class="inno-chip__text"/);
+  const parts = await readFile('src/platform/design/parts.ts', 'utf8');
+  assert.match(parts, /\.inno-chip__text\{min-width:0;overflow:hidden;text-overflow:ellipsis/);
 });
 
 test('날짜를 읽지 못하면 아무것도 보여주지 않는다', () => {
@@ -1555,8 +1559,17 @@ test('저장 버튼은 취소와 다르게 그린다', async () => {
   );
 
   // 저장은 되돌릴 수 없다. 두 버튼이 같은 모양이면 위쪽에서 잘못 누를 위험이 커진다.
-  assert.match(source, /\.save \{ background: #0c66e4/);
-  assert.match(source, /\.cancel \{ background: transparent/);
+  // 채운 버튼은 디자인 시스템이 그 용도로만 두는 변형이고, 취소는 기본 버튼이다.
+  assert.ok(
+    source.includes('class="inno-btn inno-btn--filled" data-action="save"'),
+    '저장은 채운 버튼이어야 한다',
+  );
+  assert.ok(
+    source.includes('class="inno-btn" data-action="cancel"'),
+    '취소는 기본 버튼이어야 한다',
+  );
+  const parts = await readFile('src/platform/design/parts.ts', 'utf8');
+  assert.match(parts, /\.inno-btn--filled\{background:var\(--inno-primary\)/);
   // 순서는 아래쪽 버튼 줄과 같이 저장 다음 취소다.
   assert.ok(
     source.indexOf('data-action="save"') < source.indexOf('data-action="cancel"'),

@@ -16,6 +16,8 @@
  */
 
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
+import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
+import { BUTTON_CSS } from '../../../../platform/design/parts';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { findDescriptionLabelRow } from '../../descriptionLabel';
 import {
@@ -55,38 +57,18 @@ export function createDescriptionEditActionsRuntime(): FeatureRuntime {
     nextHost.style.verticalAlign = 'middle';
 
     const shadow = nextHost.attachShadow({ mode: 'open' });
+    // `저장`은 되돌릴 수 없어서 채운 버튼(`inno-btn--filled`)을 쓴다. 두 버튼이 같은 모양이면
+    // 위쪽에서 잘못 눌렀을 때 대가가 다르다는 것이 보이지 않는다.
     shadow.innerHTML = `
-      <style>
-        :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .row { display: inline-flex; align-items: center; gap: 4px; }
-        button {
-          display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-          box-sizing: border-box; min-height: 24px; padding: 0 8px; border: 0;
-          border-radius: 3px; cursor: pointer;
-          font: inherit; font-size: 12px; font-weight: 500; line-height: 24px; white-space: nowrap;
-        }
-        svg { width: 14px; height: 14px; flex: 0 0 auto; }
-        button:focus-visible { outline: 2px solid #0c66e4; outline-offset: 1px; }
-
-        /* 취소 — 눈에 덜 띄는 기본 모양 */
-        .cancel { background: transparent; color: #44546f; }
-        .cancel:hover { background: #091e420f; color: #172b4d; }
-
-        /**
-         * 저장 — 되돌릴 수 없으므로 확실히 구분되게 그린다.
-         * 두 버튼이 같은 모양이면 위쪽에서 잘못 누를 위험이 커진다.
-         */
-        .save { background: #0c66e4; color: #ffffff; font-weight: 600; padding: 0 10px; }
-        .save:hover { background: #0055cc; }
-      </style>
+      <style>${DESIGN_TOKENS}${BUTTON_CSS}.row{display:inline-flex;align-items:center;gap:var(--inno-space-1)}</style>
       <span class="row">
-        <button type="button" class="save" data-action="save" aria-label="설명 저장">
+        <button type="button" class="inno-btn inno-btn--filled" data-action="save" aria-label="설명 저장">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M20 6 9 17l-5-5"></path>
           </svg>
           <span>저장</span>
         </button>
-        <button type="button" class="cancel" data-action="cancel" aria-label="설명 편집 취소">
+        <button type="button" class="inno-btn" data-action="cancel" aria-label="설명 편집 취소">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>
           </svg>

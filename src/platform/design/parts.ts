@@ -28,8 +28,8 @@ export const STATE_LAYER_CSS = `.inno-state-layer{position:relative;isolation:is
 .inno-state-layer:disabled::after{opacity:0;}
 /* ============================================================`;
 
-/** 1,896자 */
-export const BUTTON_CSS = `.inno-btn{position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:var(--inno-space-1);box-sizing:border-box;min-height:var(--inno-control-sm);padding:0 var(--inno-space-2);border:1px solid transparent;border-radius:var(--inno-shape-xs);background:transparent;color:var(--inno-on-surface-variant);font-family:var(--inno-font);font-size:var(--inno-label-md);font-weight:var(--inno-label-md-weight);line-height:var(--inno-control-sm);white-space:nowrap;cursor:pointer;--inno-state-on:var(--inno-on-surface);}
+/** 1,858자 */
+export const BUTTON_CSS = `.inno-btn{position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;gap:var(--inno-space-1);box-sizing:border-box;min-height:var(--inno-control-sm);padding:0 var(--inno-space-2);border:1px solid transparent;border-radius:var(--inno-shape-xs);background:transparent;color:var(--inno-on-surface-variant);font-family:var(--inno-font);font-size:var(--inno-label-md);font-weight:var(--inno-label-md-weight);line-height:1;align-self:center;white-space:nowrap;cursor:pointer;--inno-state-on:var(--inno-on-surface);}
 .inno-btn::after{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--inno-state-on);opacity:0;transition:opacity 0.12s ease;pointer-events:none;}
 .inno-btn:hover::after{opacity:var(--inno-state-hover);}
 .inno-btn:active::after{opacity:var(--inno-state-pressed);}
@@ -37,7 +37,7 @@ export const BUTTON_CSS = `.inno-btn{position:relative;isolation:isolate;display
 .inno-btn:disabled{cursor:default;opacity:0.38;}
 .inno-btn:disabled::after{opacity:0;}
 .inno-btn svg{width:14px;height:14px;flex:0 0 auto;}
-.inno-btn--md{min-height:var(--inno-control-md);padding:0 var(--inno-space-3);font-size:var(--inno-label-lg);font-weight:var(--inno-label-lg-weight);line-height:var(--inno-control-md);}
+.inno-btn--md{min-height:var(--inno-control-md);padding:0 var(--inno-space-3);font-size:var(--inno-label-lg);font-weight:var(--inno-label-lg-weight);}
 .inno-btn--md svg{width:16px;height:16px;}
 .inno-btn--icon{width:var(--inno-control-sm);min-height:var(--inno-control-sm);padding:0;}
 .inno-btn--icon.inno-btn--md{width:var(--inno-control-md);}
@@ -48,10 +48,11 @@ export const BUTTON_CSS = `.inno-btn{position:relative;isolation:isolate;display
 .inno-btn--error{color:var(--inno-error);--inno-state-on:var(--inno-error);}
 /* ============================================================`;
 
-/** 575자 */
-export const CHIP_CSS = `.inno-chip{display:inline-flex;align-items:center;gap:var(--inno-space-1);box-sizing:border-box;min-width:0;max-width:320px;min-height:var(--inno-control-sm);padding:0 var(--inno-space-2);border-radius:var(--inno-shape-xs);background:var(--inno-surface-container);color:var(--inno-on-surface-variant);font-size:var(--inno-label-md);line-height:var(--inno-control-sm);}
+/** 632자 */
+export const CHIP_CSS = `.inno-chip{display:inline-flex;align-items:center;gap:var(--inno-space-1);box-sizing:border-box;min-width:0;max-width:320px;min-height:var(--inno-control-sm);padding:0 var(--inno-space-2);border-radius:var(--inno-shape-xs);background:var(--inno-surface-container);color:var(--inno-on-surface-variant);font-size:var(--inno-label-md);line-height:1;align-self:center;}
 .inno-chip svg{width:14px;height:14px;flex:0 0 auto;}
 .inno-chip__text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.inno-chip--icon-only{padding:0 var(--inno-space-1);gap:0;}
 /* ============================================================`;
 
 /** 752자 */
@@ -89,7 +90,7 @@ export const PANEL_CSS = `.inno-panel{display:flex;flex-direction:column;box-siz
 .inno-panel__body{flex:1;overflow:auto;padding:var(--inno-space-3);}
 /* ============================================================`;
 
-/** 1,812자 */
+/** 2,173자 */
 export const BOARD_CSS = `.inno-columns{display:flex;gap:var(--inno-space-3);align-items:flex-start;min-width:min-content;}
 .inno-column{flex:0 0 260px;box-sizing:border-box;padding:var(--inno-space-2);border-radius:var(--inno-shape-sm);background:var(--inno-surface-container-low);}
 .inno-column__title{display:flex;align-items:center;gap:var(--inno-space-1);margin:0 0 var(--inno-space-2);color:var(--inno-on-surface-variant);font-size:var(--inno-label-sm);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;}
@@ -103,6 +104,9 @@ export const BOARD_CSS = `.inno-columns{display:flex;gap:var(--inno-space-3);ali
 .inno-card__meta img{width:16px;height:16px;border-radius:50%;}
 .inno-card__key{font-weight:600;}
 .inno-card__spacer{flex:1;}
+.inno-group{margin-bottom:var(--inno-space-5);}
+.inno-group__title{display:flex;align-items:center;gap:var(--inno-space-2);margin:0 0 var(--inno-space-2);color:var(--inno-on-surface);font-size:var(--inno-title-sm);font-weight:var(--inno-title-sm-weight);}
+.inno-group__count{color:var(--inno-on-surface-variant);font-size:var(--inno-label-sm);font-weight:400;}
 /* ============================================================`;
 
 /** 1,131자 */
@@ -144,4 +148,4 @@ export const INPUT_CSS = `.inno-field{display:grid;gap:var(--inno-space-1);}
 .inno-input--mono{font-family:var(--inno-font-mono);}
 .inno-help{color:var(--inno-on-surface-variant);font-size:var(--inno-body-sm);line-height:var(--inno-body-sm-lh);}`;
 
-// 조각 12개 · CSS 합계 12,595자
+// 조각 12개 · CSS 합계 12,975자

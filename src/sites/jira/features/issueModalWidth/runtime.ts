@@ -1,5 +1,7 @@
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
+import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
+import { BUTTON_CSS } from '../../../../platform/design/parts';
 import {
   ISSUE_DIALOG,
   ISSUE_MODAL_MINIMISE_BUTTON,
@@ -59,17 +61,8 @@ export function createIssueModalWidthRuntime(): FeatureRuntime {
 
     const shadow = nextHost.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
-      <style>
-        :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        button {
-          box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
-          width: 32px; height: 32px; padding: 0; border: 0; border-radius: 4px;
-          background: transparent; color: #44546f; cursor: pointer;
-        }
-        button:hover { background: #091e420f; color: #172b4d; }
-        button:focus-visible { outline: 2px solid #0c66e4; outline-offset: 1px; }
-      </style>
-      <button type="button" data-action="toggle"></button>
+      <style>${DESIGN_TOKENS}${BUTTON_CSS}</style>
+      <button type="button" class="inno-btn inno-btn--icon inno-btn--md" data-action="toggle"></button>
     `;
 
     const button = shadow.querySelector<HTMLButtonElement>('[data-action="toggle"]');

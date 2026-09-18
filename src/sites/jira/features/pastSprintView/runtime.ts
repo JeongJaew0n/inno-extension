@@ -12,6 +12,15 @@
  */
 
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
+import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
+import {
+  BADGE_CSS,
+  BOARD_CSS,
+  BUTTON_CSS,
+  DROPDOWN_CSS,
+  PANEL_CSS,
+  STATUS_TEXT_CSS,
+} from '../../../../platform/design/parts';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import {
   fetchBoardSprints,
@@ -105,79 +114,20 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
     const shadow = next.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
-      <style>
-        :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .sheet {
-          display: flex; flex-direction: column; height: 100%;
-          box-sizing: border-box; background: #ffffff; border: 1px solid #dfe1e6;
-          border-radius: 6px; box-shadow: 0 8px 24px #091e4229; overflow: hidden;
-        }
-        header {
-          display: flex; align-items: center; gap: 10px;
-          padding: 10px 14px; border-bottom: 1px solid #dfe1e6; background: #f7f8f9;
-          color: #172b4d; font-size: 13px;
-        }
-        header strong { font-size: 14px; }
-        .readonly {
-          padding: 1px 7px; border-radius: 9px; background: #e9f2ff;
-          color: #0055cc; font-size: 11px; font-weight: 700;
-        }
-        .period { color: #626f86; font-size: 12px; }
-        .spacer { flex: 1; }
-        .group {
-          box-sizing: border-box; min-height: 24px; padding: 0 6px;
-          border: 1px solid #8590a2; border-radius: 3px; background: #ffffff;
-          color: #172b4d; font: inherit; font-size: 12px; cursor: pointer;
-        }
-        .close {
-          border: 0; border-radius: 3px; background: transparent; color: #44546f;
-          cursor: pointer; font: inherit; font-size: 12px; padding: 4px 8px;
-        }
-        .close:hover { background: #091e420f; }
-        .body { flex: 1; overflow: auto; padding: 12px; }
-        .columns { display: flex; gap: 12px; align-items: flex-start; min-width: min-content; }
-        .column {
-          flex: 0 0 260px; border-radius: 6px; background: #f7f8f9; padding: 8px;
-        }
-        .column h3 {
-          margin: 0 0 8px; color: #626f86; font-size: 11px; font-weight: 700;
-          letter-spacing: 0.04em; text-transform: uppercase;
-        }
-        .column h3 span { color: #8590a2; font-weight: 400; }
-        .card {
-          display: block; width: 100%; margin-bottom: 8px; padding: 10px;
-          border: 0; border-radius: 4px; background: #ffffff; box-shadow: 0 1px 1px #091e4240;
-          color: #172b4d; font: inherit; font-size: 13px; line-height: 18px;
-          text-align: left; cursor: pointer;
-        }
-        .card:hover { background: #f1f2f4; }
-        .card .parent { color: #626f86; font-size: 11px; }
-        .card .meta { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #626f86; font-size: 11px; }
-        .card .meta img { width: 16px; height: 16px; border-radius: 50%; }
-        .card .meta .spacer { flex: 1; }
-        .card .key { font-weight: 600; }
-        .swimlane { margin-bottom: 18px; }
-        .swimlane > h2 {
-          display: flex; align-items: center; gap: 8px;
-          margin: 0 0 8px; color: #172b4d; font-size: 13px; font-weight: 600;
-        }
-        .swimlane > h2 .count { color: #626f86; font-size: 11px; font-weight: 400; }
-        .state { padding: 24px; color: #626f86; font-size: 13px; text-align: center; }
-        .state.error { color: #ae2e24; }
-      </style>
-      <div class="sheet">
-        <header>
-          <strong data-panel-title></strong>
-          <span class="period" data-panel-period></span>
-          <span class="readonly">읽기 전용</span>
-          <span class="spacer"></span>
-          <select class="group" data-panel-group aria-label="보기 방식">
+      <style>${DESIGN_TOKENS}${PANEL_CSS}${BOARD_CSS}${BUTTON_CSS}${BADGE_CSS}${STATUS_TEXT_CSS}</style>
+      <div class="inno-panel">
+        <header class="inno-panel__header">
+          <strong class="inno-panel__title" data-panel-title></strong>
+          <span class="inno-panel__sub" data-panel-period></span>
+          <span class="inno-badge inno-badge--primary">읽기 전용</span>
+          <span class="inno-panel__spacer"></span>
+          <select class="inno-btn inno-btn--outlined" data-panel-group aria-label="보기 방식">
             <option value="all">전체 보기</option>
             <option value="assignee">담당자별 보기</option>
           </select>
-          <button type="button" class="close" data-panel-close>닫기</button>
+          <button type="button" class="inno-btn" data-panel-close>닫기</button>
         </header>
-        <div class="body"><div class="state">불러오는 중…</div></div>
+        <div class="inno-panel__body"><div class="inno-state">불러오는 중…</div></div>
       </div>
     `;
 
@@ -202,19 +152,19 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
   }
 
   function renderPanelState(shadow: ShadowRoot, html: string): void {
-    const body = shadow.querySelector<HTMLElement>('.body');
+    const body = shadow.querySelector<HTMLElement>('.inno-panel__body');
     if (body) body.innerHTML = html;
   }
 
   function renderCard(issue: JiraBoardIssue): string {
     return `
-      <button type="button" class="card" data-issue-key="${escapeHtml(issue.key)}">
-        ${issue.parentKey ? `<div class="parent">${escapeHtml(issue.parentSummary || issue.parentKey)}</div>` : ''}
+      <button type="button" class="inno-card" data-issue-key="${escapeHtml(issue.key)}">
+        ${issue.parentKey ? `<div class="inno-card__parent">${escapeHtml(issue.parentSummary || issue.parentKey)}</div>` : ''}
         <div>${escapeHtml(issue.summary)}</div>
-        <div class="meta">
+        <div class="inno-card__meta">
           ${issue.issueTypeIconUrl ? `<img src="${escapeHtml(issue.issueTypeIconUrl)}" alt="${escapeHtml(issue.issueTypeName)}" />` : ''}
-          <span class="key">${escapeHtml(issue.key)}</span>
-          <span class="spacer"></span>
+          <span class="inno-card__key">${escapeHtml(issue.key)}</span>
+          <span class="inno-card__spacer"></span>
           ${issue.assigneeAvatarUrl ? `<img src="${escapeHtml(issue.assigneeAvatarUrl)}" alt="${escapeHtml(issue.assigneeName)}" title="${escapeHtml(issue.assigneeName)}" />` : ''}
         </div>
       </button>
@@ -223,12 +173,12 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
   function renderColumns(columns: SprintColumn[]): string {
     const sections = columns.map((column) => `
-      <section class="column">
-        <h3>${escapeHtml(column.name)} <span>${column.issues.length}</span></h3>
+      <section class="inno-column">
+        <h3 class="inno-column__title">${escapeHtml(column.name)} <span class="inno-column__count">${column.issues.length}</span></h3>
         ${column.issues.map(renderCard).join('')}
       </section>
     `).join('');
-    return `<div class="columns">${sections}</div>`;
+    return `<div class="inno-columns">${sections}</div>`;
   }
 
   /**
@@ -250,14 +200,14 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
   function renderIssues(context: PageContext, shadow: ShadowRoot): void {
     if (shownIssues.length === 0) {
-      renderPanelState(shadow, '<div class="state">이 스프린트에는 업무가 없습니다.</div>');
+      renderPanelState(shadow, '<div class="inno-state">이 스프린트에는 업무가 없습니다.</div>');
       return;
     }
 
     const html = groupMode === 'assignee'
       ? groupIssuesByAssignee(shownIssues).map((group) => `
-          <section class="swimlane">
-            <h2>${escapeHtml(group.name || '담당자 없음')} <span class="count">${group.total}</span></h2>
+          <section class="inno-group">
+            <h2 class="inno-group__title">${escapeHtml(group.name || '담당자 없음')} <span class="inno-group__count">${group.total}</span></h2>
             ${renderColumns(group.columns)}
           </section>
         `).join('')
@@ -276,7 +226,7 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
     shadow.querySelector<HTMLElement>('[data-panel-title]')!.textContent = sprint.name || '지난 스프린트';
     shadow.querySelector<HTMLElement>('[data-panel-period]')!.textContent = formatPeriod(sprint);
-    renderPanelState(shadow, '<div class="state">불러오는 중…</div>');
+    renderPanelState(shadow, '<div class="inno-state">불러오는 중…</div>');
 
     try {
       const issues = await fetchSprintIssues(sprint.id);
@@ -290,7 +240,7 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
         ? error.message
         : '업무를 불러오지 못했습니다.';
       console.error('[Inno Extension] 지난 스프린트 조회 실패', error);
-      renderPanelState(shadow, `<div class="state error">${escapeHtml(message)}</div>`);
+      renderPanelState(shadow, `<div class="inno-state inno-state--error">${escapeHtml(message)}</div>`);
     }
   }
 
@@ -319,17 +269,17 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     const closed = closedSprintsNewestFirst(list);
 
     const row = (sprint: JiraSprint, isActive: boolean): string => `
-      <button type="button" class="row" data-sprint-id="${sprint.id}" data-active="${isActive}">
-        <span class="name">${escapeHtml(sprint.name || `스프린트 ${sprint.id}`)}</span>
-        <span class="state">${isActive ? '활성' : formatPeriod(sprint)}</span>
+      <button type="button" class="inno-menu__row" data-sprint-id="${sprint.id}" data-active="${isActive}">
+        <span class="inno-menu__name">${escapeHtml(sprint.name || `스프린트 ${sprint.id}`)}</span>
+        <span class="inno-menu__meta">${isActive ? '활성' : formatPeriod(sprint)}</span>
       </button>
     `;
 
     menu.innerHTML = [
       ...active.map((sprint) => row(sprint, true)),
-      closed.length > 0 ? '<div class="divider"></div>' : '',
+      closed.length > 0 ? '<div class="inno-menu__divider"></div>' : '',
       ...closed.map((sprint) => row(sprint, false)),
-      closed.length === 0 ? '<div class="empty">종료된 스프린트가 없습니다</div>' : '',
+      closed.length === 0 ? '<div class="inno-menu__empty">종료된 스프린트가 없습니다</div>' : '',
     ].join('');
 
     menu.querySelectorAll<HTMLButtonElement>('[data-sprint-id]').forEach((button) => {
@@ -355,7 +305,7 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
     loadingSprints = true;
     const menu = host?.shadowRoot?.querySelector<HTMLElement>('[data-menu]');
-    if (menu) menu.innerHTML = '<div class="empty">불러오는 중…</div>';
+    if (menu) menu.innerHTML = '<div class="inno-menu__empty">불러오는 중…</div>';
     try {
       const list = await fetchBoardSprints(boardId);
       sprints = list;
@@ -363,7 +313,7 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     } catch (error) {
       console.error('[Inno Extension] 스프린트 목록 조회 실패', error);
       const message = error instanceof JiraApiError ? error.message : '스프린트 목록을 불러오지 못했습니다.';
-      if (menu) menu.innerHTML = `<div class="empty error">${escapeHtml(message)}</div>`;
+      if (menu) menu.innerHTML = `<div class="inno-menu__empty inno-state--error">${escapeHtml(message)}</div>`;
     } finally {
       loadingSprints = false;
     }
@@ -379,44 +329,12 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
     const shadow = next.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
-      <style>
-        :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .trigger {
-          display: inline-flex; align-items: center; gap: 6px;
-          box-sizing: border-box; min-height: 24px; max-width: 240px; padding: 0 8px;
-          border: 1px solid #8590a2; border-radius: 3px; background: #ffffff;
-          color: #172b4d; font: inherit; font-size: 12px; cursor: pointer;
-        }
-        .trigger:hover { background: #f1f2f4; }
-        .trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .caret { color: #626f86; }
-        .menu {
-          position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
-          min-width: 300px; max-height: 320px; overflow-y: auto; padding: 4px;
-          border: 1px solid #dfe1e6; border-radius: 6px; background: #ffffff;
-          box-shadow: 0 8px 16px #091e4229;
-        }
-        .row {
-          display: flex; align-items: center; gap: 12px; width: 100%;
-          padding: 6px 8px; border: 0; border-radius: 3px; background: transparent;
-          color: #172b4d; font: inherit; font-size: 12px; text-align: left; cursor: pointer;
-        }
-        .row:hover { background: #f1f2f4; }
-        /* 왼쪽 이름, 오른쪽 상태. 네이티브 select 로는 이 배치가 안 된다 */
-        .row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .row .state { flex: 0 0 auto; color: #626f86; font-size: 11px; }
-        .row[data-active="true"] .state {
-          padding: 1px 6px; border-radius: 8px; background: #dcfff1; color: #216e4e; font-weight: 700;
-        }
-        .divider { height: 1px; margin: 4px 0; background: #dfe1e6; }
-        .empty { padding: 10px 8px; color: #626f86; font-size: 12px; }
-        .empty.error { color: #ae2e24; }
-      </style>
-      <button type="button" class="trigger" data-trigger>
+      <style>${DESIGN_TOKENS}${DROPDOWN_CSS}</style>
+      <button type="button" class="inno-dropdown__trigger" data-trigger>
         <span data-trigger-label>스프린트</span>
-        <span class="caret">▾</span>
+        <span class="inno-dropdown__caret">▾</span>
       </button>
-      <div class="menu" data-menu hidden></div>
+      <div class="inno-menu" data-menu hidden></div>
     `;
 
     const trigger = shadow.querySelector<HTMLButtonElement>('[data-trigger]');

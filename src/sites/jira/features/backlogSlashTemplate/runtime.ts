@@ -1,6 +1,8 @@
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import type { FeatureSettings } from '../../../../platform/settings/types';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
+import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
+import { MENU_CSS } from '../../../../platform/design/parts';
 import { requestOpenSettings } from '../../../../platform/messaging/openSettings';
 // 라우트 형식을 한 곳에서만 정의하려고 Popup 의 순수 헬퍼를 그대로 쓴다. DOM 의존이 없다.
 import { featureRoute } from '../../../../popup/router';
@@ -96,38 +98,13 @@ export function createBacklogSlashTemplateRuntime(): FeatureRuntime {
 
     const shadow = host.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
-      <style>
-        :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .panel {
-          border: 1px solid #dfe1e6; border-radius: 6px; background: #ffffff;
-          box-shadow: 0 8px 16px #091e4229; overflow: hidden;
-        }
-        ul {
-          margin: 0; padding: 4px; list-style: none;
-          max-height: 240px; overflow-y: auto;
-        }
-        li {
-          padding: 6px 10px; border-radius: 4px; color: #172b4d;
-          font-size: 13px; line-height: 20px; white-space: nowrap; cursor: pointer;
-        }
-        li[aria-selected="true"] { background: #e9f2ff; color: #0c66e4; font-weight: 600; }
-        li:hover { background: #f1f2f4; }
-        .manage {
-          display: block; width: 100%; padding: 7px 10px;
-          border: 0; border-top: 1px solid #ebecf0; background: #f7f8f9;
-          color: #44546f; font-family: inherit; font-size: 12px; line-height: 16px;
-          text-align: left; white-space: nowrap; cursor: pointer;
-        }
-        .manage:hover { background: #e9ebee; color: #172b4d; }
-      </style>
-      <div class="panel">
-        <ul role="listbox" aria-label="prefix 태그 목록"></ul>
-        <button type="button" class="manage" tabindex="-1">＋ prefix 태그 추가·관리…</button>
-      </div>
+      <style>${DESIGN_TOKENS}${MENU_CSS}</style>
+      <ul class="inno-listbox" role="listbox" aria-label="prefix 태그 목록"></ul>
+      <button type="button" class="inno-listbox__footer" tabindex="-1">＋ prefix 태그 추가·관리…</button>
     `;
     listRoot = shadow.querySelector('ul');
 
-    const manage = shadow.querySelector('button.manage');
+    const manage = shadow.querySelector('button.inno-listbox__footer');
     // **마우스 전용이다.** 키보드 선택 대상이 아니므로 `matches` 에 넣지 않고
     // `tabindex="-1"` 로 포커스에서도 뺀다. 잘못 눌리면 입력 중이던 제목을 두고
     // 창이 뜨는 셈이라, 의도한 클릭에만 반응해야 한다.
@@ -168,6 +145,7 @@ export function createBacklogSlashTemplateRuntime(): FeatureRuntime {
 
     matches.forEach((tag, index) => {
       const item = document.createElement('li');
+      item.className = 'inno-listbox__item';
       item.setAttribute('role', 'option');
       item.setAttribute('aria-selected', String(index === activeIndex));
       item.textContent = tag;

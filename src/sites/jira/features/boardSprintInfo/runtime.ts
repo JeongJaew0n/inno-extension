@@ -11,6 +11,8 @@
  */
 
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
+import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
+import { CHIP_CSS } from '../../../../platform/design/parts';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { BOARD_TOOL_ORDER, ensureBoardToolSlot, releaseBoardToolSlot } from '../../boardToolRow';
 import { isJiraBoardRoute, parseJiraBoardUrl } from '../../routes';
@@ -57,26 +59,13 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
 
     const shadow = nextHost.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
-      <style>
-        :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .chip {
-          display: inline-flex; align-items: center; gap: 6px;
-          box-sizing: border-box; max-width: 320px; min-width: 0; min-height: 24px;
-          padding: 0 9px; border-radius: 3px; background: #091e420f; color: #44546f;
-          font-size: 12px; line-height: 24px;
-        }
-        /* 글자가 하나도 안 들어가면 아이콘만 남기고 여백을 줄인다 */
-        .chip.icon-only { padding: 0 6px; gap: 0; }
-        svg { width: 14px; height: 14px; flex: 0 0 auto; }
-        /* 목표가 길 수 있다. 넘치면 말줄임하고 전체는 hover 로 본다 */
-        .text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      </style>
-      <span class="chip">
+      <style>${DESIGN_TOKENS}${CHIP_CSS}</style>
+      <span class="inno-chip">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="3" y="4" width="18" height="18" rx="2"></rect>
           <path d="M16 2v4M8 2v4M3 10h18"></path>
         </svg>
-        <span class="text" data-sprint-text></span>
+        <span class="inno-chip__text" data-sprint-text></span>
       </span>
     `;
 
@@ -93,12 +82,12 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
    */
   function applyBestLabel(host: HTMLElement, labels: string[]): void {
     const text = host.shadowRoot?.querySelector<HTMLElement>('[data-sprint-text]');
-    const chip = host.shadowRoot?.querySelector<HTMLElement>('.chip');
+    const chip = host.shadowRoot?.querySelector<HTMLElement>('.inno-chip');
     if (!text || !chip) return;
 
     for (const candidate of labels) {
       text.textContent = candidate;
-      chip.classList.toggle('icon-only', candidate === '');
+      chip.classList.toggle('inno-chip--icon-only', candidate === '');
       // 마지막 후보(아이콘만)까지 왔으면 더 줄일 것이 없다.
       if (candidate === '' || text.scrollWidth <= text.clientWidth) return;
     }
@@ -111,7 +100,7 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
     title: string,
   ): void {
     const current = ensureHost(context, anchor);
-    const chip = current?.shadowRoot?.querySelector<HTMLElement>('.chip');
+    const chip = current?.shadowRoot?.querySelector<HTMLElement>('.inno-chip');
     if (!current || !chip) return;
     chip.title = title;
     applyBestLabel(current, labels);
