@@ -42,6 +42,10 @@ import {
 } from '../src/platform/editor/renderer-to-markdown';
 import { adfToMarkdown } from '../src/platform/adf';
 import {
+  closedSprintsNewestFirst,
+  groupIssuesByStatus,
+} from '../src/sites/jira/features/pastSprintView/columns';
+import {
   parseConfluenceEditPageUrl,
   parseConfluencePageUrl,
 } from '../src/sites/confluence/routes';
@@ -380,6 +384,109 @@ test('catalog의 사이트와 기능 ID는 중복되지 않고 기본 설정이 
         feature.defaultEnabled,
       );
     }
+  }
+});
+
+test('업무는 상태 분류 순서로 묶인다', () => {
+  const issue = (key: string, statusName: string, statusCategory: string) => ({
+    key, summary: key, statusName, statusCategory,
+    issueTypeName: '', issueTypeIconUrl: '', assigneeName: '', assigneeAvatarUrl: '',
+    parentKey: '', parentSummary: '',
+  });
+
+  const columns = groupIssuesByStatus([
+    issue('A-1', '완료', 'done'),
+    issue('A-2', 'IN-PROGRESS', 'indeterminate'),
+    issue('A-3', '해야 할 일', 'new'),
+    issue('A-4', '완료', 'done'),
+  ]);
+
+  // 진행 순서대로 왼쪽에서 오른쪽으로 읽혀야 한다.
+  assert.deepEqual(columns.map((c) => c.name), ['해야 할 일', 'IN-PROGRESS', '완료']);
+  assert.deepEqual(columns.map((c) => c.issues.length), [1, 1, 2]);
+});
+
+test('상태 이름이 없으면 따로 모은다', () => {
+  const columns = groupIssuesByStatus([{
+    key: 'A-1', summary: '', statusName: '', statusCategory: '',
+    issueTypeName: '', issueTypeIconUrl: '', assigneeName: '', assigneeAvatarUrl: '',
+    parentKey: '', parentSummary: '',
+  }]);
+  assert.equal(columns[0].name, '(상태 없음)');
+});
+
+test('종료된 스프린트만 최근 순으로 고른다', () => {
+  const list = [
+    { id: 1, state: 'closed', endDate: '2026-08-01T00:00:00.000Z' },
+    { id: 2, state: 'active', endDate: '2026-09-30T00:00:00.000Z' },
+    { id: 3, state: 'closed', endDate: '2026-09-01T00:00:00.000Z' },
+  ];
+  assert.deepEqual(closedSprintsNewestFirst(list).map((s) => s.id), [3, 1]);
+});
+
+test('Jira API 클라이언트는 읽기만 하고 상대 경로만 쓴다', async () => {
+  const source = await readFile('src/sites/jira/api/sprints.ts', 'utf8');
+
+  // 쓰기를 열어두면 사고의 폭이 달라진다.
+  assert.doesNotMatch(source, /method:\s*'(POST|PUT|PATCH|DELETE)'/);
+  assert.match(source, /method: 'GET'/);
+  // 절대 URL 을 받지 않는다. 다른 호스트로 나갈 길을 두지 않는다.
+  assert.match(source, /if \(!path\.startsWith\('\/rest\/'\)\)/);
+  // 토큰을 저장하지 않는다.
+  assert.doesNotMatch(source, /chrome\.storage/);
+});
+
+test('지난 스프린트 보기는 보드 DOM 을 건드리지 않는다', async () => {
+  const source = await readFile('src/sites/jira/features/pastSprintView/runtime.ts', 'utf8');
+
+  // 카드를 지우면 React 가상 DOM 과 어긋나 드래그·스프린트 완료가 엉뚱한 대상에 걸린다.
+  assert.doesNotMatch(source, /card-with-icc/);
+  assert.doesNotMatch(source, /\.remove\(\)\s*;?\s*\/\/\s*카드/);
+  // 보드를 여는 것만으로 요청하지 않는다.
+  assert.match(source, /셀렉트를 처음 열 때만/);
+});
+
+test('네트워크를 쓰는 기능은 카탈로그에 표시돼 있어야 한다', async () => {
+  // 문장만 있으면 지켜지지 않는다. 표시 없이 API 를 부르면 여기서 걸린다.
+  const { readdir } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+
+  async function walk(dir: string): Promise<string[]> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    const out: string[] = [];
+    for (const entry of entries) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) out.push(...await walk(full));
+      else if (entry.name.endsWith('.ts')) out.push(full);
+    }
+    return out;
+  }
+
+  const NETWORK = /\bfetch\s*\(|XMLHttpRequest|navigator\.sendBeacon|new\s+WebSocket|EventSource/;
+  /** 네트워크를 써도 되는 자리. 여기 말고는 안 된다. */
+  const ALLOWED = [
+    'src/sites/jira/api/',
+  ];
+
+  const files = await walk('src');
+  const offenders: string[] = [];
+  for (const file of files) {
+    const source = await readFile(file, 'utf8');
+    if (!NETWORK.test(source)) continue;
+    const path = file.replace(/\\/g, '/');
+    if (!ALLOWED.some((prefix) => path.startsWith(prefix))) offenders.push(path);
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `네트워크 호출은 허용된 자리에만 둔다. 새로 필요하면 ALLOWED 와 카탈로그 usesNetwork 를 함께 고친다.`,
+  );
+
+  // 표시된 기능이 실제로 있는지도 본다. 표시만 해두고 안 쓰면 배지가 거짓말이 된다.
+  const networkFeatures = SITES.flatMap((site) => site.features.filter((f) => f.usesNetwork));
+  for (const feature of networkFeatures) {
+    assert.ok(feature.description.length > 0, `${feature.id} 설명이 비어 있다`);
   }
 });
 

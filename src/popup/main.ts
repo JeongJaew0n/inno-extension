@@ -148,7 +148,7 @@ function renderSiteDetail(siteId: SiteId): string {
     return `
       <article class="feature-card ${siteSettings.enabled ? '' : 'is-site-disabled'}">
         <button type="button" class="feature-body" data-route="${route}">
-          <strong>${escapeHtml(feature.name)}</strong>
+          <strong>${escapeHtml(feature.name)}${feature.usesNetwork ? '<span class="network-badge" title="이 기능만 Jira API를 사용합니다. 스프린트를 고를 때만 요청합니다.">API</span>' : ''}</strong>
           <span>${escapeHtml(feature.description)}</span>
           <small>적용 범위: <code>${escapeHtml(feature.routeSummary)}</code></small>
         </button>

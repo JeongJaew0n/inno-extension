@@ -261,3 +261,10 @@ code { padding: 2px 5px; border-radius: 4px; background: #eceff5; color: #5542ce
 }
 /* .secondary-button 은 기본이 width:100% 라 flex 안에서 입력칸을 밀어낸다. */
 .prefix-tag-add .secondary-button { width: auto; flex: 0 0 auto; }
+
+/* API 를 쓰는 기능은 한눈에 보이게 한다. 표시 없이 네트워크를 쓰면 테스트가 깨진다. */
+.network-badge {
+  margin-inline-start: 6px; padding: 1px 5px; border-radius: 8px;
+  background: #fff0e6; color: #a54800; font-size: 9px; font-weight: 700;
+  vertical-align: middle;
+}

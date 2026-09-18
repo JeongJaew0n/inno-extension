@@ -18,6 +18,7 @@
 | [features/jira-issue-modal-width.md](./features/jira-issue-modal-width.md) | Jira 업무 모달 전체 폭 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
 | [features/jira-backlog-slash-template.md](./features/jira-backlog-slash-template.md) | Jira 백로그 prefix 태그 기능의 기획과 행동 계약, 결정 사항, 리스크, 변경 이력 |
 | [features/jira-editor-markdown-to-adf.md](./features/jira-editor-markdown-to-adf.md) | Jira 업무 설명 Markdown 변환의 범위, 단계 계약, Mermaid 미지원 근거, 리스크 |
+| [features/jira-past-sprint-view.md](./features/jira-past-sprint-view.md) | Jira 지난 스프린트 보기의 범위, API 사용 계약, 보드 DOM 비침습 근거 |
 | [features/jira-board-sprint-info.md](./features/jira-board-sprint-info.md) | Jira 활성 스프린트 기간·목표 표시의 범위, 상태 출처, 실패 계약 |
 | [features/jira-description-edit-actions.md](./features/jira-description-edit-actions.md) | Jira 설명 편집 취소·저장 버튼의 범위, 댓글 오작동 방지 근거, 리스크 |
 | [features/jira-description-markdown-copy.md](./features/jira-description-markdown-copy.md) | Jira 업무 설명을 Markdown 으로 복사하는 기능의 범위, 댓글 제외 근거, 리스크 |

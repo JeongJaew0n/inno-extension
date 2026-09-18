@@ -80,6 +80,15 @@ export const SITES = [
         hasDetails: false,
       },
       {
+        id: 'pastSprintView',
+        name: '지난 스프린트 보기',
+        description: '활성 스프린트 보드에서 종료된 스프린트의 업무를 읽기 전용 패널로 봅니다. 이 기능만 Jira API를 사용하며, 스프린트를 고를 때만 요청합니다.',
+        routeSummary: 'Jira 활성 스프린트 보드',
+        defaultEnabled: true,
+        hasDetails: false,
+        usesNetwork: true,
+      },
+      {
         id: 'boardSprintInfo',
         name: '활성 스프린트 정보',
         description: '보드 상단 `빠른 필터` 옆에 활성 스프린트의 기간·남은 일수·목표를 보여줍니다.',

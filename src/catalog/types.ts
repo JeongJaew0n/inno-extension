@@ -16,6 +16,7 @@ export const FEATURE_IDS = [
   'descriptionMarkdownCopy',
   'descriptionEditActions',
   'boardSprintInfo',
+  'pastSprintView',
   'pullRequestTitleCopy',
   'commitShaCopy',
   'githubCommitShaCopy',
@@ -30,6 +31,17 @@ export interface FeatureDescriptor {
   routeSummary: string;
   defaultEnabled: boolean;
   hasDetails: boolean;
+  /**
+   * 사이트 API 를 부르는 기능인지.
+   *
+   * **기본은 API 를 쓰지 않는 것이다.** DOM 으로 안 되는 것만 쓰고, 그런 기능은 여기에 표시해
+   * 특별 관리한다 — 읽기만, 사용자가 실제로 쓸 때만, 그 사이트 오리진으로만.
+   *
+   * 표시하지 않은 기능의 파일에서 네트워크 호출이 발견되면 **테스트가 깨진다.**
+   *
+   * CLAUDE.md '특별 관리란'
+   */
+  usesNetwork?: boolean;
 }
 
 export interface SiteDescriptor {

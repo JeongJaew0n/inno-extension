@@ -134,3 +134,17 @@ export const BOARD_SPRINT_INFO_ROOT = 'jira-board-sprint-info';
  * 붙이면 **`빠른 필터` 오른쪽**이 된다. 실측에서 오른쪽으로 369px 가 비어 있었다.
  */
 export const BOARD_FILTER_CONTAINER = '[data-testid="software-filters.ui.list-filter-container"]';
+
+/** 지난 스프린트 보기 기능. */
+export const PAST_SPRINT_VIEW_ROOT = 'jira-past-sprint-view';
+export const PAST_SPRINT_PANEL_ROOT = 'jira-past-sprint-panel';
+
+/**
+ * 보드 본문. 패널을 이 위에 덮는다.
+ *
+ * **보드 DOM 을 건드리지 않는다.** 카드를 지우면 React 의 가상 DOM 과 실제 화면이 어긋난 채
+ * 남아서, 나중에 드래그나 `스프린트 완료` 가 보이는 것과 다른 대상에 걸린다.
+ *
+ * docs/plans/jira-past-sprint-view/spec.md
+ */
+export const BOARD_CONTENT = '[data-testid="software-board.board-container.board"]';

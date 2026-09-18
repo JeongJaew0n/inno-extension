@@ -42,6 +42,11 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
               customTags: [],
             },
           },
+          pastSprintView: {
+            // 셀렉트를 열기 전에는 요청이 나가지 않는다. 켜져 있어도 네트워크를 쓰지 않는다.
+            enabled: true,
+            options: {},
+          },
           boardSprintInfo: {
             // 읽어서 보여주기만 한다.
             enabled: true,

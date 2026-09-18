@@ -6,6 +6,7 @@ import { createEditorMarkdownToAdfRuntimeForJira } from './features/editorMarkdo
 import { createDescriptionMarkdownCopyRuntime } from './features/descriptionMarkdownCopy/runtime';
 import { createDescriptionEditActionsRuntime } from './features/descriptionEditActions/runtime';
 import { createBoardSprintInfoRuntime } from './features/boardSprintInfo/runtime';
+import { createPastSprintViewRuntime } from './features/pastSprintView/runtime';
 
 const runtime = createSiteRuntime({
   siteId: 'jira',
@@ -17,6 +18,7 @@ const runtime = createSiteRuntime({
     createDescriptionMarkdownCopyRuntime(),
     createDescriptionEditActionsRuntime(),
     createBoardSprintInfoRuntime(),
+    createPastSprintViewRuntime(),
   ],
   debounceMs: 180,
 });
