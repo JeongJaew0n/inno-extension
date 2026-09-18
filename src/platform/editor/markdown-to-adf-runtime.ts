@@ -220,7 +220,7 @@ export function waitForEditorChange(
  * 규칙이고, 우리 변환기와 달리 취소선 구분자로 `~~`만 인정해 `1~3`ㆍ`4~5` 같은 범위 표기를
  * 깨뜨리지 않는다.
  *
- * docs/issue/2026-09-04-tilde-range-becomes-strikethrough.md
+ * docs/troubleshootings/reusable/2026-09-04-tilde-range-becomes-strikethrough.md
  */
 export async function pastePlainTextAndWaitForChange(
   editor: HTMLElement,
@@ -340,7 +340,7 @@ export function isTopLevelCodeBlock(editor: HTMLElement, codeBlock: HTMLElement)
  * 아무것도 렌더되지 않은 경우(`''`)는 통과시키지 않는다. 빈 문자열은 모든 원문의 부분
  * 문자열이라 검증이 무조건 참이 되기 때문이다.
  *
- * docs/issue/2026-09-04-mermaid-verification-reads-truncated-dom.md
+ * docs/troubleshootings/reusable/2026-09-04-mermaid-verification-reads-truncated-dom.md
  */
 export function matchesCodeBlockSource(codeBlock: HTMLElement, source: string): boolean {
   const domSource = readEditorCodeBlockText(codeBlock);
@@ -596,7 +596,7 @@ export function collectParagraphRuns(editor: HTMLElement): ParagraphRun[] {
  *
  * 구간은 **뒤에서부터** 처리한다. 앞 구간을 먼저 바꾸면 뒤 구간의 ProseMirror 위치가 어긋난다.
  *
- * docs/issue/2026-09-04-tilde-range-becomes-strikethrough.md
+ * docs/troubleshootings/reusable/2026-09-04-tilde-range-becomes-strikethrough.md
  */
 export async function runParagraphMarkdownPhase(
   editor: HTMLElement,

@@ -269,7 +269,7 @@ Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위�
 - [제품 개요](../product-overview.md)
 - [Confluence 문서 본문 Markdown 복사](./confluence-page-markdown-copy.md)
 - [Confluence Mermaid 동작 분석](../../docs/confluence-mermaid-runtime-analysis.md)
-- [코드블럭 벗기기 및 Markdown -> ADF 데이터 유실 분석](../../docs/confluence-markdown-adf-data-loss-analysis.md)
+- [코드블럭 벗기기 및 Markdown -> ADF 데이터 유실 분석](../../docs/troubleshootings/project-specific/2026-08-12-confluence-markdown-adf-data-loss.md)
 - [용어사전](../glossary.md)
 
 ## Mermaid 매크로는 변환 직후에만 오류로 보인다 (2026-09-18)

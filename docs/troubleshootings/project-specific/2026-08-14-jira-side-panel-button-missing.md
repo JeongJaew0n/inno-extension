@@ -117,7 +117,7 @@ URL과 업무 정보는 그대로 유지되고 컨테이너만 교체된다. 전
 
 ### 1. 보드 target이 dialog를 필수로 요구한다
 
-[`runtime.ts`](../src/sites/jira/features/issueLinkCopy/runtime.ts#L68-L85)는 기본 board route와 `selectedIssue`를 확인한 뒤 다음 순서로 동작한다.
+[`runtime.ts`](../../../src/sites/jira/features/issueLinkCopy/runtime.ts#L68-L85)는 기본 board route와 `selectedIssue`를 확인한 뒤 다음 순서로 동작한다.
 
 1. 정확한 issue modal selector를 조회한다.
 2. 없으면 임의의 `[role="dialog"]`를 조회한다.
@@ -128,34 +128,34 @@ URL과 업무 정보는 그대로 유지되고 컨테이너만 교체된다. 전
 
 ### 2. 내부 업무 번호와 제목 selector는 이미 호환된다
 
-[`selectors.ts`](../src/sites/jira/selectors.ts#L4-L9)의 두 selector는 Chrome 실측에서 modal과 panel 모두 일치했다.
+[`selectors.ts`](../../../src/sites/jira/selectors.ts#L4-L9)의 두 selector는 Chrome 실측에서 modal과 panel 모두 일치했다.
 
 ```ts
 CURRENT_ISSUE_LINK
 CURRENT_ISSUE_TITLE
 ```
 
-[`findIssueLink()`](../src/sites/jira/features/issueLinkCopy/runtime.ts#L29-L39)도 전달받은 scope 안에서 `selectedIssue`와 같은 업무 번호를 검증한다. 올바른 panel scope만 전달하면 부모 업무인 `NPT-29`가 아니라 현재 업무인 `NPT-144`를 선택할 수 있다.
+[`findIssueLink()`](../../../src/sites/jira/features/issueLinkCopy/runtime.ts#L29-L39)도 전달받은 scope 안에서 `selectedIssue`와 같은 업무 번호를 검증한다. 올바른 panel scope만 전달하면 부모 업무인 `NPT-29`가 아니라 현재 업무인 `NPT-144`를 선택할 수 있다.
 
 ### 3. route 변경은 필요하지 않다
 
-[`routes.ts`](../src/sites/jira/routes.ts#L26-L44)는 다음 URL에서 프로젝트, board ID와 선택 업무를 이미 추출한다.
+[`routes.ts`](../../../src/sites/jira/routes.ts#L26-L44)는 다음 URL에서 프로젝트, board ID와 선택 업무를 이미 추출한다.
 
 ```text
 /jira/software/c/projects/NPT/boards/2147?selectedIssue=NPT-144
 ```
 
-[`isJiraBoardRoute()`](../src/sites/jira/routes.ts#L95-L97)는 기본 board path를 허용한다. 이번 문제는 route 범위가 아니라 같은 route 안의 표현 방식 차이다.
+[`isJiraBoardRoute()`](../../../src/sites/jira/routes.ts#L95-L97)는 기본 board path를 허용한다. 이번 문제는 route 범위가 아니라 같은 route 안의 표현 방식 차이다.
 
 ### 4. 기존 observer는 전환을 감지한다
 
-[`createSiteRuntime.ts`](../src/platform/runtime/createSiteRuntime.ts#L42-L50)는 `document.body` 아래 child/subtree 변경을 관찰하고, [`scheduleUpdate()`](../src/platform/runtime/createSiteRuntime.ts#L100-L106)로 reconcile을 예약한다.
+[`createSiteRuntime.ts`](../../../src/platform/runtime/createSiteRuntime.ts#L42-L50)는 `document.body` 아래 child/subtree 변경을 관찰하고, [`scheduleUpdate()`](../../../src/platform/runtime/createSiteRuntime.ts#L100-L106)로 reconcile을 예약한다.
 
 modal과 panel 전환은 DOM subtree를 교체하므로 새 observer를 추가할 근거는 없다. 실제로 전환 직후 기존 root가 제거됐다.
 
 ### 5. target이 없으면 host를 제거한다
 
-[`issueLinkCopy` reconcile](../src/sites/jira/features/issueLinkCopy/runtime.ts#L203-L218)은 resolver가 `null`을 반환하면 `dispose()`로 host를 제거한다. 현재 사이드 패널에서 버튼이 보이지 않는 직접적인 실행 경로다.
+[`issueLinkCopy` reconcile](../../../src/sites/jira/features/issueLinkCopy/runtime.ts#L203-L218)은 resolver가 `null`을 반환하면 `dispose()`로 host를 제거한다. 현재 사이드 패널에서 버튼이 보이지 않는 직접적인 실행 경로다.
 
 ## 수정 경계에 대한 분석
 
@@ -198,7 +198,7 @@ section[data-testid="preview-panels.preview-panel"]
 
 ### 제목 포함 복사의 클릭 시점 재조회
 
-제목 포함 버튼은 클릭할 때 [`resolveIssueViewTarget()`](../src/sites/jira/features/issueLinkCopy/runtime.ts#L193-L197)을 다시 호출한다. panel을 resolver 범위에 포함해야 최초 mount뿐 아니라 제목 편집 후 최신 제목 재조회도 함께 동작한다.
+제목 포함 버튼은 클릭할 때 [`resolveIssueViewTarget()`](../../../src/sites/jira/features/issueLinkCopy/runtime.ts#L193-L197)을 다시 호출한다. panel을 resolver 범위에 포함해야 최초 mount뿐 아니라 제목 편집 후 최신 제목 재조회도 함께 동작한다.
 
 ## 검증해야 할 시나리오
 

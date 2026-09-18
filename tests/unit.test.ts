@@ -1234,7 +1234,7 @@ function createFakeCodeBlock(lines: string[] | null): HTMLElement {
 }
 
 // CodeMirror가 30줄 안팎까지만 렌더해 DOM 원문이 잘리는 문제를 견딘다.
-// docs/issue/2026-09-04-mermaid-verification-reads-truncated-dom.md
+// docs/troubleshootings/reusable/2026-09-04-mermaid-verification-reads-truncated-dom.md
 test('코드블럭 원문 대조는 완전히 일치하면 통과한다', () => {
   const source = 'flowchart TD\n  A --> B';
   assert.equal(matchesCodeBlockSource(createFakeCodeBlock(['flowchart TD', '  A --> B']), source), true);

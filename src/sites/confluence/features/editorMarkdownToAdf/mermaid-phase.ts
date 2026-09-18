@@ -105,7 +105,7 @@ export function countUnpairedMermaidExtensions(editor: HTMLElement): number {
  * 코드블럭 말고 다른 내용이 함께 든 expand는 건드리지 않는다. 통째로 교체하면 그 내용이 사라진다.
  * 그 경우는 종전대로 변환에 실패하고 되돌아간다 — 내용을 잃는 것보다 낫다.
  *
- * docs/issue/2026-09-02-mermaid-conversion-fails-inside-expand.md
+ * docs/troubleshootings/project-specific/2026-09-02-mermaid-conversion-fails-inside-expand.md
  */
 function resolveMermaidReplacementTarget(
   editor: HTMLElement,
@@ -185,7 +185,7 @@ async function replaceMermaidCodeBlock(
    * 교체가 성공하면 원본은 둘 중 하나다. 노드가 버려졌거나, 재사용되어 `Mermaid 원본` 접힌
    * 영역 **안으로** 들어갔거나. 붙여넣기가 실패했다면 원본은 접히지 않은 채 제자리에 남는다.
    *
-   * docs/issue/2026-09-04-mermaid-phase-verification-node-reuse.md
+   * docs/troubleshootings/reusable/2026-09-04-mermaid-phase-verification-node-reuse.md
    */
   const didConsumeOriginal = (): boolean => (
     !codeBlock.isConnected || isCollapsedMermaidSource(codeBlock)

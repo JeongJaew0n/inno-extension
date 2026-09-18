@@ -192,7 +192,7 @@ Markdown -> ADF 변환은 API 없이 동작하는 로컬 도구다. Popup에서�
 - [Confluence 문서 본문 Markdown 복사](./features/confluence-page-markdown-copy.md)
 - [Confluence Markdown -> ADF 변환기](./features/confluence-adf-markdown-tools.md)
 - [용어사전](./glossary.md)
-- [사후 기록](../docs/postmortems/README.md)
+- [오류·장애 기록](../docs/troubleshootings/README.md)
 - [멀티 사이트 통합 계획](../docs/plans/inno-extension-multi-site/spec.md)
 - [아마란스 출퇴근 기능 계획](../docs/plans/gw-checkin-header-buttons/spec.md)
 - [Jira 보드 분석](../docs/jira-board-2146-chrome-extension-analysis.md)

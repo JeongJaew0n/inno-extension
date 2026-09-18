@@ -121,7 +121,7 @@ mermaidButton.title = message;
 
 **뷰포트에 하나도 없는데 22개 전부 렌더돼 있다.** 이 편집기는 코드블럭 *노드*를 가상화하지 않는다.
 
-> **2026-09-04 정정.** 이 결론은 절반만 맞다. 코드블럭 노드는 전부 렌더되지만 **블록 안의 줄은 30줄에서 끊긴다.** 이 문서의 Mermaid 블록은 6줄·5줄이라 한계에 닿지 않아 드러나지 않았다. 31줄 이상인 블록에서는 DOM 읽기가 ProseMirror 원문보다 짧아 검증이 영구 실패한다 — [30줄 넘는 코드블럭은 Mermaid 변환 검증을 통과할 수 없다](./issue/2026-09-04-mermaid-verification-reads-truncated-dom.md) 참조.
+> **2026-09-04 정정.** 이 결론은 절반만 맞다. 코드블럭 노드는 전부 렌더되지만 **블록 안의 줄은 30줄에서 끊긴다.** 이 문서의 Mermaid 블록은 6줄·5줄이라 한계에 닿지 않아 드러나지 않았다. 31줄 이상인 블록에서는 DOM 읽기가 ProseMirror 원문보다 짧아 검증이 영구 실패한다 — [30줄 넘는 코드블럭은 Mermaid 변환 검증을 통과할 수 없다](../reusable/2026-09-04-mermaid-verification-reads-truncated-dom.md) 참조.
 
 ### 4.5 접힌 expand 안 원문 렌더 누락 — 배제
 
@@ -298,7 +298,7 @@ DOM 원문을 읽을 수 없는 코드블럭은 판정을 보류하고 후보로
 - `src/sites/confluence/main.ts` — MAIN world ProseMirror 브리지
 - `src/sites/confluence/selectors.ts` — `EDITOR_BODY`, `EDITOR_CODE_BLOCK`
 - `docs/confluence-mermaid-runtime-analysis.md` — Mermaid 컴포넌트 구조와 과거 위치 오류 분석
-- `docs/confluence-markdown-adf-data-loss-analysis.md`
+- `docs/troubleshootings/project-specific/2026-08-12-confluence-markdown-adf-data-loss.md`
 - `spec/features/confluence-adf-markdown-tools.md`
 
 ## 11. 상수

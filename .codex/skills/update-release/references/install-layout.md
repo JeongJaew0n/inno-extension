@@ -80,4 +80,4 @@ Can't interact with browser-internal or unparseable URLs.
 이 확장은 그 상태를 감지해 조용히 멈춘다(`isExtensionContextValid()`). 버튼이 사라진 것처럼
 보이지만 오류는 아니다. **탭을 새로고침해야 새 코드가 주입된다.**
 
-관련 기록: `docs/issue/2026-09-01-stale-content-script-console-error.md`
+관련 기록: `docs/troubleshootings/reusable/2026-09-01-stale-content-script-console-error.md`

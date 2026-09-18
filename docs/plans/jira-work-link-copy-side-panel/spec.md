@@ -56,7 +56,7 @@ scope 안의 현재 업무 link와 제목은 기존 selector를 사용한다.
   - 기존 Vite, TypeScript, Node test runner
   - Chrome 확장 프로그램 개발자 모드의 최신 `dist/`
 - 사전 작업으로 끝나야 하는 항목:
-  - `docs/jira-work-link-copy-side-panel-analysis.md`의 Chrome 실측과 원인 분석 완료
+  - `docs/troubleshootings/project-specific/2026-08-14-jira-side-panel-button-missing.md`의 Chrome 실측과 원인 분석 완료
   - 현재 working tree의 기존 미커밋 변경 보존
 
 ## 비고

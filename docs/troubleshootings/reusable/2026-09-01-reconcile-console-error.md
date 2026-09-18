@@ -173,6 +173,6 @@ if(i=window.location.href, !s.enabled){ ... }   // s가 undefined면 TypeError
 
 ## 8. 관련 자료
 
-- [사후 기록 — 설정 쓰기 할당량 장애](../postmortems/2026-08-26-settings-write-quota-outage.md) — 같은 `reconcileNow()` 경로에서 난 과거 전면 장애
-- [성능 관점 리팩터링 분석](../performance-refactoring-analysis.md) — 이번 계측의 배경
+- [사후 기록 — 설정 쓰기 할당량 장애](../project-specific/2026-08-26-settings-write-quota-outage.md) — 같은 `reconcileNow()` 경로에서 난 과거 전면 장애
+- [성능 관점 리팩터링 분석](../../performance-refactoring-analysis.md) — 이번 계측의 배경
 - `src/platform/runtime/createSiteRuntime.ts` — `reconcileNow()`

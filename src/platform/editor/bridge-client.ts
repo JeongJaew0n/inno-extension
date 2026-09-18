@@ -99,7 +99,7 @@ export async function selectEditorRange(
  *
  * DOM으로 읽으면 CodeMirror가 30줄 안팎까지만 렌더해 뒷부분이 잘린다.
  *
- * docs/issue/2026-09-04-mermaid-verification-reads-truncated-dom.md
+ * docs/troubleshootings/reusable/2026-09-04-mermaid-verification-reads-truncated-dom.md
  */
 export async function readProseMirrorCodeBlockText(
   editor: HTMLElement,

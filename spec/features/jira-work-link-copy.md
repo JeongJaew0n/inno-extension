@@ -215,4 +215,4 @@ Jira 보드는 같은 `selectedIssue`를 modal과 우측 preview panel 두 방�
 - [용어사전](../glossary.md)
 - [멀티 사이트 통합 계획](../../docs/plans/inno-extension-multi-site/spec.md)
 - [Jira 보드 분석](../../docs/jira-board-2146-chrome-extension-analysis.md)
-- [Jira 업무 링크 복사 우측 사이드 패널 분석](../../docs/jira-work-link-copy-side-panel-analysis.md)
+- [Jira 업무 링크 복사 우측 사이드 패널 분석](../../docs/troubleshootings/project-specific/2026-08-14-jira-side-panel-button-missing.md)

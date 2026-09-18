@@ -294,5 +294,5 @@ Markdown -> ADF 변환기는 지원할 수 없는 raw HTML을 경고와 함께 �
 
 ## 8. 관련 문서
 
-- [Confluence Markdown -> ADF 변환기 기능 spec](../spec/features/confluence-adf-markdown-tools.md)
-- [Confluence Mermaid 동작 방식 분석](./confluence-mermaid-runtime-analysis.md)
+- [Confluence Markdown -> ADF 변환기 기능 spec](../../../spec/features/confluence-adf-markdown-tools.md)
+- [Confluence Mermaid 동작 방식 분석](../../confluence-mermaid-runtime-analysis.md)

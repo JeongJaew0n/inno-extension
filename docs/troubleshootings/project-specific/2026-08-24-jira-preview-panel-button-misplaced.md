@@ -257,8 +257,8 @@ host      : board-panel-link, NPT-143, 기준 요소 = 헤더 anchor
 - `src/sites/jira/routes.ts` — `isJiraBoardRoute()`
 - `src/platform/runtime/createSiteRuntime.ts` — reconcile 스케줄링
 - `spec/features/jira-work-link-copy.md` — 버튼 위치 계약
-- `docs/extension-ui-visibility-recovery-analysis.md` — 선행 미노출 분석
-- `docs/jira-work-link-copy-side-panel-analysis.md` — preview panel 지원 도입 분석
+- `docs/troubleshootings/project-specific/2026-08-20-extension-ui-not-injected.md` — 선행 미노출 분석
+- `docs/troubleshootings/project-specific/2026-08-14-jira-side-panel-button-missing.md` — preview panel 지원 도입 분석
 
 ## 11. 실측에 사용한 selector
 

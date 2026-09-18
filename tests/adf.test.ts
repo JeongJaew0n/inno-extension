@@ -53,7 +53,7 @@ test('markdown를 Confluence ADF로 변환한다', () => {
 });
 
 // 편집기의 `Mermaid -> ADF`가 최상위 코드블럭만 교체할 수 있어 expand로 감싸지 않는다.
-// docs/issue/2026-09-02-mermaid-conversion-fails-inside-expand.md
+// docs/troubleshootings/project-specific/2026-09-02-mermaid-conversion-fails-inside-expand.md
 test('mermaid fence는 최상위 codeBlock으로 보존한다', () => {
   const markdown = '```mermaid\ngraph TD;\nA-->B;\n```';
   const adf = markdownToAdf(markdown);

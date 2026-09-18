@@ -3,7 +3,7 @@
 - 발생일: 2026-09-04
 - 상태: **원인 확정 · 수정 적용 · 실측 확인 완료(2026-09-04)**
 - 대상 문서: 개인 스페이스 `에러 테스트` 페이지 `edit-v2/2246476007`
-- 선행 이슈: [Popup `Markdown -> ADF` 결과는 `Mermaid -> ADF`로 변환할 수 없다](./2026-09-02-mermaid-conversion-fails-inside-expand.md) — 그 수정 적용 **후에도** 실패해서 다시 조사했다
+- 선행 이슈: [Popup `Markdown -> ADF` 결과는 `Mermaid -> ADF`로 변환할 수 없다](../project-specific/2026-09-02-mermaid-conversion-fails-inside-expand.md) — 그 수정 적용 **후에도** 실패해서 다시 조사했다
 
 ## 1. 결론
 
@@ -132,7 +132,7 @@ export function readConfluenceCodeBlockText(codeBlock: HTMLElement): string {
 
 ## 6. 이전 조사의 오판 정정
 
-[2026-08-24 분석](../confluence-mermaid-adf-conversion-failure-analysis.md) 4.4절은 이렇게 단정했다.
+[2026-08-24 분석](../project-specific/2026-08-24-confluence-mermaid-adf-conversion-failure.md) 4.4절은 이렇게 단정했다.
 
 > "뷰포트에 하나도 없는데 22개 전부 렌더돼 있다. **이 편집기는 코드블럭을 가상화하지 않는다.**"
 
@@ -221,7 +221,7 @@ export function matchesCodeBlockSource(codeBlock: HTMLElement, source: string): 
 
 ## 10. 관련 자료
 
-- [Popup `Markdown -> ADF` 결과는 `Mermaid -> ADF`로 변환할 수 없다](./2026-09-02-mermaid-conversion-fails-inside-expand.md) — 선행 원인. 수정 후 이 이슈가 드러났다
-- [Confluence Mermaid -> ADF 변환 실패 분석](../confluence-mermaid-adf-conversion-failure-analysis.md) — 4.4절 결론을 6절에서 정정
+- [Popup `Markdown -> ADF` 결과는 `Mermaid -> ADF`로 변환할 수 없다](../project-specific/2026-09-02-mermaid-conversion-fails-inside-expand.md) — 선행 원인. 수정 후 이 이슈가 드러났다
+- [Confluence Mermaid -> ADF 변환 실패 분석](../project-specific/2026-08-24-confluence-mermaid-adf-conversion-failure.md) — 4.4절 결론을 6절에서 정정
 - `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts` — 385·399행이 수정 지점
 - `src/sites/confluence/features/editorMarkdownToAdf/code-block.ts` — `readConfluenceCodeBlockText()`

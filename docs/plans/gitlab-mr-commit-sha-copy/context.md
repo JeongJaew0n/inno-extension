@@ -120,7 +120,7 @@ GitHub Enterprise는 `{owner}/{repo}` 2단 고정이지만 **GitLab namespace는
 
 - [GitHub Enterprise PR 제목 링크 복사 Spec](../../../spec/features/github-pull-request-title-copy.md) — 직전에 같은 방식으로 추가한 사이트. 구조를 그대로 참고한다.
 - [제품 개요](../../../spec/product-overview.md)
-- [사후 기록](../../postmortems/README.md) — 카탈로그 변경이 저장된 설정과 어긋나 장애를 만든 사례. 사이트 추가 시 확인한다.
+- [설정 쓰기 할당량 장애](../../troubleshootings/project-specific/2026-08-26-settings-write-quota-outage.md) — 카탈로그 변경이 저장된 설정과 어긋나 장애를 만든 사례. 사이트 추가 시 확인한다.
 
 ## 현재 상태 — 2026-08-26
 

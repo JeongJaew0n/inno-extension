@@ -97,6 +97,6 @@ spec이 이 한계를 명시하고 있다.
 
 ## 관련 이슈
 
-- [Popup 결과는 Mermaid -> ADF로 변환할 수 없다](../../issue/2026-09-02-mermaid-conversion-fails-inside-expand.md)
-- [30줄 넘는 코드블럭은 검증을 통과할 수 없다](../../issue/2026-09-04-mermaid-verification-reads-truncated-dom.md)
-- [빈 줄이 있으면 표가 변환되지 않는다](../../issue/2026-09-04-markdown-table-broken-by-blank-lines.md)
+- [Popup 결과는 Mermaid -> ADF로 변환할 수 없다](../../troubleshootings/project-specific/2026-09-02-mermaid-conversion-fails-inside-expand.md)
+- [30줄 넘는 코드블럭은 검증을 통과할 수 없다](../../troubleshootings/reusable/2026-09-04-mermaid-verification-reads-truncated-dom.md)
+- [빈 줄이 있으면 표가 변환되지 않는다](../../troubleshootings/reusable/2026-09-04-markdown-table-broken-by-blank-lines.md)

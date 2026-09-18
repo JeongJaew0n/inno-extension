@@ -143,7 +143,7 @@ section[role="dialog"][data-testid*="issue-modal.modal-dialog"] { width: 100vw !
 | 레이아웃 | 2단 (본문 928 + 필드 270) | **1단** (`left-most-column` 없음) |
 | 우상단 버튼 | 관찰·공유·작업·**사이드바로 전환**·닫기 | 관찰·공유·작업·**닫기** (전환 버튼 없음) |
 
-이 패널은 [Jira 미리보기 패널 버튼 주입 분석](../../jira-preview-panel-button-mount-analysis.md)에서
+이 패널은 [Jira 미리보기 패널 버튼 주입 분석](../../troubleshootings/project-specific/2026-08-24-jira-preview-panel-button-misplaced.md)에서
 이미 다룬 그 패널이다.
 
 넓히는 것 자체는 된다.
@@ -170,5 +170,5 @@ section[role="dialog"][data-testid*="issue-modal.modal-dialog"] { width: 100vw !
 ## 9. 관련 자료
 
 - `docs/jira-board-2146-chrome-extension-analysis.md` — 같은 Jira의 보드 DOM 분석 선례
-- `docs/jira-preview-panel-button-mount-analysis.md` — 사이드 패널 진입 경로 분석
+- `docs/troubleshootings/project-specific/2026-08-24-jira-preview-panel-button-misplaced.md` — 사이드 패널 진입 경로 분석
 - `src/sites/jira/` — 현재 Jira 기능 구현

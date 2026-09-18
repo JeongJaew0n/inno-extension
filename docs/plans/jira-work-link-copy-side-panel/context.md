@@ -40,7 +40,7 @@ Jira board 선택 업무 resolver가 issue modal과 preview panel을 모두 명�
 
 ## 관련 자료
 
-- `docs/jira-work-link-copy-side-panel-analysis.md`
+- `docs/troubleshootings/project-specific/2026-08-14-jira-side-panel-button-missing.md`
 - `src/sites/jira/features/issueLinkCopy/runtime.ts`
 - `src/sites/jira/selectors.ts`
 - `src/sites/jira/routes.ts`

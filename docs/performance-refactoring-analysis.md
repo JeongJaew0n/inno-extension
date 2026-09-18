@@ -221,7 +221,7 @@ assets/markdown-to-adf-Du3Pgqgc.js
 
 **주의할 점.**
 
-- 이 경로는 과거 전체 장애의 발원지다. [사후 기록](./postmortems/2026-08-26-settings-write-quota-outage.md)을 먼저 읽는다. 당시 원인은 읽기가 쓰기를 유발하고 그 쓰기가 다시 reconcile을 부르는 순환이었다.
+- 이 경로는 과거 전체 장애의 발원지다. [사후 기록](./troubleshootings/project-specific/2026-08-26-settings-write-quota-outage.md)을 먼저 읽는다. 당시 원인은 읽기가 쓰기를 유발하고 그 쓰기가 다시 reconcile을 부르는 순환이었다.
 - 캐시를 도입하면 `onChanged` 의존도가 높아진다. 통지가 유실되면 설정이 반영되지 않는다. 현재 구조는 매번 읽으므로 그런 위험이 없었다. **이 트레이드오프를 인지하고 결정해야 한다.**
 - `getSettings()` 실패 시 직전 설정으로 계속하는 방어는 이미 있다.
 
@@ -292,8 +292,8 @@ preventDefault + stopPropagation  3개 파일
 
 ## 8. 관련 자료
 
-- [사후 기록 — 설정 쓰기 할당량 장애](./postmortems/2026-08-26-settings-write-quota-outage.md) — 5.2가 건드리는 경로
-- [Extension UI 미노출 분석](./extension-ui-visibility-recovery-analysis.md) — reconcile 스케줄링 배경
+- [사후 기록 — 설정 쓰기 할당량 장애](./troubleshootings/project-specific/2026-08-26-settings-write-quota-outage.md) — 5.2가 건드리는 경로
+- [Extension UI 미노출 분석](./troubleshootings/project-specific/2026-08-20-extension-ui-not-injected.md) — reconcile 스케줄링 배경
 - `src/platform/runtime/createSiteRuntime.ts` — reconcile 진입점
 - `src/platform/settings/repository.ts` — `getSettings()`
 - `src/sites/confluence/content.ts` — 정적 import 체인 시작점

@@ -35,7 +35,7 @@
 
 Chrome 확장을 재로드해도 이미 주입된 content script는 페이지에서 제거되지 않는다. 그 스크립트는 계속 실행되지만 소속 확장 context가 무효화되어 `chrome.*` API 호출이 모두 실패한다.
 
-이 프로젝트에는 이미 같은 현상이 기록돼 있다. [Extension UI 미노출 분석](../extension-ui-visibility-recovery-analysis.md) 2.3절에서 Confluence 탭의 `Extension context invalidated` 오류를 25건 관측했고, 판정은 다음과 같았다.
+이 프로젝트에는 이미 같은 현상이 기록돼 있다. [Extension UI 미노출 분석](../project-specific/2026-08-20-extension-ui-not-injected.md) 2.3절에서 Confluence 탭의 `Extension context invalidated` 오류를 25건 관측했고, 판정은 다음과 같았다.
 
 > 판정: **기존 content script 자체의 완전 복구는 불가능**.
 
@@ -147,12 +147,12 @@ context가 무효화된 스크립트에서는 `chrome.storage.sync.get`이 예�
 
 회귀 테스트 2건을 추가했다. `chrome`이 없을 때, `runtime`이 없을 때, `id`가 사라졌을 때, **접근 자체가 던질 때** 모두 `false`를 돌려주는지 확인한다. 자동화 테스트 75건 통과.
 
-**한계.** 이 변경은 증상만 없앤다. [Extension UI 미노출 분석](../extension-ui-visibility-recovery-analysis.md) 3.1절이 판정한 대로 **죽은 script를 되살릴 수는 없다.** 조용히 멈출 뿐이며 새 기능을 쓰려면 탭 새로고침이 여전히 필요하다.
+**한계.** 이 변경은 증상만 없앤다. [Extension UI 미노출 분석](../project-specific/2026-08-20-extension-ui-not-injected.md) 3.1절이 판정한 대로 **죽은 script를 되살릴 수는 없다.** 조용히 멈출 뿐이며 새 기능을 쓰려면 탭 새로고침이 여전히 필요하다.
 
 ## 8. 관련 자료
 
 - [1차 조사 기록](./2026-09-01-reconcile-console-error.md)
-- [Extension UI 미노출 분석](../extension-ui-visibility-recovery-analysis.md) — 2.3절에 같은 현상의 선행 관측
-- [사후 기록 — 설정 쓰기 할당량 장애](../postmortems/2026-08-26-settings-write-quota-outage.md) — 3.4의 방어 코드가 추가된 배경
+- [Extension UI 미노출 분석](../project-specific/2026-08-20-extension-ui-not-injected.md) — 2.3절에 같은 현상의 선행 관측
+- [사후 기록 — 설정 쓰기 할당량 장애](../project-specific/2026-08-26-settings-write-quota-outage.md) — 3.4의 방어 코드가 추가된 배경
 - `src/platform/runtime/createSiteRuntime.ts` — `reconcileNow()`
 - `README.md` 문제 해결 절 — 확장 새로고침 후 탭 새로고침 안내

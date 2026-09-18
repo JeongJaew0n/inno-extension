@@ -2,7 +2,7 @@
 
 - 최초 관측: 2026-09-02
 - 원인 확정: 2026-09-04 (사용자가 원문 Markdown 제공)
-- 상태: **원인 확정 · 수정 적용 · 실측 확인 완료(2026-09-04).** 다만 이 수정 후 [별개의 원인](./2026-09-04-mermaid-verification-reads-truncated-dom.md)이 드러났다
+- 상태: **원인 확정 · 수정 적용 · 실측 확인 완료(2026-09-04).** 다만 이 수정 후 [별개의 원인](../reusable/2026-09-04-mermaid-verification-reads-truncated-dom.md)이 드러났다
 - 대상 문서: 개인 스페이스 `에러 테스트` 페이지 `edit-v2/2246476007`
 - 신고 내용: 편집 중 `Mermaid -> ADF`가 `변환 중` → `실패`로 끝난다. 사용자 최초 추정은 "내용이 길어서"
 
@@ -162,7 +162,7 @@ return Boolean(
 
 ### 5.2 성공 문서와의 대조
 
-[이전 조사](../confluence-mermaid-adf-conversion-failure-analysis.md) 5절에 성공 경로 실측이 있다.
+[이전 조사](./2026-08-24-confluence-mermaid-adf-conversion-failure.md) 5절에 성공 경로 실측이 있다.
 
 | 항목 | 성공 (`2202566692`) | 실패 (`2246476007`) |
 | --- | --- | --- |
@@ -289,7 +289,7 @@ function resolveMermaidReplacementTarget(editor, codeBlock): HTMLElement {
 
 ## 12. 관련 자료
 
-- [Confluence Mermaid -> ADF 변환 실패 분석](../confluence-mermaid-adf-conversion-failure-analysis.md) — 2026-08-24 조사. 당시 6절 가설 2번(3,000ms 검증 미통과)이 이번에 확정됐다. 다만 원인은 그때 추정한 "문서가 크고 저사양"이 아니었다
+- [Confluence Mermaid -> ADF 변환 실패 분석](./2026-08-24-confluence-mermaid-adf-conversion-failure.md) — 2026-08-24 조사. 당시 6절 가설 2번(3,000ms 검증 미통과)이 이번에 확정됐다. 다만 원인은 그때 추정한 "문서가 크고 저사양"이 아니었다
 - `src/sites/confluence/adf/markdown-to-adf.ts` — `renderMermaidBlock()` (원인)
 - `src/sites/confluence/features/editorMarkdownToAdf/runtime.ts` — `findEditorTopLevelNode()`, `isMermaidReplacementAtOriginalPosition()`
 - `src/sites/confluence/features/editorMarkdownToAdf/mermaid.ts` — `CONFLUENCE_MERMAID_SOURCE_TITLE`

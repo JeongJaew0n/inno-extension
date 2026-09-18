@@ -40,7 +40,7 @@ cb.textContent   : "912a: 1b: 2"  ← 원본 엘리먼트가 새 yaml 코드블�
 3초 타임아웃이 지나 실패로 판정하고 되돌리기로 넘어간다.
 
 > 같은 함정을 Mermaid 단계에서 이미 겪었다.
-> [docs/issue/2026-09-04-mermaid-phase-verification-node-reuse.md](../../issue/2026-09-04-mermaid-phase-verification-node-reuse.md)
+> [docs/troubleshootings/reusable/2026-09-04-mermaid-phase-verification-node-reuse.md](../reusable/2026-09-04-mermaid-phase-verification-node-reuse.md)
 > 그때는 Mermaid 쪽만 고치고 **1단계는 그대로 뒀다.**
 
 ## 원인 2 — 되돌리기 판정이 `innerHTML` 완전 일치였다

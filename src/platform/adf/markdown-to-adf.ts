@@ -119,7 +119,7 @@ class Converter {
    * 접기의 목적은 다이어그램이 생긴 뒤 원본을 숨기는 것이고, 그 접기는 편집기 변환이
    * `Mermaid 원본` expand로 직접 만든다. 다이어그램이 없는 시점에 미리 접을 이유가 없다.
    *
-   * docs/issue/2026-09-02-mermaid-conversion-fails-inside-expand.md
+   * docs/troubleshootings/project-specific/2026-09-02-mermaid-conversion-fails-inside-expand.md
    */
   private renderMermaidBlock(text: string): AdfNode[] {
     this.mermaidCount += 1;

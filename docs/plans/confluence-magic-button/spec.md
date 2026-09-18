@@ -111,7 +111,7 @@ function isTopLevelCodeBlock(editor: HTMLElement, codeBlock: HTMLElement): boole
 ### 5.2 원문은 브리지로 읽어야 한다
 
 C2 판정을 DOM 원문으로 하면 **30줄 넘는 블록에서 뒷부분을 못 본다.**
-([관련 이슈](../../issue/2026-09-04-mermaid-verification-reads-truncated-dom.md))
+([관련 이슈](../../troubleshootings/reusable/2026-09-04-mermaid-verification-reads-truncated-dom.md))
 
 Markdown 특징은 보통 앞부분에 나오므로 DOM 원문으로 1차 후보를 좁히고, 확정 판정은
 `readCodeBlockSources()`가 읽은 **브리지 원문**으로 한다. `mayBeMermaidCodeBlock()`이
