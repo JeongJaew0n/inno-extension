@@ -1,0 +1,105 @@
+/*
+ * Inno Extension 디자인 토큰
+ * ==========================
+ *
+ * 값을 직접 쓰지 않는다. 컴포넌트는 반드시 이 토큰을 거친다.
+ *
+ * ## 이름에 `--inno-` 를 붙이는 이유
+ *
+ * 우리 UI 는 Shadow DOM 안에 산다. 그런데 **CSS 사용자 지정 속성은 shadow 경계를 넘어
+ * 상속된다.** 호스트에 `all: initial` 을 걸어도 마찬가지다 — `all` 은 사용자 지정 속성을
+ * 건드리지 않는다. Jira 나 Confluence 가 `--surface` 같은 이름을 쓰고 있으면 우리 것과 섞인다.
+ * 그래서 전부 접두사를 붙인다.
+ *
+ * ## 색을 두 벌 쓰지 않는다
+ *
+ * 지금 제품은 주입 UI(Atlassian 색)와 Popup(보라 브랜드)이 서로 다른 색을 쓴다. 한 벌로
+ * 합친다. Jira·Confluence 와 똑같아 보일 필요는 없다 — **우리 것이라는 게 티나는 편이 낫다.**
+ */
+
+:root,
+:host {
+  /* ---------- 브랜드 ---------- */
+  --inno-brand: #5b4bf0;
+  --inno-brand-hover: #4a3ad6;
+  --inno-brand-active: #3d2fb8;
+  --inno-brand-subtle: #eeebff;
+  --inno-brand-text: #4a3ad6;
+  --inno-on-brand: #ffffff;
+
+  /* ---------- 중립 ---------- */
+  --inno-surface: #ffffff;
+  --inno-surface-sunken: #f4f5f7;
+  --inno-surface-hover: #ebecf0;
+  --inno-border: #dcdfe4;
+  --inno-border-strong: #8993a4;
+
+  --inno-text: #1d2233;
+  --inno-text-subtle: #5a6173;
+  --inno-text-faint: #8a91a3;
+
+  /* ---------- 의미색 ---------- */
+  --inno-danger: #c9372c;
+  --inno-danger-subtle: #ffecea;
+  --inno-success: #1f845a;
+  --inno-success-subtle: #dcfff1;
+  --inno-warning: #a54800;
+  --inno-warning-subtle: #fff0e6;
+  --inno-info: #0055cc;
+  --inno-info-subtle: #e9f2ff;
+
+  /* ---------- 글자 ---------- */
+  --inno-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+    "Malgun Gothic", sans-serif;
+  --inno-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --inno-text-xs: 11px;
+  --inno-text-sm: 12px;
+  --inno-text-md: 13px;
+  --inno-text-lg: 15px;
+  --inno-leading-tight: 1.35;
+  --inno-leading: 1.55;
+
+  /* ---------- 간격 ---------- */
+  --inno-space-1: 4px;
+  --inno-space-2: 6px;
+  --inno-space-3: 8px;
+  --inno-space-4: 12px;
+  --inno-space-5: 16px;
+  --inno-space-6: 24px;
+
+  /* ---------- 모서리 ---------- */
+  --inno-radius-sm: 4px;
+  --inno-radius-md: 6px;
+  --inno-radius-lg: 10px;
+  --inno-radius-pill: 999px;
+
+  /*
+   * ---------- 조작 요소 높이 ----------
+   *
+   * 남의 화면에 얹히므로 크게 만들지 않는다. `sm` 이 기본이고 `md` 는 편집기 툴바처럼 주변
+   * 버튼이 클 때만 쓴다.
+   */
+  --inno-control-sm: 24px;
+  --inno-control-md: 32px;
+
+  /* ---------- 그림자 ---------- */
+  --inno-shadow-raised: 0 1px 2px rgba(29, 34, 51, 0.16);
+  --inno-shadow-overlay: 0 8px 20px rgba(29, 34, 51, 0.18);
+
+  /* ---------- 초점 ---------- */
+  --inno-focus-ring: 2px solid var(--inno-brand);
+  --inno-focus-offset: 2px;
+}
+
+/*
+ * 주입 UI 의 껍데기.
+ *
+ * 남의 페이지 스타일이 새어 들어오지 않게 `all: initial` 로 끊고, 우리가 필요한 것만 다시 켠다.
+ * 이 클래스를 shadow host 에 준다.
+ */
+.inno-root {
+  all: initial;
+  font-family: var(--inno-font);
+  color: var(--inno-text);
+}

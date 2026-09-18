@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Inno Extension 디자인 시스템</title>
+<link rel="stylesheet" href="./tokens.css" />
+<link rel="stylesheet" href="./components.css" />
+<style>
+  /* 이 페이지(문서)만의 스타일. 제품에는 쓰지 않는다 */
+  body { margin: 0; background: #f7f8fa; color: var(--inno-text); font-family: var(--inno-font); }
+  .page { max-width: 1040px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { margin: 0 0 6px; font-size: 24px; }
+  .lede { margin: 0 0 32px; color: var(--inno-text-subtle); font-size: 14px; line-height: 1.6; }
+  .lede code { background: #eceef2; padding: 1px 5px; border-radius: 4px; font-family: var(--inno-font-mono); font-size: 12px; }
+  section { margin: 0 0 40px; padding: 20px 22px; background: #fff; border: 1px solid var(--inno-border); border-radius: 12px; }
+  section > h2 { margin: 0 0 4px; font-size: 16px; }
+  section > .note { margin: 0 0 18px; color: var(--inno-text-subtle); font-size: 13px; line-height: 1.6; }
+  .row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .label { width: 100%; color: var(--inno-text-faint); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .sw { border: 1px solid var(--inno-border); border-radius: 8px; overflow: hidden; }
+  .sw i { display: block; height: 44px; }
+  .sw b { display: block; padding: 6px 8px 2px; font-size: 11px; }
+  .sw span { display: block; padding: 0 8px 7px; color: var(--inno-text-faint); font-family: var(--inno-font-mono); font-size: 10px; }
+  .stage { padding: 16px; background: var(--inno-surface-sunken); border-radius: 10px; }
+  .stage--board { background: #fff; border: 1px dashed var(--inno-border); }
+  .scale td { padding: 6px 10px; border-top: 1px solid var(--inno-border); font-size: 13px; }
+  .scale td:first-child { color: var(--inno-text-faint); font-family: var(--inno-font-mono); font-size: 11px; width: 170px; }
+  table.scale { width: 100%; border-collapse: collapse; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Inno Extension 디자인 시스템</h1>
+  <p class="lede">
+    제품에는 아직 적용하지 않았다. <strong>확장 빌드와 완전히 분리돼 있다</strong> —
+    <code>tsconfig</code> 는 <code>src</code> 만 보고 패키징은 <code>dist</code> 만 담으므로
+    이 폴더는 ZIP 에 들어가지 않는다.<br />
+    React 를 쓰지 않는다. 우리 UI 는 Shadow DOM 에 <strong>평문 CSS 문자열</strong>을 넣기
+    때문에, 그대로 붙여넣을 수 있는 CSS 여야 쓸모가 있다.
+  </p>
+
+  <section>
+    <h2>왜 만드나</h2>
+    <p class="note">
+      Jira·Confluence 와 안 맞는 것은 받아들인다. <strong>우리 것이라는 게 티나도 괜찮다.</strong>
+      문제는 <strong>우리 기능끼리 서로 다른 것</strong>이다. 지금 같은 성격의 버튼이 높이 24px 과
+      32px, 글자 12px 과 13px, 모서리 3px 과 4px 로 제각각이고, 주입 UI 는 Atlassian 파랑을
+      Popup 은 보라를 쓴다. 색을 한 벌로 합치고 크기를 두 단계로 줄인다.
+    </p>
+    <table class="scale">
+      <tr><td>지금</td><td>Markdown 변환 32px/13px · Markdown 복사 24px/12px · 저장 24px/12px · Popup 버튼 <em>또 다름</em></td></tr>
+      <tr><td>여기</td><td><code>.inno-btn</code> 24px/12px 하나. 편집기 툴바처럼 주변이 클 때만 <code>--md</code> 32px/13px</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>색</h2>
+    <p class="note">브랜드는 Popup 에서 쓰던 보라를 이어받는다. 이미 자리잡았고, 남의 화면 위에서 우리 것임이 구분된다.</p>
+    <div class="swatches">
+      <div class="sw"><i style="background:var(--inno-brand)"></i><b>brand</b><span>#5b4bf0</span></div>
+      <div class="sw"><i style="background:var(--inno-brand-subtle)"></i><b>brand-subtle</b><span>#eeebff</span></div>
+      <div class="sw"><i style="background:var(--inno-text)"></i><b>text</b><span>#1d2233</span></div>
+      <div class="sw"><i style="background:var(--inno-text-subtle)"></i><b>text-subtle</b><span>#5a6173</span></div>
+      <div class="sw"><i style="background:var(--inno-text-faint)"></i><b>text-faint</b><span>#8a91a3</span></div>
+      <div class="sw"><i style="background:var(--inno-surface-sunken)"></i><b>surface-sunken</b><span>#f4f5f7</span></div>
+      <div class="sw"><i style="background:var(--inno-border)"></i><b>border</b><span>#dcdfe4</span></div>
+      <div class="sw"><i style="background:var(--inno-danger)"></i><b>danger</b><span>#c9372c</span></div>
+      <div class="sw"><i style="background:var(--inno-success)"></i><b>success</b><span>#1f845a</span></div>
+      <div class="sw"><i style="background:var(--inno-warning)"></i><b>warning</b><span>#a54800</span></div>
+      <div class="sw"><i style="background:var(--inno-info)"></i><b>info</b><span>#0055cc</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>버튼</h2>
+    <p class="note">
+      <strong><code>--primary</code> 는 되돌릴 수 없는 동작에만 쓴다.</strong> 되돌릴 수 있는 것과
+      같은 모양이면 잘못 눌렀을 때 대가가 다르다는 것이 보이지 않는다.
+    </p>
+    <div class="row"><span class="label">기본 (sm) — 주입 UI 대부분</span>
+      <button class="inno-btn">Markdown 복사</button>
+      <button class="inno-btn inno-btn--primary">저장</button>
+      <button class="inno-btn">취소</button>
+      <button class="inno-btn inno-btn--danger">삭제</button>
+      <button class="inno-btn inno-btn--outline">더 보기</button>
+      <button class="inno-btn" disabled>복사 중</button>
+    </div>
+    <div class="row"><span class="label">md — 편집기 툴바처럼 주변이 클 때만</span>
+      <button class="inno-btn inno-btn--md">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h3"/></svg>
+        Markdown 변환
+      </button>
+      <button class="inno-btn inno-btn--md inno-btn--primary">업데이트</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>칩 · 배지</h2>
+    <p class="note">
+      칩은 읽기 전용 정보 한 줄이다. <strong><code>min-width: 0</code> 이 핵심</strong>이다 —
+      풀지 않으면 flex 안에서 내용 폭으로 버티다가 바깥에서 잘리고, 말줄임도 자기가 넉넉한 줄 알고
+      작동하지 않는다. 실제로 그 버그를 겪었다.
+    </p>
+    <div class="row">
+      <span class="inno-chip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span class="inno-chip__text">9/9 ~ 9/30 · 8일 남음</span>
+      </span>
+      <span class="inno-badge">기본</span>
+      <span class="inno-badge inno-badge--success">활성</span>
+      <span class="inno-badge inno-badge--info">읽기 전용</span>
+      <span class="inno-badge inno-badge--warning">API</span>
+      <span class="inno-badge inno-badge--brand">신규</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>드롭다운</h2>
+    <p class="note">왼쪽이 이름, 오른쪽이 상태다. 네이티브 <code>select</code> 로는 이 배치가 안 돼서 직접 그린다.</p>
+    <div class="stage" style="min-height:190px">
+      <span class="inno-dropdown">
+        <button class="inno-dropdown__trigger"><span>Jazz-v1.0-Sprint1</span><span class="inno-dropdown__caret">▾</span></button>
+        <div class="inno-menu">
+          <button class="inno-menu__row"><span class="inno-menu__name">Jazz-v1.0-Sprint1</span><span class="inno-badge inno-badge--success">활성</span></button>
+          <div class="inno-menu__divider"></div>
+          <button class="inno-menu__row"><span class="inno-menu__name">Cone-Chain Sprint1</span><span class="inno-menu__meta">2026-08-12 ~ 08-26</span></button>
+          <button class="inno-menu__row"><span class="inno-menu__name">SECloudit Sprint1</span><span class="inno-menu__meta">2026-07-15 ~ 07-29</span></button>
+        </div>
+      </span>
+    </div>
+  </section>
+
+  <section>
+    <h2>목록 — 떠 있는 선택</h2>
+    <p class="note">아래 줄은 <strong>마우스로만</strong> 눌린다. 키보드로 닿으면 입력을 채우려다 화면이 바뀐다.</p>
+    <div class="stage" style="max-width:320px">
+      <ul class="inno-listbox">
+        <li class="inno-listbox__item">[DevOpsit]</li>
+        <li class="inno-listbox__item" aria-selected="true">[DevOpsit][BE]</li>
+        <li class="inno-listbox__item">[INFRA]</li>
+        <button class="inno-listbox__footer">＋ prefix 태그 추가·관리…</button>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>패널 · 컬럼 · 카드</h2>
+    <p class="note">남의 화면 위에 덮는 판이다. 밑의 DOM 을 건드리지 않는다.</p>
+    <div class="stage stage--board" style="height:340px">
+      <div class="inno-panel">
+        <div class="inno-panel__header">
+          <span class="inno-panel__title">Cone-Chain Sprint1</span>
+          <span class="inno-panel__sub">2026-08-12 ~ 2026-08-26</span>
+          <span class="inno-badge inno-badge--info">읽기 전용</span>
+          <span class="inno-panel__spacer"></span>
+          <button class="inno-btn inno-btn--outline">전체 보기 ▾</button>
+          <button class="inno-btn">닫기</button>
+        </div>
+        <div class="inno-panel__body">
+          <div class="inno-columns">
+            <section class="inno-column">
+              <h3 class="inno-column__title">해야 할 일 <span class="inno-column__count">2</span></h3>
+              <button class="inno-card">
+                <div class="inno-card__parent">NPT-297 기존 화면 이관</div>
+                <div>[DevOpsit][FE] OpenBao 연결 화면</div>
+                <div class="inno-card__meta"><span class="inno-card__key">NPT-316</span><span class="inno-card__spacer"></span></div>
+              </button>
+              <button class="inno-card">
+                <div>[GitOps] 프리셋 기능 구현</div>
+                <div class="inno-card__meta"><span class="inno-card__key">NPT-358</span></div>
+              </button>
+            </section>
+            <section class="inno-column">
+              <h3 class="inno-column__title">진행 중 <span class="inno-column__count">1</span></h3>
+              <button class="inno-card">
+                <div>저장소 리소스 API 이관</div>
+                <div class="inno-card__meta"><span class="inno-card__key">NPT-360</span></div>
+              </button>
+            </section>
+            <section class="inno-column">
+              <h3 class="inno-column__title">완료 <span class="inno-column__count">0</span></h3>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>상태 문구</h2>
+    <div class="stage">
+      <div class="inno-state">불러오는 중…</div>
+      <div class="inno-state inno-state--error">이 보드를 볼 권한이 없습니다.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Popup — 표 · 스위치 · 입력</h2>
+    <p class="note">Popup 도 같은 토큰을 쓴다. 지금은 Popup 만 다른 색·다른 크기를 쓰고 있다.</p>
+    <div class="stage" style="max-width:460px">
+      <table class="inno-table">
+        <thead><tr><th>이름</th><th style="width:60px;text-align:center">표시</th><th style="width:80px;text-align:right">관리</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code style="font-family:var(--inno-font-mono);font-size:12px">[공통]</code></td>
+            <td style="text-align:center"><label class="inno-switch"><input type="checkbox" checked /><span class="inno-switch__track"></span></label></td>
+            <td style="text-align:right"><span class="inno-badge">기본</span></td>
+          </tr>
+          <tr class="is-muted">
+            <td><code style="font-family:var(--inno-font-mono);font-size:12px">[Database]</code></td>
+            <td style="text-align:center"><label class="inno-switch"><input type="checkbox" /><span class="inno-switch__track"></span></label></td>
+            <td style="text-align:right"><button class="inno-btn">수정</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="height:14px"></div>
+      <div class="inno-field">
+        <label class="inno-field__label" for="tag">추가할 prefix 태그</label>
+        <input id="tag" class="inno-input inno-input--mono" placeholder="예: [Database]" />
+        <span class="inno-help">기본 태그는 숨길 수만 있고 삭제할 수 없습니다.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>크기 · 간격</h2>
+    <table class="scale">
+      <tr><td>--inno-control-sm</td><td>24px — 기본. 남의 화면에 얹히므로 크게 만들지 않는다</td></tr>
+      <tr><td>--inno-control-md</td><td>32px — 편집기 툴바처럼 주변 조작 요소가 클 때만</td></tr>
+      <tr><td>--inno-text-xs / sm / md / lg</td><td>11 / 12 / 13 / 15</td></tr>
+      <tr><td>--inno-radius-sm / md / lg</td><td>4 / 6 / 10</td></tr>
+      <tr><td>--inno-space-1…6</td><td>4 / 6 / 8 / 12 / 16 / 24</td></tr>
+    </table>
+  </section>
+
+</div>
+</body>
+</html>

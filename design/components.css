@@ -1,0 +1,406 @@
+/*
+ * Inno Extension 컴포넌트
+ * =======================
+ *
+ * 지금 제품에 실제로 있는 것만 담는다. 쓰지 않을 것을 미리 만들지 않는다.
+ * 각 항목에 **어디에 쓰이는지**를 적어 둔다. 쓰임이 없어지면 여기서도 지운다.
+ */
+
+/* ============================================================
+ * 버튼
+ * 쓰임 — Markdown 변환 / Markdown 복사 / 저장 / 취소 / Popup 전반
+ * ============================================================ */
+
+.inno-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--inno-space-2);
+  box-sizing: border-box;
+  min-height: var(--inno-control-sm);
+  padding: 0 var(--inno-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--inno-radius-sm);
+  background: transparent;
+  color: var(--inno-text-subtle);
+  font: inherit;
+  font-family: var(--inno-font);
+  font-size: var(--inno-text-sm);
+  font-weight: 500;
+  line-height: var(--inno-control-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.inno-btn:hover { background: var(--inno-surface-hover); color: var(--inno-text); }
+.inno-btn:focus-visible { outline: var(--inno-focus-ring); outline-offset: var(--inno-focus-offset); }
+.inno-btn:disabled { cursor: default; opacity: 0.55; }
+.inno-btn:disabled:hover { background: transparent; color: var(--inno-text-subtle); }
+
+.inno-btn svg { width: 14px; height: 14px; flex: 0 0 auto; }
+
+/* 편집기 툴바처럼 주변 조작 요소가 클 때만 */
+.inno-btn--md {
+  min-height: var(--inno-control-md);
+  padding: 0 var(--inno-space-4);
+  font-size: var(--inno-text-md);
+  line-height: var(--inno-control-md);
+}
+.inno-btn--md svg { width: 16px; height: 16px; }
+
+/**
+ * 되돌릴 수 없는 동작에만 쓴다.
+ *
+ * `저장` 이 대표적이다. 되돌릴 수 있는 것과 같은 모양이면 잘못 눌렀을 때 대가가 다르다는 것이
+ * 보이지 않는다.
+ */
+.inno-btn--primary {
+  background: var(--inno-brand);
+  color: var(--inno-on-brand);
+  font-weight: 600;
+}
+.inno-btn--primary:hover { background: var(--inno-brand-hover); color: var(--inno-on-brand); }
+.inno-btn--primary:active { background: var(--inno-brand-active); }
+
+.inno-btn--danger { color: var(--inno-danger); }
+.inno-btn--danger:hover { background: var(--inno-danger-subtle); color: var(--inno-danger); }
+
+/* 테두리가 있어야 눌러지는 것임이 보이는 자리 */
+.inno-btn--outline { border-color: var(--inno-border-strong); background: var(--inno-surface); }
+.inno-btn--outline:hover { background: var(--inno-surface-sunken); }
+
+/* ============================================================
+ * 칩 — 읽기 전용 정보 한 줄
+ * 쓰임 — 활성 스프린트 기간·남은 일수
+ * ============================================================ */
+
+.inno-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--inno-space-2);
+  box-sizing: border-box;
+  /* flex 안에서 줄어들 수 있어야 한다. 풀지 않으면 내용 폭으로 버티다 바깥에서 잘린다 */
+  min-width: 0;
+  max-width: 320px;
+  min-height: var(--inno-control-sm);
+  padding: 0 var(--inno-space-3);
+  border-radius: var(--inno-radius-sm);
+  background: var(--inno-surface-sunken);
+  color: var(--inno-text-subtle);
+  font-size: var(--inno-text-sm);
+  line-height: var(--inno-control-sm);
+}
+.inno-chip svg { width: 14px; height: 14px; flex: 0 0 auto; }
+.inno-chip__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ============================================================
+ * 배지 — 상태 한 낱말
+ * 쓰임 — 기본 / API / 활성 / 읽기 전용
+ * ============================================================ */
+
+.inno-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--inno-space-2);
+  border-radius: var(--inno-radius-pill);
+  background: var(--inno-surface-hover);
+  color: var(--inno-text-subtle);
+  font-size: var(--inno-text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.inno-badge--info { background: var(--inno-info-subtle); color: var(--inno-info); }
+.inno-badge--success { background: var(--inno-success-subtle); color: var(--inno-success); }
+.inno-badge--warning { background: var(--inno-warning-subtle); color: var(--inno-warning); }
+.inno-badge--brand { background: var(--inno-brand-subtle); color: var(--inno-brand-text); }
+
+/* ============================================================
+ * 드롭다운 — 왼쪽 이름, 오른쪽 상태
+ * 쓰임 — 스프린트 선택
+ *
+ * 네이티브 `select` 로는 이 배치가 안 된다. 직접 그린다.
+ * ============================================================ */
+
+.inno-dropdown { position: relative; display: inline-flex; }
+
+.inno-dropdown__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--inno-space-2);
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 240px;
+  min-height: var(--inno-control-sm);
+  padding: 0 var(--inno-space-3);
+  border: 1px solid var(--inno-border-strong);
+  border-radius: var(--inno-radius-sm);
+  background: var(--inno-surface);
+  color: var(--inno-text);
+  font: inherit;
+  font-family: var(--inno-font);
+  font-size: var(--inno-text-sm);
+  cursor: pointer;
+}
+.inno-dropdown__trigger:hover { background: var(--inno-surface-sunken); }
+.inno-dropdown__trigger:focus-visible { outline: var(--inno-focus-ring); outline-offset: var(--inno-focus-offset); }
+.inno-dropdown__trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inno-dropdown__caret { color: var(--inno-text-faint); }
+
+.inno-menu {
+  position: absolute;
+  top: calc(100% + var(--inno-space-1));
+  left: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  min-width: 300px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--inno-space-1);
+  border: 1px solid var(--inno-border);
+  border-radius: var(--inno-radius-md);
+  background: var(--inno-surface);
+  box-shadow: var(--inno-shadow-overlay);
+}
+
+.inno-menu__row {
+  display: flex;
+  align-items: center;
+  gap: var(--inno-space-4);
+  width: 100%;
+  padding: var(--inno-space-2) var(--inno-space-3);
+  border: 0;
+  border-radius: var(--inno-radius-sm);
+  background: transparent;
+  color: var(--inno-text);
+  font: inherit;
+  font-family: var(--inno-font);
+  font-size: var(--inno-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.inno-menu__row:hover { background: var(--inno-surface-sunken); }
+.inno-menu__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inno-menu__meta { flex: 0 0 auto; color: var(--inno-text-faint); font-size: var(--inno-text-xs); }
+.inno-menu__divider { height: 1px; margin: var(--inno-space-1) 0; background: var(--inno-border); }
+.inno-menu__empty { padding: var(--inno-space-3); color: var(--inno-text-faint); font-size: var(--inno-text-sm); }
+
+/* ============================================================
+ * 패널 — 남의 화면 위에 덮는 판
+ * 쓰임 — 지난 스프린트 보기
+ * ============================================================ */
+
+.inno-panel {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  border: 1px solid var(--inno-border);
+  border-radius: var(--inno-radius-md);
+  background: var(--inno-surface);
+  box-shadow: var(--inno-shadow-overlay);
+  overflow: hidden;
+}
+
+.inno-panel__header {
+  display: flex;
+  align-items: center;
+  gap: var(--inno-space-3);
+  padding: var(--inno-space-3) var(--inno-space-4);
+  border-bottom: 1px solid var(--inno-border);
+  background: var(--inno-surface-sunken);
+  color: var(--inno-text);
+  font-size: var(--inno-text-md);
+}
+.inno-panel__title { font-size: var(--inno-text-lg); font-weight: 600; }
+.inno-panel__sub { color: var(--inno-text-subtle); font-size: var(--inno-text-sm); }
+.inno-panel__spacer { flex: 1; }
+.inno-panel__body { flex: 1; overflow: auto; padding: var(--inno-space-4); }
+
+/* ============================================================
+ * 컬럼 · 카드
+ * 쓰임 — 지난 스프린트 업무 목록
+ * ============================================================ */
+
+.inno-columns { display: flex; gap: var(--inno-space-4); align-items: flex-start; min-width: min-content; }
+
+.inno-column {
+  flex: 0 0 260px;
+  box-sizing: border-box;
+  padding: var(--inno-space-3);
+  border-radius: var(--inno-radius-md);
+  background: var(--inno-surface-sunken);
+}
+.inno-column__title {
+  display: flex;
+  align-items: center;
+  gap: var(--inno-space-2);
+  margin: 0 0 var(--inno-space-3);
+  color: var(--inno-text-subtle);
+  font-size: var(--inno-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.inno-column__count { color: var(--inno-text-faint); font-weight: 400; }
+
+.inno-card {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: var(--inno-space-3);
+  padding: var(--inno-space-3);
+  border: 0;
+  border-radius: var(--inno-radius-sm);
+  background: var(--inno-surface);
+  box-shadow: var(--inno-shadow-raised);
+  color: var(--inno-text);
+  font: inherit;
+  font-family: var(--inno-font);
+  font-size: var(--inno-text-md);
+  line-height: var(--inno-leading-tight);
+  text-align: left;
+  cursor: pointer;
+}
+.inno-card:hover { background: var(--inno-surface-sunken); }
+.inno-card:focus-visible { outline: var(--inno-focus-ring); outline-offset: var(--inno-focus-offset); }
+.inno-card__parent { color: var(--inno-text-faint); font-size: var(--inno-text-xs); }
+.inno-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--inno-space-2);
+  margin-top: var(--inno-space-3);
+  color: var(--inno-text-faint);
+  font-size: var(--inno-text-xs);
+}
+.inno-card__meta img { width: 16px; height: 16px; border-radius: 50%; }
+.inno-card__key { font-weight: 600; }
+.inno-card__spacer { flex: 1; }
+
+/* ============================================================
+ * 목록 — 떠 있는 선택 목록
+ * 쓰임 — 백로그 prefix 태그
+ * ============================================================ */
+
+.inno-listbox {
+  margin: 0;
+  padding: var(--inno-space-1);
+  list-style: none;
+  border: 1px solid var(--inno-border);
+  border-radius: var(--inno-radius-md);
+  background: var(--inno-surface);
+  box-shadow: var(--inno-shadow-overlay);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.inno-listbox__item {
+  padding: var(--inno-space-2) var(--inno-space-3);
+  border-radius: var(--inno-radius-sm);
+  color: var(--inno-text);
+  font-size: var(--inno-text-md);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.inno-listbox__item:hover { background: var(--inno-surface-sunken); }
+.inno-listbox__item[aria-selected="true"] {
+  background: var(--inno-brand-subtle);
+  color: var(--inno-brand-text);
+  font-weight: 600;
+}
+/** 키보드로 닿지 않는 자리. 마우스로만 누른다 */
+.inno-listbox__footer {
+  display: block;
+  width: 100%;
+  margin-top: var(--inno-space-1);
+  padding: var(--inno-space-2) var(--inno-space-3);
+  border: 0;
+  border-top: 1px solid var(--inno-border);
+  background: var(--inno-surface-sunken);
+  color: var(--inno-text-subtle);
+  font: inherit;
+  font-family: var(--inno-font);
+  font-size: var(--inno-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.inno-listbox__footer:hover { background: var(--inno-surface-hover); color: var(--inno-text); }
+
+/* ============================================================
+ * 상태 문구 — 진행·결과·실패
+ * 쓰임 — 복사됨 / 변환 실패 / 불러오는 중
+ * ============================================================ */
+
+.inno-state { padding: var(--inno-space-6); color: var(--inno-text-subtle); font-size: var(--inno-text-md); text-align: center; }
+.inno-state--error { color: var(--inno-danger); }
+
+/* ============================================================
+ * 표 — Popup 설정
+ * 쓰임 — prefix 태그 관리
+ * ============================================================ */
+
+.inno-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--inno-border);
+  border-radius: var(--inno-radius-md);
+  overflow: hidden;
+  table-layout: fixed;
+}
+.inno-table th {
+  padding: var(--inno-space-2) var(--inno-space-3);
+  background: var(--inno-surface-sunken);
+  color: var(--inno-text-subtle);
+  font-size: var(--inno-text-xs);
+  font-weight: 700;
+  text-align: left;
+}
+.inno-table td {
+  padding: var(--inno-space-2) var(--inno-space-3);
+  border-top: 1px solid var(--inno-border);
+  font-size: var(--inno-text-sm);
+  vertical-align: middle;
+}
+.inno-table tr.is-muted td:first-child { opacity: 0.45; }
+
+/* ============================================================
+ * 스위치
+ * 쓰임 — Popup 기능·태그 켜고 끄기
+ * ============================================================ */
+
+.inno-switch { position: relative; display: inline-flex; width: 36px; height: 20px; flex: 0 0 auto; cursor: pointer; }
+.inno-switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.inno-switch__track {
+  width: 36px; height: 20px; border-radius: var(--inno-radius-pill);
+  background: var(--inno-border-strong); transition: background 0.15s;
+}
+.inno-switch__track::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%; background: var(--inno-surface);
+  box-shadow: var(--inno-shadow-raised); transition: transform 0.15s;
+}
+.inno-switch input:checked + .inno-switch__track { background: var(--inno-brand); }
+.inno-switch input:checked + .inno-switch__track::after { transform: translateX(16px); }
+.inno-switch input:focus-visible + .inno-switch__track { outline: var(--inno-focus-ring); outline-offset: var(--inno-focus-offset); }
+
+/* ============================================================
+ * 입력
+ * 쓰임 — Popup 태그 추가·제목 문구
+ * ============================================================ */
+
+.inno-field { display: grid; gap: var(--inno-space-1); }
+.inno-field__label { color: var(--inno-text-subtle); font-size: var(--inno-text-xs); font-weight: 700; }
+.inno-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--inno-control-md);
+  padding: 0 var(--inno-space-3);
+  border: 1px solid var(--inno-border);
+  border-radius: var(--inno-radius-sm);
+  background: var(--inno-surface);
+  color: var(--inno-text);
+  font-family: var(--inno-font);
+  font-size: var(--inno-text-sm);
+}
+.inno-input:focus-visible { outline: var(--inno-focus-ring); outline-offset: 0; border-color: var(--inno-brand); }
+.inno-input--mono { font-family: var(--inno-font-mono); }
+.inno-help { color: var(--inno-text-faint); font-size: var(--inno-text-xs); line-height: var(--inno-leading); }
