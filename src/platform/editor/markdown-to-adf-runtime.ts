@@ -103,6 +103,16 @@ export interface EditorMarkdownToAdfSite {
   isProtectedCodeBlock?(editor: HTMLElement, codeBlock: HTMLElement): boolean;
   /** 1단계 전에 확인할 것. 던지면 아무것도 바꾸지 않고 중단한다 */
   precheck?(editor: HTMLElement): void;
+  /**
+   * 추가 단계가 실제로 무언가를 변환했을 때 덧붙일 안내.
+   *
+   * Confluence Mermaid 컴포넌트는 **변환 직후에만** 엉뚱한 코드블럭을 가리켜 오류 화면을 낸다.
+   * 문서를 그대로 두고 새로고침하면 정상으로 그려지는 것을 실측으로 확인했다. 안내가 없으면
+   * 사용자가 변환이 실패했다고 오해한다.
+   *
+   * docs/troubleshootings/reusable/2026-09-18-confluence-mermaid-macro-renders-before-document-settles.md
+   */
+  extraPhaseNotice?: string;
   /** 두 단계 뒤에 붙는 사이트 전용 단계 */
   extraPhase?: {
     /** 결과 요약과 진행 라벨에 쓰는 이름 */
@@ -817,6 +827,9 @@ export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite):
             markdownLabel.textContent = `${extraName} ${done}/${total}`;
           });
           extraConverted = extra.convertedCount;
+          if (extraConverted > 0 && site.extraPhaseNotice) {
+            notices.push(site.extraPhaseNotice);
+          }
           if (extra.failures.length > 0) {
             notices.push(`원문을 읽지 못해 제외한 ${extraName} 후보 ${extra.failures.length}개: ${extra.failures.map(({ index }) => index + 1).join(', ')}번`);
           }

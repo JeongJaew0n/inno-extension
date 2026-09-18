@@ -71,10 +71,6 @@ import {
   parseJiraIsoDate,
   summarizeSprint,
 } from '../src/sites/jira/features/boardSprintInfo/format';
-import {
-  macroIndexFromPlacements,
-  type CodeBlockPlacement,
-} from '../src/sites/confluence/features/editorMarkdownToAdf/macro-index';
 import { resolveCopyTargets } from '../src/sites/gitlab/features/commitShaCopy/runtime';
 import {
   buildMergeRequestMarkdown,
@@ -1457,34 +1453,16 @@ test('되돌리기 판정은 innerHTML 완전 일치에만 기대지 않는다',
   assert.match(fn, /editor\.textContent \?\? ''\) === before\.text/);
 });
 
-test('Mermaid 매크로 순번은 목록 안 코드블럭을 세지 않는다', () => {
-  // 실패한 실제 문서의 배치다. 1번이 목록 안이고 3·6번이 Mermaid 원본이다.
-  const doc: CodeBlockPlacement[] = [
-    'topLevel', 'list', 'topLevel', 'expand', 'topLevel', 'topLevel', 'expand',
-  ];
+test('Mermaid 변환 뒤에는 새로고침 안내를 붙인다', async () => {
+  const confluence = await readFile(
+    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
+    'utf8',
+  );
+  const runtime = await readFile('src/platform/editor/markdown-to-adf-runtime.ts', 'utf8');
 
-  // 우리 DOM 순번 3 → 매크로 순번 2 로 내려가야 한다. 예전에는 3 을 그대로 넣어 4번을 읽혔다.
-  assert.equal(macroIndexFromPlacements(doc, 3), 2);
-  // 6 → 5. 예전에는 6 을 넣어 범위를 벗어났다.
-  assert.equal(macroIndexFromPlacements(doc, 6), 5);
-  // 목록 앞쪽은 그대로다.
-  assert.equal(macroIndexFromPlacements(doc, 0), 0);
-});
-
-test('expand 안 코드블럭은 매크로가 센다', () => {
-  // 변환 결과의 원본은 항상 expand 안에 들어간다. 세지 않으면 이 기능이 성립하지 않는다.
-  assert.equal(macroIndexFromPlacements(['expand', 'topLevel'], 1), 1);
-  assert.equal(macroIndexFromPlacements(['list', 'expand'], 1), 0);
-});
-
-test('순번을 셀 수 없으면 매크로를 만들지 않는다', () => {
-  // 대상 자신이 목록 안이면 매크로가 가리킬 수 없다.
-  assert.equal(macroIndexFromPlacements(['topLevel', 'list'], 1), null);
-  // 앞쪽에 확인하지 못한 자리가 있으면 순번을 맞출 수 없다.
-  assert.equal(macroIndexFromPlacements(['unknown', 'topLevel'], 1), null);
-  // 뒤쪽의 unknown 은 영향이 없다.
-  assert.equal(macroIndexFromPlacements(['topLevel', 'unknown'], 0), 0);
-  assert.equal(macroIndexFromPlacements(['topLevel'], 5), null);
+  // 매크로가 변환 직후에만 엉뚱한 블록을 가리킨다. 안내가 없으면 변환 실패로 오해한다.
+  assert.match(confluence, /extraPhaseNotice: '.*새로고침/);
+  assert.match(runtime, /if \(extraConverted > 0 && site\.extraPhaseNotice\)/);
 });
 
 test('Mermaid 교체 판정은 노드 재사용에 기대지 않는다', async () => {

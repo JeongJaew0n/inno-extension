@@ -31,7 +31,6 @@ import {
   CONFLUENCE_MERMAID_EXTENSION_KEY,
   isMermaidCodeBlockSource,
 } from './mermaid';
-import { macroCodeBlockIndex } from './macro-index';
 
 const EDITOR_EXTENSION = '[data-prosemirror-node-name="extension"]';
 const EDITOR_EXPAND = '[data-prosemirror-node-name="expand"], [data-prosemirror-node-name="nestedExpand"]';
@@ -172,17 +171,10 @@ async function replaceMermaidCodeBlock(
   editor: HTMLElement,
   codeBlock: HTMLElement,
   codeBlockIndex: number,
-  macroIndex: number,
   source: string,
 ): Promise<void> {
   const localId = crypto.randomUUID();
-  /**
-   * 매크로에 넣는 순번과 **우리가 검증에 쓰는 순번이 다르다.**
-   *
-   * 매크로는 목록 안의 코드블럭을 세지 않는다(`macro-index.ts` 참조). 검증은 우리가 DOM 에서
-   * 세는 순번 그대로 해야 하므로 둘을 따로 받는다.
-   */
-  const html = buildConfluenceMermaidReplacementHtml(macroIndex, localId, source);
+  const html = buildConfluenceMermaidReplacementHtml(codeBlockIndex, localId, source);
   /**
    * 원본 코드블럭이 소비됐는지 판정한다.
    *
@@ -256,16 +248,7 @@ export async function runMermaidPhase(
   const total = candidates.length;
   onProgress(0, total);
   for (const { codeBlock, index, source } of candidates.reverse()) {
-    const macroIndex = macroCodeBlockIndex(editor, codeBlock);
-    if (macroIndex === null) {
-      // 순번을 맞출 수 없다. 만들면 엉뚱한 코드블럭을 그리려다 실패한다.
-      failures.push({
-        index,
-        message: '앞쪽에 순번을 셀 수 없는 코드블럭이 있어 Mermaid 컴포넌트를 만들지 않았습니다. 코드블럭을 목록·표 밖으로 옮긴 뒤 다시 실행하세요.',
-      });
-      continue;
-    }
-    await replaceMermaidCodeBlock(editor, codeBlock, index, macroIndex, source);
+    await replaceMermaidCodeBlock(editor, codeBlock, index, source);
     convertedCount += 1;
     onProgress(convertedCount, total);
   }

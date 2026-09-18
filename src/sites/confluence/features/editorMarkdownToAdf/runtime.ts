@@ -42,6 +42,7 @@ export function createEditorMarkdownToAdfRuntimeForConfluence(): FeatureRuntime 
       }
     },
 
+    extraPhaseNotice: 'Mermaid 다이어그램이 오류로 보이면 편집기를 새로고침하세요. 문서는 그대로 두고 새로고침하면 정상으로 그려집니다.',
     extraPhase: { name: 'Mermaid', run: runMermaidPhase },
   });
 }
