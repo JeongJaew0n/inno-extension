@@ -1,5 +1,7 @@
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
+import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
+import { BUTTON_CSS } from '../../../../platform/design/parts';
 import {
   CURRENT_ISSUE_LINK,
   CURRENT_ISSUE_TITLE,
@@ -231,27 +233,16 @@ export function createIssueLinkCopyRuntime(): FeatureRuntime {
     nextHost.dataset.mountAnchor = target.mountAnchorKind;
     nextHost.style.all = 'initial';
     nextHost.style.display = 'inline-flex';
-    nextHost.style.gap = '2px';
     nextHost.style.marginInlineStart = '4px';
     nextHost.style.verticalAlign = 'middle';
 
     const shadow = nextHost.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
-      <style>
-        :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        button {
-          box-sizing: border-box; min-height: 24px; padding: 2px 8px; border: 0;
-          border-radius: 4px; background: transparent; color: #44546f; cursor: pointer;
-          font: inherit; font-size: 12px; font-weight: 600; line-height: 20px; white-space: nowrap;
-        }
-        button:hover { background: #091e420f; color: #172b4d; }
-        button:focus-visible { outline: 2px solid #0c66e4; outline-offset: 1px; }
-        button:disabled { cursor: default; opacity: 0.72; }
-      </style>
-      <button type="button" data-copy-mode="link" aria-label="${target.issueKey} 업무 링크 복사" title="${linkClipboardContent.issueUrl}">
+      <style>${DESIGN_TOKENS}${BUTTON_CSS}:host{gap:var(--inno-space-1)}</style>
+      <button type="button" class="inno-btn" data-copy-mode="link" aria-label="${target.issueKey} 업무 링크 복사" title="${linkClipboardContent.issueUrl}">
         업무 링크 복사
       </button>
-      <button type="button" data-copy-mode="title" aria-label="${target.issueKey} 업무 링크 복사 제목포함" title="${linkClipboardContent.issueUrl}">
+      <button type="button" class="inno-btn" data-copy-mode="title" aria-label="${target.issueKey} 업무 링크 복사 제목포함" title="${linkClipboardContent.issueUrl}">
         업무 링크 복사(제목포함)
       </button>
     `;

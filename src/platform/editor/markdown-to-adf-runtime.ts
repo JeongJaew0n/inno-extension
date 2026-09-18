@@ -17,6 +17,8 @@
  */
 
 import { FEATURE_ROOT_ATTRIBUTE } from '../runtime/featureRoot';
+import { DESIGN_TOKENS } from '../design/tokens';
+import { BUTTON_CSS } from '../design/parts';
 import type { FeatureRuntime, PageContext } from '../runtime/types';
 import type { FeatureId } from '../../catalog/types';
 import type { CodeBlockAdfPayload } from './code-block-to-adf';
@@ -701,24 +703,12 @@ export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite):
     nextHost.style.alignItems = 'center';
     // 툴바가 flex 라 `auto` 마진이 남은 공간을 전부 먹어 버튼을 오른쪽 끝으로 민다.
     nextHost.style.marginInlineStart = site.toolbarAlign === 'end' ? 'auto' : '4px';
-    nextHost.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
     const shadow = nextHost.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
-      <style>
-        :host { color-scheme: light; }
-        button {
-          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-          box-sizing: border-box; min-height: 32px; padding: 0 10px; border: 0;
-          border-radius: 3px; background: transparent; color: #172b4d; cursor: pointer;
-          font: inherit; font-size: 13px; font-weight: 500; line-height: 32px; white-space: nowrap;
-        }
-        svg { width: 16px; height: 16px; flex: 0 0 auto; }
-        button:hover { background: #091e420f; }
-        button:focus-visible { outline: 2px solid #0c66e4; outline-offset: 1px; }
-        button:disabled { cursor: default; opacity: 0.72; }
-      </style>
-      <button type="button" data-action="markdown-convert" aria-label="Markdown 변환">
+      <style>${DESIGN_TOKENS}${BUTTON_CSS}</style>
+      <button type="button" class="inno-btn inno-btn--md" data-action="markdown-convert"
+              aria-label="Markdown 변환">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
           <path d="M14 3v5h5"></path>

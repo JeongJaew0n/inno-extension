@@ -319,8 +319,33 @@ def emit_ts() -> str:
  * (Chrome 실측). `--inno-` 접두사와 이 선언이 함께 있어야 막힌다.
  */
 
-/** `<style>` 맨 앞에 넣는다. 토큰 {count}개를 `:host` 에 선언한다. */
-export const DESIGN_TOKENS = ':host{{{mini}}}';
+/** 토큰 {count}개의 선언만. 선택자가 없으므로 그대로 쓰지 말고 아래 둘 중 하나를 쓴다. */
+const DECLARATIONS = '{mini}';
+
+/**
+ * Shadow DOM 용. `<style>` 맨 앞에 넣는다.
+ *
+ * ```ts
+ * shadow.innerHTML = `<style>${{DESIGN_TOKENS}}${{BUTTON_CSS}}</style>…`;
+ * ```
+ */
+export const DESIGN_TOKENS = `:host{{${{DECLARATIONS}}}}`;
+
+/**
+ * 페이지에 직접 넣는 `<style>` 용.
+ *
+ * 아마란스처럼 Shadow DOM 을 쓰지 않고 주입 루트 id 로 범위를 잡는 기능이 있다.
+ * 거기서는 `:host` 가 걸리지 않으므로 그 루트 선택자로 선언한다.
+ *
+ * ```ts
+ * const css = `${{designTokensFor(`#${{INJECTED_ID}}`)}} …`;
+ * ```
+ *
+ * **`:root` 에 넣지 않는다.** 남의 페이지 전역에 우리 변수를 뿌리게 된다.
+ */
+export function designTokensFor(selector: string): string {{
+  return `${{selector}}{{${{DECLARATIONS}}}}`;
+}}
 """
 
 

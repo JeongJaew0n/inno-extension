@@ -1,4 +1,6 @@
 import { writePlainText } from '../../../../platform/clipboard/writePlainText';
+import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
+import { BUTTON_CSS } from '../../../../platform/design/parts';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { parseConfluencePageUrl } from '../../routes';
@@ -108,20 +110,8 @@ export function createPageMarkdownCopyRuntime(): FeatureRuntime {
 
     const shadow = nextHost.attachShadow({ mode: 'open' });
     shadow.innerHTML = `
-      <style>
-        :host { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        button {
-          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-          box-sizing: border-box; min-height: 32px; padding: 0 10px; border: 0;
-          border-radius: 3px; background: transparent; color: #172b4d; cursor: pointer;
-          font: inherit; font-size: 14px; font-weight: 500; line-height: 32px; white-space: nowrap;
-        }
-        svg { width: 16px; height: 16px; flex: 0 0 auto; }
-        button:hover { background: #091e420f; }
-        button:focus-visible { outline: 2px solid #0c66e4; outline-offset: 1px; }
-        button:disabled { cursor: default; opacity: 0.72; }
-      </style>
-      <button type="button" aria-label="Confluence 본문 Markdown 복사">
+      <style>${DESIGN_TOKENS}${BUTTON_CSS}</style>
+      <button type="button" class="inno-btn inno-btn--md" aria-label="Confluence 본문 Markdown 복사">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="9" y="9" width="11" height="11" rx="2"></rect>
           <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"></path>
