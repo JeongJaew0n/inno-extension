@@ -272,9 +272,63 @@ def emit_css() -> str:
     return '\n'.join(lines) + '\n'
 
 
+def emit_ts() -> str:
+    """
+    주입 UI 가 Shadow DOM 안에서 쓸 토큰 문자열을 TS 모듈로 뽑는다.
+
+    `:root` 가 아니라 `:host` 다. shadow root 는 `:root` 에 걸리지 않는다.
+
+    공백을 눌러 한 줄로 만든다. 13개 shadow root 마다 파싱되므로 짧을수록 좋고,
+    사람이 읽을 일은 `design/tokens.css` 쪽에서 본다.
+    """
+    import re
+    body = re.sub(r'/\*.*?\*/', '', emit_css(), flags=re.S)
+    block = re.search(r':root,?[^{]*\{(.*?)\n\}', body, flags=re.S).group(1)
+    mini = re.sub(r'\s*\n\s*', '', block)
+    # `;` `:` `,` 뒤의 공백은 의미가 없다. 값 안의 공백(font 목록, box-shadow)은 남긴다.
+    mini = re.sub(r'\s*([;:,])\s*', r'\1', mini).strip()
+    count = len(re.findall(r'--inno-[\w-]+:', mini))
+
+    return f"""/**
+ * 주입 UI 공용 디자인 토큰.
+ *
+ * **손으로 쓰지 않는다. `design/generate-tokens.py` 가 만든다.**
+ *
+ *     python3 design/generate-tokens.py --ts > src/platform/design/tokens.ts
+ *
+ * 값의 뜻과 배정 규칙은 `design/tokens.css` 와 `design/README.md` 에 있다.
+ * 이 파일은 그것을 런타임이 쓸 수 있는 형태로 옮긴 것뿐이다.
+ *
+ * ## 왜 문자열 하나인가
+ *
+ * 각 기능의 `<style>` 에 그대로 끼워 넣는다. 토큰을 선언하는 자리가 여기 하나뿐이라
+ * 색 하나를 바꿔도 13개 파일을 돌아다닐 일이 없다.
+ *
+ * 호스트 요소에 `setProperty` 로 얹는 방법도 되지만 **더 느리다.** 실측에서 토큰
+ * {count}개 · shadow root 13개 기준으로 CSS 파싱은 0.53ms, `setProperty` 는 3.33ms 였다.
+ * JS 호출이 CSS 파서보다 비싸다.
+ *
+ * ## `:root` 가 아니라 `:host` 인 이유
+ *
+ * shadow root 는 `:root` 에 걸리지 않는다. `:host` 가 shadow 의 최상위다.
+ *
+ * ## 주의
+ *
+ * 우리가 토큰을 선언하지 않으면 **페이지의 같은 이름 변수가 그 자리를 차지한다.**
+ * 커스텀 속성은 shadow 경계를 넘어 상속되고 `all: initial` 도 그것을 막지 못한다
+ * (Chrome 실측). `--inno-` 접두사와 이 선언이 함께 있어야 막힌다.
+ */
+
+/** `<style>` 맨 앞에 넣는다. 토큰 {count}개를 `:host` 에 선언한다. */
+export const DESIGN_TOKENS = ':host{{{mini}}}';
+"""
+
+
 if __name__ == '__main__':
     import json, sys
-    if '--json' in sys.argv:
+    if '--ts' in sys.argv:
+        print(emit_ts(), end='')
+    elif '--json' in sys.argv:
         print(json.dumps({
             'seed': SEED, 'hue': round(SEED_HUE, 1), 'chroma': round(SEED_CHROMA, 1),
             'palettes': PALETTES,

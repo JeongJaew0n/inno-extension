@@ -6,6 +6,7 @@
   "description": "아마란스, Jira, Confluence를 위한 사내 업무 편의 Chrome Extension",
   "scripts": {
     "dev": "vite",
+    "design:sync": "python3 design/generate-tokens.py > design/tokens.css && python3 design/generate-tokens.py --ts > src/platform/design/tokens.ts && python3 design/generate-parts.py > src/platform/design/parts.ts",
     "build": "npm run check && vite build",
     "check": "npm run typecheck && npm test",
     "package": "npm run build && node scripts/package-extension.mjs",
