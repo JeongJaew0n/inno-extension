@@ -155,6 +155,9 @@ export function createBacklogSlashTemplateRuntime(): FeatureRuntime {
         insert(input, tag);
       });
       item.addEventListener('mouseenter', () => {
+        // 같은 항목이면 다시 그리지 않는다. 다시 그리면 커서 밑에 새 요소가 놓이고 그것이
+        // 또 `mouseenter` 를 내서 끝없이 돈다.
+        if (activeIndex === index) return;
         activeIndex = index;
         renderList(input);
       });

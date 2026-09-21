@@ -60,6 +60,13 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
   let templates: Template[] = [];
   let matches: Template[] = [];
   let activeIndex = 0;
+  /**
+   * 필터 토큰.
+   *
+   * **문서에 남기지 않는다.** `$` 는 목록을 여는 순간 지워지고, 뒤이어 친 글자는 여기에만
+   * 쌓인다. 편집기에는 아무것도 들어가지 않는다.
+   */
+  let token = '';
 
   function isListOpen(): boolean {
     return matches.length > 0 && host?.isConnected === true;
@@ -68,6 +75,7 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
   function closeList(): void {
     matches = [];
     activeIndex = 0;
+    token = '';
     host?.remove();
     host = null;
     listRoot = null;
@@ -181,6 +189,9 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
         insert(editor, template);
       });
       item.addEventListener('mouseenter', () => {
+        // **같은 항목이면 다시 그리지 않는다.** 다시 그리면 커서 밑에 새 요소가 놓이고
+        // 그것이 또 `mouseenter` 를 내서 끝없이 돈다. 실제로 탭이 멎었다.
+        if (activeIndex === index) return;
         activeIndex = index;
         renderList(editor);
       });
@@ -191,12 +202,6 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
   }
 
   function refresh(editor: HTMLElement): void {
-    const token = readTemplateToken(editor.textContent ?? '');
-    if (token === null) {
-      closeList();
-      return;
-    }
-
     const next = filterTemplates(templates, token);
     if (next.length === 0) {
       closeList();
@@ -253,9 +258,44 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
     closeList();
   }
 
+  /**
+   * `$` 를 트리거로만 쓰고 **문서에서 지운다.**
+   *
+   * 예전에는 `$` 를 문서에 남긴 채 그 아래에 목록을 붙였다. 사용자가 고르기 전까지 쓰지도
+   * 않을 글자가 본문에 앉아 있는 셈이라, 고르지 않고 빠져나가면 손으로 지워야 했다.
+   *
+   * 목록이 열린 뒤의 필터 입력은 `onKeyDown` 이 가로채 내부 버퍼에만 쌓는다.
+   */
   function onInput(event: Event): void {
     if ((event as InputEvent).isComposing) return;
-    refresh(event.currentTarget as HTMLElement);
+    const editor = event.currentTarget as HTMLElement;
+
+    // 목록이 열려 있는데 글자가 들어왔다면 우리가 가로채지 못한 입력이다(붙여넣기 등).
+    // 사용자가 본문을 쓰기 시작한 것으로 보고 비켜준다.
+    if (isListOpen()) {
+      closeList();
+      return;
+    }
+
+    if (readTemplateToken(editor.textContent ?? '') !== '') return;
+
+    /*
+     * **다음 틱으로 미룬다.** `input` 이벤트를 처리하는 중에 `execCommand` 를 부르면
+     * 재진입이라 브라우저가 무시한다. 실측에서 같은 호출이 핸들러 밖에서는 멀쩡히
+     * 동작하는데 여기서만 아무 일도 일어나지 않았다.
+     */
+    setTimeout(() => {
+      // 미루는 사이에 사용자가 더 쳤을 수 있다. 여전히 `$` 하나뿐일 때만 지운다.
+      if (!editor.isConnected) return;
+      if (readTemplateToken(editor.textContent ?? '') !== '') return;
+
+      const document = editor.ownerDocument;
+      document.execCommand('selectAll');
+      document.execCommand('delete');
+
+      token = '';
+      refresh(editor);
+    }, 0);
   }
 
   function onBlur(): void {
@@ -269,10 +309,16 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
    * 는 줄바꿈이라 잘못 가로채면 글을 못 쓴다.
    */
   function onKeyDown(event: KeyboardEvent): void {
-    if (event.isComposing || event.keyCode === 229) return;
     if (!isListOpen()) return;
 
     const editor = event.currentTarget as HTMLElement;
+
+    // **한글 조합이 시작되면 비켜준다.** 조합 중인 글자는 가로챌 수 없고, 억지로 막으면
+    // 사용자가 본문을 못 쓰게 된다. 목록을 닫고 그 글자는 편집기로 보낸다.
+    if (event.isComposing || event.keyCode === 229) {
+      closeList();
+      return;
+    }
 
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
@@ -293,6 +339,31 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
       event.preventDefault();
       event.stopPropagation();
       closeList();
+      return;
+    }
+
+    /*
+     * 여기부터가 필터 입력이다. **편집기에 닿지 않게 막고 내부 버퍼에만 쌓는다.**
+     * 그래야 문서가 깨끗한 채로 남는다.
+     */
+    if (event.key === 'Backspace') {
+      event.preventDefault();
+      event.stopPropagation();
+      // 지울 것이 없으면 사용자가 트리거를 되돌리려는 것이다. 목록을 닫는다.
+      if (token === '') closeList();
+      else {
+        token = token.slice(0, -1);
+        refresh(editor);
+      }
+      return;
+    }
+
+    // 한 글자짜리 키만 필터로 본다. `Shift` `Control` 같은 것은 `key` 가 길다.
+    if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      token += event.key;
+      refresh(editor);
     }
   }
 
