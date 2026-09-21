@@ -156,3 +156,31 @@ export const BOARD_CONTROLS_BAR = '[data-testid="software-board.header.controls-
  * Jira 는 자기 필터를 `더 보기` 로 접어 버티지만 우리 것은 그럴 수 없다.
  */
 export const BOARD_TOOL_ROW_ROOT = 'jira-board-tool-row';
+
+/* ============================================================
+ * 업무 생성 모달
+ *
+ * 실측 기록은 docs/plans/jira-create-helpers/context.md 에 있다.
+ * ============================================================ */
+
+/** 업무 생성 모달. 같은 컨테이너를 다른 모달도 쓰므로 안쪽 필드까지 확인해야 한다 */
+export const CREATE_MODAL = '[data-testid="minimizable-modal.ui.modal-container.modal"][role="dialog"]';
+
+/** 필드 컨테이너의 testid 접두사. 뒤에 필드 ID 가 붙는다 */
+export const CREATE_MODAL_FIELD_PREFIX = 'issue-create-modernised.field-renderer.field.';
+
+/** 헤더의 `더 보기`. 사용자가 말하는 '더보기'가 이것이다 */
+export const CREATE_MODAL_EXPAND_BUTTON = '[data-testid="issue-create-modernised.ui.header.toggle-expand-button"]';
+
+/** `추가 필드(N개)` 아코디언 머리말 */
+export const CREATE_MODAL_ADDITIONAL_FIELDS = '[data-testid="issue-create.ui.modal.create-form.layout-renderer.fields-container.collapsible-area-header.collapsible-area-header"]';
+
+/** 설명 편집기 */
+export const CREATE_MODAL_DESCRIPTION = '[data-testid="issue-create-modernised.field-renderer.field.description"]';
+
+/** 우리 UI 를 넣는 자리 */
+export const CREATE_QUICK_DATES_ROOT = 'jira-create-quick-dates';
+export const CREATE_TEMPLATE_INSERT_ROOT = 'jira-create-template-insert';
+
+/** 요약 입력 필드. 우리 버튼 줄을 이 앞에 넣는다 */
+export const CREATE_MODAL_SUMMARY_FIELD = '[data-testid="issue-create-modernised.field-renderer.field.summary"]';

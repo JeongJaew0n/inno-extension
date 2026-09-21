@@ -42,6 +42,19 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
               customTags: [],
             },
           },
+          createQuickDates: {
+            // 모달에 버튼 하나를 넣을 뿐이다. 누를 때만 필드를 건드린다.
+            enabled: true,
+            options: {},
+          },
+          createTemplateInsert: {
+            enabled: true,
+            options: {
+              // 내장 템플릿은 코드에 있다. 여기에는 숨김 여부와 사용자 것만 둔다.
+              hiddenBuiltInTitles: [],
+              customTemplates: [],
+            },
+          },
           pastSprintView: {
             // 셀렉트를 열기 전에는 요청이 나가지 않는다. 켜져 있어도 네트워크를 쓰지 않는다.
             enabled: true,

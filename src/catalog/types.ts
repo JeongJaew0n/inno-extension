@@ -17,6 +17,8 @@ export const FEATURE_IDS = [
   'descriptionEditActions',
   'boardSprintInfo',
   'pastSprintView',
+  'createQuickDates',
+  'createTemplateInsert',
   'pullRequestTitleCopy',
   'commitShaCopy',
   'githubCommitShaCopy',

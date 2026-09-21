@@ -119,6 +119,25 @@ import {
   ISSUE_PREVIEW_PANEL,
 } from '../src/sites/jira/selectors';
 import './adf.test';
+import {
+  addDays,
+  calendarCellPattern,
+  parseVisibleMonth,
+  planFromToday,
+} from '../src/sites/jira/features/createQuickDates/contracts';
+import {
+  BUILT_IN_TEMPLATES,
+  addCustomTemplate,
+  createDefaultTemplateOptions,
+  filterTemplates,
+  normalizeTemplateOptions,
+  readTemplateToken,
+  removeCustomTemplate,
+  // `backlogSlashTemplate` 에도 같은 이름이 있다. 덮어쓰지 않게 별칭을 준다.
+  setBuiltInVisibility as setTemplateVisibility,
+  updateCustomTemplate,
+  visibleTemplates,
+} from '../src/sites/jira/features/createTemplateInsert/contracts';
 
 function createFakeIssueLink(href: string): HTMLAnchorElement {
   return {
@@ -2517,4 +2536,130 @@ test('GitLab MR 제목 복사는 링크와 평문의 이스케이프가 다르�
   assert.equal(buildMergeRequestTitleText('  기능   추가 '), '기능 추가');
   assert.equal(buildMergeRequestTitleText('   '), null);
   assert.equal(buildMergeRequestMarkdown(url, null), null);
+});
+
+/* ============================================================
+ * 업무 생성 도우미
+ * docs/plans/jira-create-helpers/spec.md
+ * ============================================================ */
+
+test('기한 계산이 달과 연을 넘는다', () => {
+  // 직접 더하면 말일에서 틀린다. Date 에 맡긴 결과를 고정해 둔다.
+  assert.deepEqual(addDays({ year: 2026, month: 9, day: 21 }, 3), { year: 2026, month: 9, day: 24 });
+  assert.deepEqual(addDays({ year: 2026, month: 9, day: 29 }, 3), { year: 2026, month: 10, day: 2 });
+  assert.deepEqual(addDays({ year: 2026, month: 12, day: 30 }, 3), { year: 2027, month: 1, day: 2 });
+  // 윤년 2월
+  assert.deepEqual(addDays({ year: 2028, month: 2, day: 27 }, 3), { year: 2028, month: 3, day: 1 });
+  assert.deepEqual(addDays({ year: 2027, month: 2, day: 27 }, 3), { year: 2027, month: 3, day: 2 });
+});
+
+test('오늘부터 시작은 시작일과 기한 두 날짜를 만든다', () => {
+  const plan = planFromToday(new Date(2026, 8, 21));
+  assert.deepEqual(plan.start, { year: 2026, month: 9, day: 21 });
+  assert.deepEqual(plan.due, { year: 2026, month: 9, day: 24 });
+});
+
+test('달력 셀은 일·월·연으로 고르고 요일은 맞추지 않는다', () => {
+  const pattern = calendarCellPattern({ year: 2026, month: 9, day: 24 });
+
+  assert.ok(pattern.test('24, 목요일 9월 2026'), '실측한 라벨 형식');
+  assert.ok(pattern.test('24, Thursday 9월 2026'), '요일 이름이 바뀌어도 걸린다');
+
+  // 앞뒤 달의 날짜가 같은 격자에 섞여 나온다. 월·연까지 봐야 엉뚱한 셀을 안 누른다.
+  assert.ok(!pattern.test('24, 월요일 8월 2026'), '다른 달');
+  assert.ok(!pattern.test('24, 목요일 9월 2025'), '다른 연');
+  assert.ok(!pattern.test('4, 금요일 9월 2026'), '일이 다르다');
+  assert.ok(!pattern.test('124, 목요일 9월 2026'), '일의 앞부분만 겹치는 것');
+});
+
+test('보이는 달은 다음 달 버튼 라벨에서 거꾸로 읽는다', () => {
+  // `Next month, 10월 2026` 이면 지금 보이는 것은 9월이다.
+  assert.deepEqual(parseVisibleMonth('Next month, 10월 2026'), { year: 2026, month: 9, day: 1 });
+  assert.deepEqual(parseVisibleMonth('Next month, 1월 2027'), { year: 2026, month: 12, day: 1 });
+  assert.equal(parseVisibleMonth('Next month'), null);
+});
+
+test('템플릿 토큰은 첫 글자가 $ 일 때만 읽는다', () => {
+  assert.equal(readTemplateToken('$'), '');
+  assert.equal(readTemplateToken('$bug'), 'bug');
+  // 금액 표기가 흔하다. 중간 트리거를 허용하면 정상 입력을 방해한다.
+  assert.equal(readTemplateToken('비용 $100 발생'), null);
+  assert.equal(readTemplateToken('$버그 수정'), null, '공백 뒤는 본문이다');
+  assert.equal(readTemplateToken(''), null);
+});
+
+test('템플릿 필터는 제목으로 거르고 대소문자를 무시한다', () => {
+  const all = visibleTemplates(createDefaultTemplateOptions());
+  assert.equal(all.length, 5, '내장 5종이 기본으로 켜져 있다');
+
+  assert.deepEqual(filterTemplates(all, '버그').map((t) => t.title), ['버그']);
+  assert.deepEqual(filterTemplates(all, '하위').map((t) => t.title), ['하위 작업']);
+  assert.equal(filterTemplates(all, '').length, 5);
+  assert.equal(filterTemplates(all, '없는것').length, 0);
+});
+
+test('내장 템플릿은 숨길 수는 있어도 지울 수 없다', () => {
+  let options = createDefaultTemplateOptions();
+
+  options = removeCustomTemplate(options, '버그');
+  assert.equal(visibleTemplates(options).length, 5, '내장은 삭제되지 않는다');
+
+  options = setTemplateVisibility(options, '버그', false);
+  assert.equal(visibleTemplates(options).length, 4);
+  assert.ok(!visibleTemplates(options).some((t) => t.title === '버그'));
+
+  options = setTemplateVisibility(options, '버그', true);
+  assert.equal(visibleTemplates(options).length, 5, '다시 켤 수 있다');
+});
+
+test('사용자 템플릿은 추가·수정·삭제되고 내장과 겹치지 않는다', () => {
+  let options = createDefaultTemplateOptions();
+
+  options = addCustomTemplate(options, '스프린트 회고', '## 잘된 것\n');
+  assert.equal(visibleTemplates(options).length, 6);
+
+  options = addCustomTemplate(options, '버그', '중복');
+  assert.equal(visibleTemplates(options).length, 6, '내장과 같은 제목은 안 들어간다');
+
+  options = updateCustomTemplate(options, '스프린트 회고', '## 고칠 것\n');
+  assert.equal(
+    visibleTemplates(options).find((t) => t.title === '스프린트 회고')?.body,
+    '## 고칠 것\n',
+  );
+
+  options = removeCustomTemplate(options, '스프린트 회고');
+  assert.equal(visibleTemplates(options).length, 5);
+});
+
+test('깨진 템플릿 설정은 기본값으로 떨어진다', () => {
+  assert.deepEqual(normalizeTemplateOptions(null), { hiddenBuiltInTitles: [], customTemplates: [] });
+  assert.deepEqual(normalizeTemplateOptions({ hiddenBuiltInTitles: '버그' }).hiddenBuiltInTitles, []);
+  // 내장에 없는 제목을 숨김 목록에 넣어두면 무시한다.
+  assert.deepEqual(normalizeTemplateOptions({ hiddenBuiltInTitles: ['없는것'] }).hiddenBuiltInTitles, []);
+
+  const messy = normalizeTemplateOptions({
+    customTemplates: [
+      { title: '  회고  노트 ', body: 'x' },
+      { title: '', body: 'y' },
+      { title: '회고 노트', body: '중복' },
+      { title: '본문없음' },
+    ],
+  });
+  assert.deepEqual(
+    messy.customTemplates,
+    [
+      { title: '회고 노트', body: 'x', visible: true },
+      { title: '본문없음', body: '', visible: true },
+    ],
+  );
+});
+
+test('내장 템플릿은 팀 표준대로 Goal 과 Output 으로 시작한다', () => {
+  // 근거는 PAAS `10. 개발 프로세스` 의 Description 조항이다.
+  for (const template of BUILT_IN_TEMPLATES) {
+    assert.ok(template.body.startsWith('## Goal'), `${template.title}: Goal 로 시작해야 한다`);
+    assert.ok(template.body.includes('## Output'), `${template.title}: Output 이 있어야 한다`);
+  }
+  assert.ok(BUILT_IN_TEMPLATES.find((t) => t.title === '버그')?.body.includes('## 현상'));
+  assert.ok(BUILT_IN_TEMPLATES.find((t) => t.title === '버그')?.body.includes('## 조치'));
 });

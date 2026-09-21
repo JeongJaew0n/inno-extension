@@ -56,6 +56,22 @@ export const SITES = [
         hasDetails: true,
       },
       {
+        id: 'createQuickDates',
+        name: '업무 생성 날짜 단축',
+        description: '업무 생성 모달에서 시작 날짜를 오늘로, 기한을 오늘+3일로 한 번에 넣습니다.',
+        routeSummary: '업무 생성 모달',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
+      {
+        id: 'createTemplateInsert',
+        name: '업무 생성 템플릿 삽입',
+        description: '설명이 비어 있을 때 $ 를 입력하면 템플릿 목록에서 골라 넣습니다.',
+        routeSummary: '업무 생성 모달의 설명',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
+      {
         id: 'issueModalWidth',
         name: '업무 모달 전체 폭',
         description: '보드에서 업무 상세 모달을 브라우저 화면 전체 폭으로 넓힙니다.',

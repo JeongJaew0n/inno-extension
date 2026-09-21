@@ -7,6 +7,8 @@ import { createDescriptionMarkdownCopyRuntime } from './features/descriptionMark
 import { createDescriptionEditActionsRuntime } from './features/descriptionEditActions/runtime';
 import { createBoardSprintInfoRuntime } from './features/boardSprintInfo/runtime';
 import { createPastSprintViewRuntime } from './features/pastSprintView/runtime';
+import { createQuickDatesRuntime } from './features/createQuickDates/runtime';
+import { createTemplateInsertRuntime } from './features/createTemplateInsert/runtime';
 
 const runtime = createSiteRuntime({
   siteId: 'jira',
@@ -19,6 +21,8 @@ const runtime = createSiteRuntime({
     createDescriptionEditActionsRuntime(),
     createBoardSprintInfoRuntime(),
     createPastSprintViewRuntime(),
+    createQuickDatesRuntime(),
+    createTemplateInsertRuntime(),
   ],
   debounceMs: 180,
 });
