@@ -152,7 +152,9 @@ export function createQuickDatesRuntime(): FeatureRuntime {
     next.setAttribute(FEATURE_ROOT_ATTRIBUTE, CREATE_QUICK_DATES_ROOT);
     next.style.all = 'initial';
     next.style.display = 'flex';
-    next.style.margin = '0 0 8px';
+    // 이 줄은 스크롤 영역의 **첫 요소**다. 여백이 없으면 위쪽이 경계에 잘린다 —
+    // 실측에서 버튼 top 104, 스크롤 영역 top 110 이라 6px 이 먹혔다.
+    next.style.margin = '12px 0 8px';
 
     const shadow = next.attachShadow({ mode: 'open' });
     shadow.innerHTML = `

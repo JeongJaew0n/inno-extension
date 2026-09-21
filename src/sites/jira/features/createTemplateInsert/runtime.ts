@@ -126,10 +126,32 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
     return listRoot as HTMLElement;
   }
 
+  /**
+   * 목록을 **캐럿 줄** 밑에 붙인다.
+   *
+   * 편집기 아래에 붙이면 안 된다. 이 편집기는 빈 상태에서도 70px 쯤 되는 블록이라
+   * 첫 줄에서 `$` 를 쳐도 목록이 한참 밑에 뜬다. prefix 태그 쪽은 한 줄짜리 `input`
+   * 이라 그 차이가 없었다.
+   *
+   * 접힌 선택 영역은 높이 0 인 사각형을 주기도 한다. 그때는 편집기 사각형으로 떨어진다.
+   */
   function positionHost(editor: HTMLElement): void {
     if (!host) return;
-    const rect = editor.getBoundingClientRect();
     const view = editor.ownerDocument.defaultView;
+    const editorRect = editor.getBoundingClientRect();
+    const selection = view?.getSelection();
+    const caret = selection && selection.rangeCount > 0
+      ? selection.getRangeAt(0).getBoundingClientRect()
+      : null;
+    const anchored = caret && caret.height > 0 && caret.top >= editorRect.top
+      ? caret
+      : editorRect;
+    const rect = {
+      left: editorRect.left,
+      top: anchored.top,
+      bottom: anchored.bottom,
+      width: editorRect.width,
+    };
     const spaceBelow = (view?.innerHeight ?? 0) - rect.bottom;
 
     host.style.left = `${Math.round(rect.left)}px`;
