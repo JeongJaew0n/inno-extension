@@ -10,15 +10,36 @@ open design/index.html
 
 빌드도 서버도 필요 없다. 파일을 그대로 연다.
 
-## 전략은 Material 3, 색은 우리 것
+## 전략은 Material 3, 색은 요트 클럽
 
-색을 하나씩 고르지 않는다. **시드 한 색에서 색조 팔레트를 뽑고, 색조를 역할에 배정한다.**
-새 색이 필요하면 값을 찍는 게 아니라 "이게 어느 역할인가"를 정한다. 시드는 우리 Popup 이
-쓰던 `#654cf2` 다.
+색을 하나씩 고르지 않는다. **원천 색에서 색조 팔레트를 뽑고, 색조를 역할에 배정한다.**
+새 색이 필요하면 값을 찍는 게 아니라 "이게 어느 역할인가"를 정한다.
+
+### 원천 — Figma 색상 조합 59 「요트 클럽」 (2026-09-28 채택)
+
+| 원천 색 | 값 | 들어가는 곳 | 역할과의 차이 |
+| --- | --- | --- | --- |
+| 따뜻한 회백 | `#F2F0EF` | `neutral` 의 색상 | `surface-container` 와 ΔE 1.3 |
+| 차가운 회색 | `#BBBDBC` | `neutral-variant` 의 색상 | `outline-variant` 와 ΔE 3.6 (M3 가 tone 80 에 둬서 조금 밝다) |
+| 짙은 청록 | `#245F73` | `primary` | **그대로 앉힌다** |
+| 갈색 | `#733E24` | `tertiary` | **그대로 앉힌다** |
+
+M3 는 시드 한 색에서 전부를 뽑지만 여기는 조합이 네 색을 정해 준다. 그래서 각 팔레트를 대응하는
+원천 색의 색상·채도에서 뽑고, 주색·강조색은 계산값(ΔE 2.4 / 7.7 차이) 대신 원본을 쓴다.
+
+**오류와 강조를 떼어 놓았다.** 갈색(51°)과 오류 빨강이 가까워서 두 가지를 바꿨다.
+
+| 조치 | 효과 |
+| --- | --- |
+| 오류 색상각 30° → 20° | `tertiary` / `error` ΔE 31.6 → 36.7 |
+| `tertiary-container` tone 90 → 85 | `tertiary-container` / `error-container` ΔE 8.2 → 16.1 |
+
+연한 컨테이너는 따뜻한 색이 전부 분홍빛 흰색으로 수렴해서 채도를 낮춰도 안 갈린다(실측). 밝기
+단계를 내려야 갈린다.
 
 | M3 개념 | 여기서 |
 | --- | --- |
-| 색조 팔레트 | 시드에서 계산. `primary` · `secondary` · `tertiary` · `neutral` · `neutral-variant` · `error` |
+| 색조 팔레트 | 원천 네 색에서 계산. `primary` · `secondary` · `tertiary` · `neutral` · `neutral-variant` · `error` |
 | 역할 | `primary` / `on-primary` / `primary-container` … 밝은 배색 배정 규칙 그대로 |
 | 표면 단계 | 그림자 대신 `surface-container-*` 로 높이를 표현 |
 | 상태 레이어 | hover·focus·pressed 를 `on-*` 색의 불투명도로. **hover 색을 따로 만들지 않는다** |
@@ -51,7 +72,7 @@ HCT 는 밝기에 CAM16 의 `J` 를 쓰고 우리는 `L*` 을 쓴다. 같은 단
 python3 design/generate-tokens.py > design/tokens.css
 ```
 
-색을 바꾸려면 **생성기의 시드·채도를 바꾸고 다시 돌린다.** 결과 파일을 직접 고치면 다음
+색을 바꾸려면 **생성기의 `SOURCE` 를 바꾸고 `npm run design:sync` 를 돌린다.** 결과 파일을 직접 고치면 다음
 생성에서 지워진다.
 
 ## 왜 React 가 아닌가
@@ -74,7 +95,7 @@ python3 design/generate-tokens.py > design/tokens.css
 
 | 파일 | 내용 |
 | --- | --- |
-| `generate-tokens.py` | 시드에서 팔레트·역할을 계산한다. **토큰의 정본** |
+| `generate-tokens.py` | 원천 색에서 팔레트·역할을 계산한다. **토큰의 정본** |
 | `tokens.css` | 생성 결과. 팔레트 · 역할 · 상태 · 타입 · 모양 · 간격 · 높이 |
 | `components.css` | 지금 제품에 실제로 있는 것만. 값 대신 토큰만 참조한다 |
 | `index.html` | 눈으로 보는 페이지 |

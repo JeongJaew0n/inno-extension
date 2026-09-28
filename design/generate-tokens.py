@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Material 3 전략으로 색조 팔레트를 만든다. 시드는 우리 보라.
+Material 3 전략으로 색조 팔레트를 만든다. 원천은 Figma 조합 59 「요트 클럽」 네 색이다.
 
 빌드와 무관하다. 토큰을 다시 뽑을 때만 손으로 돌린다.
 
@@ -16,8 +16,29 @@ M3 는 HCT(CAM16 기반)를 쓴다. 여기서는 **CIELCh** 로 같은 일을 �
 같은 발상이고, 외부 라이브러리 없이 돌릴 수 있다.
 """
 
-SEED = '#654cf2'          # Popup 에서 쓰던 우리 보라
-TONES = [0, 4, 6, 10, 12, 17, 20, 22, 24, 30, 40, 50, 60, 70, 80, 87, 90, 92, 94, 95, 96, 98, 100]
+# ----------------------------------------------------------------------------
+# 원천 색 — Figma 색상 조합 59 「요트 클럽」 (2026-09-28 채택)
+#
+# https://www.figma.com/ko-kr/resource-library/color-combinations/
+# 값은 그 팔레트 이미지에 적힌 라벨을 그대로 옮겼다.
+#
+# M3 는 시드 한 색에서 전부를 뽑지만, 여기는 **조합 자체가 네 색을 정해 준다.** 그래서 각 팔레트를
+# 대응하는 원천 색의 색상·채도에서 뽑는다.
+#
+#   surface  #F2F0EF  L* 94.9  hue 55.6  chroma 0.9   따뜻한 회백 → neutral 의 색상
+#   outline  #BBBDBC  L* 76.4  hue 163.6 chroma 0.9   회색 테두리 → neutral-variant 자리(tone 80 부근)
+#   primary  #245F73  L* 37.5  hue 234.3 chroma 20.9  짙은 청록   → primary
+#   accent   #733E24  L* 32.3  hue 51.3  chroma 33.1  갈색        → tertiary
+# ----------------------------------------------------------------------------
+SOURCE = {
+    'surface': '#F2F0EF',
+    'outline': '#BBBDBC',
+    'primary': '#245F73',
+    'accent':  '#733E24',
+}
+SEED = SOURCE['primary']
+# 85 는 강조 컨테이너용이다. 아래 PALETTES 주석 참고
+TONES = [0, 4, 6, 10, 12, 17, 20, 22, 24, 30, 40, 50, 60, 70, 80, 85, 87, 90, 92, 94, 95, 96, 98, 100]
 
 
 def srgb_to_linear(c: float) -> float:
@@ -79,26 +100,51 @@ def palette(hue: float, chroma: float) -> dict:
 
 from math import atan2, degrees, hypot
 
-_L, _a, _b = hex_to_lab(SEED)
-SEED_HUE = degrees(atan2(_b, _a)) % 360
-SEED_CHROMA = hypot(_a, _b)
+def hue_chroma(value: str) -> tuple[float, float]:
+    _, a, b = hex_to_lab(value)
+    return degrees(atan2(b, a)) % 360, hypot(a, b)
+
+
+SEED_HUE, SEED_CHROMA = hue_chroma(SOURCE['primary'])
+ACCENT_HUE, ACCENT_CHROMA = hue_chroma(SOURCE['accent'])
+SURFACE_HUE, _ = hue_chroma(SOURCE['surface'])
+OUTLINE_HUE, _ = hue_chroma(SOURCE['outline'])
+
+# 오류 색상각.
+#
+# **30° 에서 20° 로 옮겼다.** 강조 갈색이 51° 라 30° 면 21° 밖에 안 떨어진다. 진한 쪽은 괜찮지만
+# (tone 40 끼리 ΔE 31.6) 연한 컨테이너가 복숭아색·분홍색으로 수렴해 ΔE 8.2 까지 붙었다. 보라 시드
+# 때 `tertiary-90` 과 `error-90` 이 구분되지 않아 안내문이 오류처럼 보였던 것과 같은 문제다.
+# 20° 는 여전히 빨강으로 읽힌다(tone 40 = #b22640).
+ERROR_HUE = 20
 
 PALETTES = {
-    # 시드 그대로. 우리 정체성이다
+    # 조합의 짙은 청록. 우리 정체성이다
     'primary': palette(SEED_HUE, SEED_CHROMA),
-    # M3 는 보조색을 같은 색상에서 채도만 낮춰 뽑는다
-    'secondary': palette(SEED_HUE, 16),
-    # 강조색은 색상환에서 60도 돌린다.
+    # M3 는 보조색을 주색과 같은 색상에서 채도만 낮춰 뽑는다. 주색 채도가 20.9 로 원래 낮아서
+    # M3 기본값(16)을 쓰면 주색과 거의 같아진다. 절반 아래로 내려 회청색으로 둔다
+    'secondary': palette(SEED_HUE, 8),
+    # 강조는 **조합이 정해 준 갈색**을 그대로 쓴다. 색상환을 돌려 만들 필요가 없다
+    'tertiary': palette(ACCENT_HUE, ACCENT_CHROMA),
+    # 중립은 조합의 회백·회색을 따른다. 둘 다 채도 0.9 로 사실상 무채색이라 M3 기본(4 / 8)보다
+    # 한참 낮게 둔다.
     #
-    # **빼는 쪽으로 돈다.** M3 는 더하는 쪽을 쓰지만 우리 시드(304°)에 60을 더하면 4° 로
-    # 빨강 근처에 떨어져 오류색(30°)과 거의 같아진다. 실제로 `tertiary-90`(#ffd9e1)과
-    # `error-90`(#ffdad6)이 구분되지 않아, 안내문이 오류처럼 보였다. Popup 에서 눈으로 잡았다.
-    'tertiary': palette((SEED_HUE - 60) % 360, 24),
-    # 중립은 시드 색상의 흔적만 남긴다. 화면 전체가 미묘하게 같은 계열이 된다
-    'neutral': palette(SEED_HUE, 4),
-    'neutral-variant': palette(SEED_HUE, 8),
-    # 오류는 시드와 무관하게 고정한다. 빨강이 아니면 오류로 안 읽힌다
-    'error': palette(30, 60),
+    # 표면(neutral)은 따뜻한 회백(55.6°), 테두리 쪽(neutral-variant)은 **차가운 회색(163.6°)** 에서
+    # 뽑는다. 처음에 둘 다 회백 색상으로 뽑았더니 `outline-variant` 가 베이지(#cdc5c0)로 기울어
+    # 원천 #BBBDBC 와 ΔE 5.6 이 났다. 조합이 일부러 따뜻한 바탕에 차가운 회색 선을 둔 것이다
+    'neutral': palette(SURFACE_HUE, 2),
+    'neutral-variant': palette(OUTLINE_HUE, 2),
+    'error': palette(ERROR_HUE, 60),
+}
+
+# 원천 색을 **그대로** 앉히는 역할.
+#
+# 계산된 tone 40 은 원천과 조금 다르다 — 주색 #2b6579 (ΔE 2.4), 강조 #885035 (ΔE 7.7). 조합을
+# 골랐으니 브랜드 색은 계산값이 아니라 원본이어야 한다. 둘 다 L* 가 tone 40 부근(37.5 / 32.3)이라
+# 같은 자리에 앉혀도 `on-*`(tone 100, 흰색)과의 대비가 오히려 커진다.
+ROLE_ANCHORS = {
+    'primary': SOURCE['primary'],
+    'tertiary': SOURCE['accent'],
 }
 
 
@@ -122,7 +168,9 @@ ROLES = [
 
     ('tertiary',                'tertiary', 40),
     ('on-tertiary',             'tertiary', 100),
-    ('tertiary-container',      'tertiary', 90),
+    # **tone 85 다.** 90 이면 오류 컨테이너와 ΔE 8.2 로 붙는다. 85 에서 16.1 로 벌어진다.
+    # 위 글자(tone 10)와의 대비는 11.6:1 로 여전히 충분하다
+    ('tertiary-container',      'tertiary', 85),
     ('on-tertiary-container',   'tertiary', 10),
 
     ('error',                   'error', 40),
@@ -160,12 +208,12 @@ def emit_css() -> str:
     w(' *')
     w(' * ## Material 3 의 전략을 따른다')
     w(' *')
-    w(' * 색을 하나씩 고르지 않는다. **시드 한 색에서 색조 팔레트를 뽑고, 색조를 역할에 배정한다.**')
+    w(' * 색을 하나씩 고르지 않는다. **원천 색에서 색조 팔레트를 뽑고, 색조를 역할에 배정한다.**')
     w(' * 새 색이 필요하면 값을 찍는 게 아니라 어느 역할인지를 정한다.')
     w(' *')
     w(' * | M3 개념 | 여기서 |')
     w(' * | --- | --- |')
-    w(' * | 색조 팔레트 | 시드에서 계산. primary·secondary·tertiary·neutral·neutral-variant·error |')
+    w(' * | 색조 팔레트 | 원천 네 색에서 계산. primary·secondary·tertiary·neutral·neutral-variant·error |')
     w(' * | 역할 | `primary` / `on-primary` / `primary-container` … 밝은 배색 배정 규칙 그대로 |')
     w(' * | 표면 단계 | 그림자 대신 `surface-container-*` 로 높이를 표현 |')
     w(' * | 상태 레이어 | hover·focus·pressed 를 `on-*` 색의 불투명도로. 색을 따로 만들지 않는다 |')
@@ -180,7 +228,9 @@ def emit_css() -> str:
     w(' * 어두운 배색은 아직 만들지 않았다. Jira·Confluence 다크 모드를 지원할 때 같은 팔레트에서')
     w(' * 배정만 바꿔 뽑으면 된다.')
     w(' *')
-    w(f' * 시드 {SEED} — hue {SEED_HUE:.1f}° / chroma {SEED_CHROMA:.1f}')
+    w(' * 원천 — Figma 색상 조합 59 「요트 클럽」')
+    for key, value in SOURCE.items():
+        w(f' *   {key:<8} {value}')
     w(' *')
     w(' * ## 이름에 `--inno-` 를 붙이는 이유')
     w(' *')
@@ -200,7 +250,11 @@ def emit_css() -> str:
 
     w('  /* ===== 역할 — 실제로 쓰는 것 ===== */')
     for role, pal, tone in ROLES:
-        w(f'  --inno-{role}: {PALETTES[pal][tone]};  /* {pal}-{tone} */')
+        anchor = ROLE_ANCHORS.get(role)
+        if anchor:
+            w(f'  --inno-{role}: {anchor.lower()};  /* 원천 색 그대로 ({pal}-{tone} 자리) */')
+        else:
+            w(f'  --inno-{role}: {PALETTES[pal][tone]};  /* {pal}-{tone} */')
     w('')
 
     w('  /*')
@@ -388,7 +442,7 @@ if __name__ == '__main__':
         print(emit_ts(), end='')
     elif '--json' in sys.argv:
         print(json.dumps({
-            'seed': SEED, 'hue': round(SEED_HUE, 1), 'chroma': round(SEED_CHROMA, 1),
+            'source': SOURCE, 'seed': SEED, 'hue': round(SEED_HUE, 1), 'chroma': round(SEED_CHROMA, 1),
             'palettes': PALETTES,
         }, indent=1))
     else:

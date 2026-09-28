@@ -8,12 +8,12 @@
  *
  * ## Material 3 의 전략을 따른다
  *
- * 색을 하나씩 고르지 않는다. **시드 한 색에서 색조 팔레트를 뽑고, 색조를 역할에 배정한다.**
+ * 색을 하나씩 고르지 않는다. **원천 색에서 색조 팔레트를 뽑고, 색조를 역할에 배정한다.**
  * 새 색이 필요하면 값을 찍는 게 아니라 어느 역할인지를 정한다.
  *
  * | M3 개념 | 여기서 |
  * | --- | --- |
- * | 색조 팔레트 | 시드에서 계산. primary·secondary·tertiary·neutral·neutral-variant·error |
+ * | 색조 팔레트 | 원천 네 색에서 계산. primary·secondary·tertiary·neutral·neutral-variant·error |
  * | 역할 | `primary` / `on-primary` / `primary-container` … 밝은 배색 배정 규칙 그대로 |
  * | 표면 단계 | 그림자 대신 `surface-container-*` 로 높이를 표현 |
  * | 상태 레이어 | hover·focus·pressed 를 `on-*` 색의 불투명도로. 색을 따로 만들지 않는다 |
@@ -28,7 +28,11 @@
  * 어두운 배색은 아직 만들지 않았다. Jira·Confluence 다크 모드를 지원할 때 같은 팔레트에서
  * 배정만 바꿔 뽑으면 된다.
  *
- * 시드 #654cf2 — hue 304.2° / chroma 96.5
+ * 원천 — Figma 색상 조합 59 「요트 클럽」
+ *   surface  #F2F0EF
+ *   outline  #BBBDBC
+ *   primary  #245F73
+ *   accent   #733E24
  *
  * ## 이름에 `--inno-` 를 붙이는 이유
  *
@@ -41,46 +45,46 @@
 :host {
   /* ===== 색조 팔레트 (참고용. 역할을 쓰고 이걸 직접 쓰지 않는다) ===== */
   /* primary */
-  --inno-primary-0: #000001; --inno-primary-10: #000965; --inno-primary-20: #00149e; --inno-primary-30: #2e28c7; --inno-primary-40: #5540e4; --inno-primary-50: #775aff; --inno-primary-60: #9a7aff; --inno-primary-70: #b79bff; --inno-primary-80: #d1bcff; --inno-primary-90: #e9ddff; --inno-primary-95: #f4eeff; --inno-primary-100: #ffffff;
+  --inno-primary-0: #000000; --inno-primary-10: #001f29; --inno-primary-20: #003544; --inno-primary-30: #084d61; --inno-primary-40: #2b6579; --inno-primary-50: #477e93; --inno-primary-60: #6298ae; --inno-primary-70: #7cb3c9; --inno-primary-80: #98cee5; --inno-primary-90: #b9eaff; --inno-primary-95: #ddf4ff; --inno-primary-100: #ffffff;
   /* secondary */
-  --inno-secondary-0: #000001; --inno-secondary-10: #1e182d; --inno-secondary-20: #342d44; --inno-secondary-30: #4b435b; --inno-secondary-40: #635a74; --inno-secondary-50: #7c738d; --inno-secondary-60: #968ca8; --inno-secondary-70: #b0a7c3; --inno-secondary-80: #ccc2df; --inno-secondary-90: #e8defc; --inno-secondary-95: #f4eeff; --inno-secondary-100: #ffffff;
+  --inno-secondary-0: #000000; --inno-secondary-10: #0d1e24; --inno-secondary-20: #22333a; --inno-secondary-30: #384951; --inno-secondary-40: #506169; --inno-secondary-50: #687a82; --inno-secondary-60: #81949c; --inno-secondary-70: #9caeb7; --inno-secondary-80: #b7cad2; --inno-secondary-90: #d2e6ee; --inno-secondary-95: #e0f4fd; --inno-secondary-100: #ffffff;
   /* tertiary */
-  --inno-tertiary-0: #000000; --inno-tertiary-10: #001e2b; --inno-tertiary-20: #003548; --inno-tertiary-30: #004d67; --inno-tertiary-40: #256581; --inno-tertiary-50: #437e9b; --inno-tertiary-60: #5e98b6; --inno-tertiary-70: #79b2d2; --inno-tertiary-80: #95ceee; --inno-tertiary-90: #c2e8ff; --inno-tertiary-95: #e1f3ff; --inno-tertiary-100: #ffffff;
+  --inno-tertiary-0: #000000; --inno-tertiary-10: #301400; --inno-tertiary-20: #522209; --inno-tertiary-30: #6d391f; --inno-tertiary-40: #885035; --inno-tertiary-50: #a4694c; --inno-tertiary-60: #c08264; --inno-tertiary-70: #dd9c7d; --inno-tertiary-80: #fbb797; --inno-tertiary-90: #ffdbcb; --inno-tertiary-95: #ffede5; --inno-tertiary-100: #ffffff;
   /* neutral */
-  --inno-neutral-0: #000001; --inno-neutral-10: #1c1b20; --inno-neutral-20: #312f35; --inno-neutral-30: #48464c; --inno-neutral-40: #605d64; --inno-neutral-50: #78767d; --inno-neutral-60: #929096; --inno-neutral-70: #adaab1; --inno-neutral-80: #c8c5cd; --inno-neutral-90: #e4e1e9; --inno-neutral-95: #f2eff7; --inno-neutral-100: #ffffff;
+  --inno-neutral-0: #000000; --inno-neutral-10: #1e1b19; --inno-neutral-20: #33302e; --inno-neutral-30: #4a4644; --inno-neutral-40: #615e5c; --inno-neutral-50: #7a7674; --inno-neutral-60: #94908e; --inno-neutral-70: #afaaa8; --inno-neutral-80: #cac6c3; --inno-neutral-90: #e6e2df; --inno-neutral-95: #f4f0ed; --inno-neutral-100: #ffffff;
   /* neutral-variant */
-  --inno-neutral-variant-0: #000001; --inno-neutral-variant-10: #1d1a24; --inno-neutral-variant-20: #322f3a; --inno-neutral-variant-30: #494551; --inno-neutral-variant-40: #615c69; --inno-neutral-variant-50: #7a7582; --inno-neutral-variant-60: #938e9c; --inno-neutral-variant-70: #aea9b7; --inno-neutral-variant-80: #c9c4d3; --inno-neutral-variant-90: #e5e0ef; --inno-neutral-variant-95: #f4eefd; --inno-neutral-variant-100: #ffffff;
+  --inno-neutral-variant-0: #000000; --inno-neutral-variant-10: #191c1b; --inno-neutral-variant-20: #2e312f; --inno-neutral-variant-30: #444846; --inno-neutral-variant-40: #5b5f5d; --inno-neutral-variant-50: #747876; --inno-neutral-variant-60: #8d9290; --inno-neutral-variant-70: #a8acaa; --inno-neutral-variant-80: #c3c7c5; --inno-neutral-variant-90: #dfe3e1; --inno-neutral-variant-95: #edf2ef; --inno-neutral-variant-100: #ffffff;
   /* error */
-  --inno-error-0: #000000; --inno-error-10: #3e0400; --inno-error-20: #68000f; --inno-error-30: #91071b; --inno-error-40: #af2d31; --inno-error-50: #ce4a47; --inno-error-60: #ed655f; --inno-error-70: #ff8980; --inno-error-80: #ffb4ab; --inno-error-90: #ffdad6; --inno-error-95: #ffedea; --inno-error-100: #ffffff;
+  --inno-error-0: #000000; --inno-error-10: #40000b; --inno-error-20: #67001c; --inno-error-30: #91002b; --inno-error-40: #b22640; --inno-error-50: #d14457; --inno-error-60: #f06070; --inno-error-70: #ff888f; --inno-error-80: #ffb3b5; --inno-error-90: #ffdada; --inno-error-95: #ffecec; --inno-error-100: #ffffff;
 
   /* ===== 역할 — 실제로 쓰는 것 ===== */
-  --inno-primary: #5540e4;  /* primary-40 */
+  --inno-primary: #245f73;  /* 원천 색 그대로 (primary-40 자리) */
   --inno-on-primary: #ffffff;  /* primary-100 */
-  --inno-primary-container: #e9ddff;  /* primary-90 */
-  --inno-on-primary-container: #000965;  /* primary-10 */
-  --inno-secondary: #635a74;  /* secondary-40 */
+  --inno-primary-container: #b9eaff;  /* primary-90 */
+  --inno-on-primary-container: #001f29;  /* primary-10 */
+  --inno-secondary: #506169;  /* secondary-40 */
   --inno-on-secondary: #ffffff;  /* secondary-100 */
-  --inno-secondary-container: #e8defc;  /* secondary-90 */
-  --inno-on-secondary-container: #1e182d;  /* secondary-10 */
-  --inno-tertiary: #256581;  /* tertiary-40 */
+  --inno-secondary-container: #d2e6ee;  /* secondary-90 */
+  --inno-on-secondary-container: #0d1e24;  /* secondary-10 */
+  --inno-tertiary: #733e24;  /* 원천 색 그대로 (tertiary-40 자리) */
   --inno-on-tertiary: #ffffff;  /* tertiary-100 */
-  --inno-tertiary-container: #c2e8ff;  /* tertiary-90 */
-  --inno-on-tertiary-container: #001e2b;  /* tertiary-10 */
-  --inno-error: #af2d31;  /* error-40 */
+  --inno-tertiary-container: #ffc9b0;  /* tertiary-85 */
+  --inno-on-tertiary-container: #301400;  /* tertiary-10 */
+  --inno-error: #b22640;  /* error-40 */
   --inno-on-error: #ffffff;  /* error-100 */
-  --inno-error-container: #ffdad6;  /* error-90 */
-  --inno-on-error-container: #3e0400;  /* error-10 */
-  --inno-surface: #fbf8ff;  /* neutral-98 */
-  --inno-on-surface: #1c1b20;  /* neutral-10 */
-  --inno-surface-variant: #e5e0ef;  /* neutral-variant-90 */
-  --inno-on-surface-variant: #494551;  /* neutral-variant-30 */
+  --inno-error-container: #ffdada;  /* error-90 */
+  --inno-on-error-container: #40000b;  /* error-10 */
+  --inno-surface: #fdf8f6;  /* neutral-98 */
+  --inno-on-surface: #1e1b19;  /* neutral-10 */
+  --inno-surface-variant: #dfe3e1;  /* neutral-variant-90 */
+  --inno-on-surface-variant: #444846;  /* neutral-variant-30 */
   --inno-surface-container-lowest: #ffffff;  /* neutral-100 */
-  --inno-surface-container-low: #f5f2fa;  /* neutral-96 */
-  --inno-surface-container: #efedf4;  /* neutral-94 */
-  --inno-surface-container-high: #eae7ee;  /* neutral-92 */
-  --inno-surface-container-highest: #e4e1e9;  /* neutral-90 */
-  --inno-outline: #7a7582;  /* neutral-variant-50 */
-  --inno-outline-variant: #c9c4d3;  /* neutral-variant-80 */
+  --inno-surface-container-low: #f7f3f0;  /* neutral-96 */
+  --inno-surface-container: #f1edeb;  /* neutral-94 */
+  --inno-surface-container-high: #ece7e5;  /* neutral-92 */
+  --inno-surface-container-highest: #e6e2df;  /* neutral-90 */
+  --inno-outline: #747876;  /* neutral-variant-50 */
+  --inno-outline-variant: #c3c7c5;  /* neutral-variant-80 */
 
   /*
    * ===== 상태 레이어 =====
