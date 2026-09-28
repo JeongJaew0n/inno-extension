@@ -246,10 +246,10 @@ function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
         ${enabled ? '' : '<p class="notice">서비스와 이 기능을 켜야 Jira 화면에 스위치가 나타나고 막기가 적용됩니다.</p>'}
         <div class="detail-summary">
           <div>
-            <strong>편집 막기</strong>
+            <strong>클릭 편집 방지</strong>
             <p>켜면 설명 본문을 클릭해도 편집으로 들어가지 않습니다. 설명 옆 <code>편집</code> 버튼으로 들어갑니다. 링크와 펼치기는 그대로 동작합니다.</p>
           </div>
-          ${renderToggle(locked, '설명 편집 막기', 'data-edit-lock-toggle')}
+          ${renderToggle(locked, '클릭 편집 방지', 'data-edit-lock-toggle')}
         </div>
       </div>
     `;

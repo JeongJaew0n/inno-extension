@@ -2669,11 +2669,11 @@ test('내장 템플릿은 팀 표준대로 Goal 과 Output 으로 시작한다',
 });
 
 /* ============================================================
- * 설명 편집 막기
+ * 클릭 편집 방지
  * docs/plans/jira-description-edit-lock/spec.md
  * ============================================================ */
 
-test('편집 막기 옵션은 불리언 true 일 때만 막는다', () => {
+test('클릭 편집 방지 옵션은 불리언 true 일 때만 막는다', () => {
   assert.deepEqual(normalizeEditLockOptions({ locked: true }), { locked: true });
   assert.deepEqual(normalizeEditLockOptions({ locked: false }), { locked: false });
   // 기본은 Jira 동작 그대로다. 깨진 값에서 막히면 사용자가 이유를 모른 채 편집을 못 한다.
@@ -2682,7 +2682,7 @@ test('편집 막기 옵션은 불리언 true 일 때만 막는다', () => {
   assert.deepEqual(normalizeEditLockOptions(null), { locked: false });
 });
 
-test('편집 막기는 켜져 있을 때 설명 본문 클릭만 끊는다', () => {
+test('클릭 편집 방지는 켜져 있을 때 설명 본문 클릭만 끊는다', () => {
   const base = {
     locked: true,
     bypass: false,
@@ -2703,19 +2703,19 @@ test('편집 막기는 켜져 있을 때 설명 본문 클릭만 끊는다', () 
   );
 });
 
-test('편집 막기는 Markdown 복사보다 먼저 등록돼 왼쪽에 온다', async () => {
+test('클릭 편집 방지는 Markdown 복사보다 먼저 등록돼 왼쪽에 온다', async () => {
   const source = await readFile('src/sites/jira/content.ts', 'utf8');
   const lock = source.indexOf('createDescriptionEditLockRuntime(),');
   const copy = source.indexOf('createDescriptionMarkdownCopyRuntime(),');
   assert.ok(lock > 0 && copy > 0, '둘 다 등록돼 있어야 한다');
-  assert.ok(lock < copy, '편집 막기가 앞에 와야 줄에서 왼쪽에 붙는다');
+  assert.ok(lock < copy, '클릭 편집 방지가 앞에 와야 줄에서 왼쪽에 붙는다');
 
   // 이미 Markdown 복사가 있으면 그 앞에 끼운다.
   const runtime = await readFile('src/sites/jira/features/descriptionEditLock/runtime.ts', 'utf8');
   assert.match(runtime, /anchor\.insertBefore\(element, copy\)/);
 });
 
-test('편집 막기 클릭 차단은 preventDefault 없이 capture 에서 끊는다', async () => {
+test('클릭 편집 방지 클릭 차단은 preventDefault 없이 capture 에서 끊는다', async () => {
   const runtime = await readFile('src/sites/jira/features/descriptionEditLock/runtime.ts', 'utf8');
   // React 루트에 닿기 전에 끊어야 편집 전환이 안 일어난다.
   assert.match(runtime, /addEventListener\('click', onClickCapture, true\)/);

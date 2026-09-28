@@ -136,9 +136,9 @@ export function createDescriptionEditLockRuntime(): FeatureRuntime {
       </style>
       <span class="row">
         <label class="lock" title="켜면 본문을 클릭해도 편집으로 들어가지 않습니다">
-          <span>편집 막기</span>
+          <span>클릭 편집 방지</span>
           <span class="inno-switch">
-            <input type="checkbox" data-lock aria-label="설명 편집 막기" />
+            <input type="checkbox" data-lock aria-label="클릭 편집 방지" />
             <span class="inno-switch__track" aria-hidden="true"></span>
           </span>
         </label>
@@ -156,7 +156,7 @@ export function createDescriptionEditLockRuntime(): FeatureRuntime {
       // 그래야 다른 탭도 같은 경로로 바뀐다.
       void setFeatureOptions('jira', 'descriptionEditLock', { locked: checkbox.checked })
         .catch((error: unknown) => {
-          console.error('[Inno Extension] 설명 편집 막기 저장 실패', error);
+          console.error('[Inno Extension] 클릭 편집 방지 저장 실패', error);
           checkbox.checked = locked;
         });
     });

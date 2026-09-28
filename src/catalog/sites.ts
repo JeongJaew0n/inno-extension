@@ -57,7 +57,7 @@ export const SITES = [
       },
       {
         id: 'descriptionEditLock',
-        name: '설명 편집 막기',
+        name: '클릭 편집 방지',
         description: '켜두면 업무 설명을 클릭해도 편집으로 들어가지 않고, 편집 버튼으로만 들어갑니다.',
         routeSummary: '업무 상세의 설명',
         defaultEnabled: true,

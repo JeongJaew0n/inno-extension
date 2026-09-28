@@ -1,5 +1,5 @@
 /**
- * 설명 편집 막기의 순수 로직.
+ * 클릭 편집 방지의 순수 로직.
  *
  * docs/plans/jira-description-edit-lock/spec.md
  */

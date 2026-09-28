@@ -101,7 +101,7 @@ export const DESCRIPTION_LABEL = '[data-testid="issue.views.issue-base.common.de
 /** 설명 편집 취소 기능. */
 export const DESCRIPTION_EDIT_ACTIONS_ROOT = 'jira-description-edit-actions';
 
-/** `편집 막기` 스위치와 `편집` 버튼. `Markdown 복사` 왼쪽에 둔다 */
+/** `클릭 편집 방지` 스위치와 `편집` 버튼. `Markdown 복사` 왼쪽에 둔다 */
 export const DESCRIPTION_EDIT_LOCK_ROOT = 'jira-description-edit-lock';
 
 /**
