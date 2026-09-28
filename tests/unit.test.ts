@@ -2723,3 +2723,15 @@ test('클릭 편집 방지 클릭 차단은 preventDefault 없이 capture 에서
   // 링크 이동·텍스트 선택까지 죽이면 안 된다.
   assert.doesNotMatch(runtime, /event\.preventDefault\(\)/);
 });
+
+test('디자인 조각은 닫히지 않은 주석 없이 이어 붙일 수 있다', async () => {
+  // 조각 끝에 다음 구역의 `/* ====` 가 딸려 들어가면, 이어 붙였을 때 뒤 조각이 전부 주석으로
+  // 삼켜진다. 지난 스프린트 카드·클릭 편집 방지 스위치가 그렇게 깨져 있었다.
+  const parts = await readFile('src/platform/design/parts.ts', 'utf8');
+  const blocks = [...parts.matchAll(/export const (\w+_CSS) = (`|')([\s\S]*?)\2;/g)];
+  assert.ok(blocks.length >= 12, `조각 수 ${blocks.length}`);
+  for (const [, name, , css] of blocks) {
+    assert.ok(!css.includes('/*') && !css.includes('*/'), `${name} 에 주석이 남았다`);
+    assert.equal((css.match(/{/g) ?? []).length, (css.match(/}/g) ?? []).length, `${name} 중괄호 짝`);
+  }
+});

@@ -52,10 +52,18 @@ def parts() -> list[tuple[str, str]]:
 
     found = []
     for index, (start, name) in enumerate(marks):
-        end = marks[index + 1][0] if index + 1 < len(marks) else len(text)
+        # 다음 구역의 **머리말 주석이 시작하는 곳**에서 끊는다. 다음 표식 위치에서 끊으면 그 앞의
+        # `/* ====` 가 이 조각 끝에 딸려 들어와 닫히지 않은 주석이 된다. 그러면 조각을 이어 붙였을
+        # 때(`${BUTTON_CSS}${TOGGLE_CSS}`) 첫 조각 뒤가 **전부 주석으로 삼켜진다.** 실제로 그랬다 —
+        # e2e 에서 지난 스프린트 카드가 기본 버튼 모양이고, 클릭 편집 방지 스위치가 체크박스로
+        # 보이는 것으로 잡았다.
+        end = text.rfind('/*', 0, marks[index + 1][0]) if index + 1 < len(marks) else len(text)
         # 표식이 있는 머리말 주석 다음부터가 본문이다.
         body = text[start:end].split('*/', 1)[1]
-        found.append((RESERVED.get(name, name), minify(body)))
+        css = minify(body)
+        if '/*' in css or '*/' in css:
+            raise SystemExit(f'{name}: 주석이 남았다. 이어 붙이면 뒤 조각이 삼켜진다')
+        found.append((RESERVED.get(name, name), css))
     return found
 
 

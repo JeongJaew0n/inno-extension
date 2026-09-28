@@ -123,6 +123,12 @@
 /* 복사됨 · 실패는 색만 바꾼다. 아이콘 자체가 이미 결과를 말한다 */
 .inno-btn--ok { color: var(--inno-primary); }
 .inno-btn--fail { color: var(--inno-error); }
+/*
+ * 결과를 보여주는 동안은 두 번 눌리지 않게 버튼을 `disabled` 로 둔다. 그런데 `disabled` 의
+ * 불투명도 0.38 이 결과 표시까지 흐리게 만들어 ✓ 가 거의 안 보였다(e2e 스크린샷에서 잡음).
+ * 결과 상태는 흐리게 하지 않는다.
+ */
+.inno-btn--ok:disabled, .inno-btn--fail:disabled { opacity: 1; }
 
 /**
  * 채운 버튼 — 되돌릴 수 없는 동작에만 쓴다.
@@ -437,15 +443,24 @@
   color: var(--inno-on-secondary-container);
   font-weight: 600;
 }
-/** 키보드로 닿지 않는 자리. 마우스로만 누른다 */
+/**
+ * 키보드로 닿지 않는 자리. 마우스로만 누른다.
+ *
+ * 목록(`ul`)의 **형제**라 목록의 배경을 물려받지 않는다. 투명으로 두면 뒤 페이지 글자와 겹쳐
+ * 보였다(e2e 스크린샷에서 잡음). 목록과 같은 표면·그림자를 주고 아래 모서리만 둥글려 한 판으로
+ * 이어 보이게 한다. 그림자는 아래로만 떨어뜨려 목록 쪽에 띠가 생기지 않게 한다.
+ */
+.inno-listbox:has(+ .inno-listbox__footer) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .inno-listbox__footer {
   display: block;
   width: 100%;
-  margin-top: var(--inno-space-1);
-  padding: var(--inno-space-1) var(--inno-space-2);
+  margin-top: 0;
+  padding: var(--inno-space-2) var(--inno-space-3);
   border: 0;
   border-top: 1px solid var(--inno-outline-variant);
-  background: transparent;
+  border-radius: 0 0 var(--inno-shape-sm) var(--inno-shape-sm);
+  background: var(--inno-elevation-3);
+  box-shadow: 0 10px 20px -6px rgba(0, 0, 0, 0.16);
   color: var(--inno-on-surface-variant);
   font-family: var(--inno-font);
   font-size: var(--inno-label-md);
