@@ -127,6 +127,8 @@ const suites = {
     }
     const order = await p.ev(`[...${sroot('jira-description-edit-lock')}.parentElement.children].map(c => c.getAttribute('data-inno-extension-feature') || c.tagName).join(' > ')`);
     R.check('Jira 업무', '클릭 편집 방지가 Markdown 복사 왼쪽', /edit-lock > jira-description-markdown-copy/.test(order), order);
+    const gapPx = await p.ev(`(() => { const a = ${sroot('jira-description-edit-lock')}.getBoundingClientRect(); const b = ${sroot('jira-description-markdown-copy')}.getBoundingClientRect(); return Math.round(b.left - a.right); })()`);
+    R.check('Jira 업무', '클릭 편집 방지가 Markdown 복사에 붙어 있음(줄 가운데로 뜨지 않음)', gapPx >= 0 && gapPx <= 16, `${gapPx}px`);
 
     await p.clickEl(`${sroot('jira-description-markdown-copy')}.shadowRoot.querySelector('button')`);
     const md = await p.clipboard();

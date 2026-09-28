@@ -89,19 +89,51 @@ export function createDescriptionEditLockRuntime(): FeatureRuntime {
   /**
    * 편집에 들어간다.
    *
-   * Jira 가 원래 받던 것과 같은 클릭을 본문에 보낸다. 새로운 경로를 만들지 않아야 Jira 가
-   * 바뀌어도 같이 따라간다. 설명이 비어 있으면 렌더러가 없으므로 필드 자체를 누른다.
+   * Jira 가 사람 클릭에서 받는 것과 **같은 이벤트 순서**를 본문 첫 블록에 보낸다.
+   *
+   * ```
+   * pointerdown → mousedown → pointerup → mouseup → click
+   * ```
+   *
+   * **`click()` 한 번으로는 안 된다.** 실제 Jira 에서 방지를 끈 상태로 재봤을 때도 `click()` 만으로는
+   * 편집이 열리지 않았고, 위 순서를 좌표와 함께 보내자 열렸다. 편집 전환 요소가 `onMouseDown` 과
+   * `onClick` 을 짝으로 갖고 있어, 앞선 mousedown 이 없으면 클릭을 편집으로 받지 않는다.
+   * (처음 구현은 `click()` 만 보냈고 e2e 대역은 click 만 봐서 통과했다 — 실제 사이트에서 잡았다.)
+   *
+   * 좌표는 첫 블록 안쪽이다. 링크 위를 누르면 링크로 받으므로 줄 왼쪽 끝을 쓴다.
+   * 설명이 비어 렌더러가 없으면 필드 자체를 누른다.
    */
   function enterEdit(document: Document): void {
     const field = findReadField(document);
     if (!field) return;
-    const target = field.querySelector<HTMLElement>(DESCRIPTION_RENDERER)
+    const renderer = field.querySelector<HTMLElement>(DESCRIPTION_RENDERER);
+    const target = renderer?.querySelector<HTMLElement>('p, li, h1, h2, h3, h4, h5, h6')
+      ?? renderer
       ?? field.firstElementChild as HTMLElement | null
       ?? field;
 
+    const view = document.defaultView;
+    if (!view) return;
+    const rect = target.getBoundingClientRect();
+    const base = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      view,
+      clientX: rect.left + Math.min(8, rect.width / 2),
+      clientY: rect.top + rect.height / 2,
+      button: 0,
+      detail: 1,
+    };
+    const pointer = { pointerId: 1, pointerType: 'mouse', isPrimary: true };
+
     bypass = true;
     try {
-      target.click();
+      target.dispatchEvent(new view.PointerEvent('pointerdown', { ...base, ...pointer, buttons: 1 }));
+      target.dispatchEvent(new view.MouseEvent('mousedown', { ...base, buttons: 1 }));
+      target.dispatchEvent(new view.PointerEvent('pointerup', { ...base, ...pointer, buttons: 0 }));
+      target.dispatchEvent(new view.MouseEvent('mouseup', { ...base, buttons: 0 }));
+      target.dispatchEvent(new view.MouseEvent('click', { ...base, buttons: 0 }));
     } finally {
       bypass = false;
     }
@@ -121,6 +153,9 @@ export function createDescriptionEditLockRuntime(): FeatureRuntime {
     next.style.display = 'inline-flex';
     next.style.alignItems = 'center';
     next.style.verticalAlign = 'middle';
+    // 라벨 줄이 `justify-content: space-between` 이다. 아이템이 셋이 되면 이 묶음이 줄 가운데로
+    // 떠서 Markdown 복사와 떨어진다(실측). 남는 공간을 이쪽이 가져가 Markdown 복사 바로 왼쪽에 붙인다.
+    next.style.marginLeft = 'auto';
 
     const shadow = next.attachShadow({ mode: 'open' });
     shadow.innerHTML = `

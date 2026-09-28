@@ -23,7 +23,7 @@ export const jiraIssue = doc('[NPT-143] Jira', `
 <div id="jira-root"><main>
   <nav><a data-testid="issue.views.issue-base.foundation.breadcrumbs.current-issue.item" href="/browse/NPT-143">NPT-143</a></nav>
   <h1 data-testid="issue.views.issue-base.foundation.summary.heading">[공통] 사내 Gitlab CI 연계 분석</h1>
-  <div data-testid="issue.views.issue-base.common.description.label"><div style="display:flex;align-items:center;gap:8px"><h2 style="margin:0">설명</h2></div></div>
+  <div data-testid="issue.views.issue-base.common.description.label"><div style="display:flex;align-items:center;gap:8px;justify-content:space-between"><h2 style="margin:0">설명</h2></div></div>
   <div id="desc-slot">${READ}</div>
   <section id="comments"><h3>댓글</h3><div class="ak-renderer-document"><p>댓글 본문은 복사되면 안 된다</p></div></section>
 </main></div>
@@ -32,11 +32,18 @@ export const jiraIssue = doc('[NPT-143] Jira', `
   window.__editCount = 0; window.__saved = 0;
   const READ = ${JSON.stringify(READ)}, EDITOR = ${JSON.stringify(EDITOR)};
   const slot = document.getElementById('desc-slot');
+  // 실제 Jira 처럼 **앞선 mousedown 이 있어야** 클릭을 편집으로 받는다. click() 만 보내면 안 열린다(실측)
+  let downInField = false;
+  document.getElementById('jira-root').addEventListener('mousedown', (e) => {
+    downInField = !!e.target.closest('[data-testid="issue.views.field.rich-text.description"]');
+  });
   document.getElementById('jira-root').addEventListener('click', (e) => {
     if (e.target.closest('#native-cancel')) { slot.innerHTML = READ; return; }
     if (e.target.closest('#native-save')) { window.__saved++; slot.innerHTML = READ; return; }
     const field = e.target.closest('[data-testid="issue.views.field.rich-text.description"]');
     if (!field || e.target.closest('a')) return;
+    if (!downInField) return;
+    downInField = false;
     window.__editCount++; slot.innerHTML = EDITOR;
   });
 </script>`);
