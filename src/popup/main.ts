@@ -8,6 +8,7 @@ import {
   setBuiltInVisibility,
   setCustomVisibility,
 } from '../sites/jira/features/backlogSlashTemplate/contracts';
+import { normalizeEditLockOptions } from '../sites/jira/features/descriptionEditLock/contracts';
 import { FEATURE_IDS, SITE_IDS, type FeatureId, type SiteId } from '../catalog/types';
 import { createDefaultSettings } from '../platform/settings/defaults';
 import {
@@ -231,6 +232,25 @@ function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
           aria-live="polite"
           ${feedback === 'saving' || feedback === 'saved' ? 'disabled' : ''}
         >${saveLabel}</button>
+      </div>
+    `;
+  }
+
+  if (siteId === 'jira' && featureId === 'descriptionEditLock') {
+    // Jira 화면의 스위치와 **같은 값**이다. 어느 쪽에서 바꿔도 다른 쪽이 따라온다.
+    const { locked } = normalizeEditLockOptions(settings.sites.jira.features.descriptionEditLock?.options);
+    const enabled = settings.sites.jira.enabled
+      && settings.sites.jira.features.descriptionEditLock?.enabled === true;
+    return `
+      <div class="option-fields">
+        ${enabled ? '' : '<p class="notice">서비스와 이 기능을 켜야 Jira 화면에 스위치가 나타나고 막기가 적용됩니다.</p>'}
+        <div class="detail-summary">
+          <div>
+            <strong>편집 막기</strong>
+            <p>켜면 설명 본문을 클릭해도 편집으로 들어가지 않습니다. 설명 옆 <code>편집</code> 버튼으로 들어갑니다. 링크와 펼치기는 그대로 동작합니다.</p>
+          </div>
+          ${renderToggle(locked, '설명 편집 막기', 'data-edit-lock-toggle')}
+        </div>
       </div>
     `;
   }
@@ -512,6 +532,12 @@ app.addEventListener('change', async (event) => {
     await updatePrefixTagOptions((options) => (builtIn
       ? setBuiltInVisibility(options, label, visible)
       : setCustomVisibility(options, label, visible)));
+    return;
+  }
+
+  if (target.hasAttribute('data-edit-lock-toggle')) {
+    await setFeatureOptions('jira', 'descriptionEditLock', { locked: target.checked });
+    await render();
     return;
   }
 

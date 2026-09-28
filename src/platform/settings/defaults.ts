@@ -42,6 +42,11 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
               customTags: [],
             },
           },
+          descriptionEditLock: {
+            // 스위치만 보인다. 막힘(locked)은 기본으로 꺼져 있어 Jira 동작이 그대로다.
+            enabled: true,
+            options: { locked: false },
+          },
           createQuickDates: {
             // 모달에 버튼 하나를 넣을 뿐이다. 누를 때만 필드를 건드린다.
             enabled: true,

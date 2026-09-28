@@ -15,6 +15,7 @@ export const FEATURE_IDS = [
   'editorMarkdownToAdf',
   'descriptionMarkdownCopy',
   'descriptionEditActions',
+  'descriptionEditLock',
   'boardSprintInfo',
   'pastSprintView',
   'createQuickDates',

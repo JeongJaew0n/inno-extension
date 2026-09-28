@@ -56,6 +56,14 @@ export const SITES = [
         hasDetails: true,
       },
       {
+        id: 'descriptionEditLock',
+        name: '설명 편집 막기',
+        description: '켜두면 업무 설명을 클릭해도 편집으로 들어가지 않고, 편집 버튼으로만 들어갑니다.',
+        routeSummary: '업무 상세의 설명',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
+      {
         id: 'createQuickDates',
         name: '업무 생성 날짜 단축',
         description: '업무 생성 모달에서 시작 날짜를 오늘로, 기한을 오늘+3일로 한 번에 넣습니다.',
