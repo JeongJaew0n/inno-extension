@@ -381,10 +381,60 @@ function renderRoute(route: PopupRoute): string {
   return renderSiteList();
 }
 
-async function render(): Promise<void> {
+/** 다시 그려도 값을 이어받을 입력칸의 이름. 이름이 없는 칸은 보존하지 않는다 */
+function draftKey(element: Element): string | null {
+  if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return null;
+  if (element.type === 'checkbox') return null;
+  if (element.dataset.option) return `option:${element.dataset.option}`;
+  if (element.hasAttribute('data-prefix-tag-new')) return 'prefix-tag-new';
+  return null;
+}
+
+interface RenderOptions {
+  /**
+   * 입력 중이던 값과 커서를 보존한다.
+   *
+   * **사용자가 한 동작이 아닌 이유로 다시 그릴 때만** 켠다 — 다른 탭에서 설정이 바뀌었거나
+   * 저장 피드백 타이머가 끝났을 때다. 그때 통째로 다시 그리면 치던 글자가 사라진다. e2e 에서
+   * 저장 피드백 타이머가 새 prefix 태그 입력칸을 지우는 것으로 잡았다.
+   *
+   * 사용자 동작(추가 버튼 등)이 부른 렌더에서는 끈다. 추가한 뒤 입력칸이 비어야 한다.
+   */
+  preserveDrafts?: boolean;
+}
+
+async function render(options: RenderOptions = {}): Promise<void> {
   settings = await getSettings();
   const route = parsePopupRoute(window.location.hash);
+
+  const drafts = new Map<string, string>();
+  let focused: { key: string; start: number | null; end: number | null } | null = null;
+  if (options.preserveDrafts) {
+    for (const element of app.querySelectorAll('input, textarea')) {
+      const key = draftKey(element);
+      if (key) drafts.set(key, (element as HTMLInputElement).value);
+    }
+    const active = document.activeElement;
+    const activeKey = active ? draftKey(active) : null;
+    if (activeKey) {
+      const field = active as HTMLInputElement;
+      focused = { key: activeKey, start: field.selectionStart, end: field.selectionEnd };
+    }
+  }
+
   app.innerHTML = renderRoute(route);
+
+  if (!options.preserveDrafts) return;
+  for (const element of app.querySelectorAll('input, textarea')) {
+    const key = draftKey(element);
+    if (!key || !drafts.has(key)) continue;
+    const field = element as HTMLInputElement;
+    field.value = drafts.get(key) ?? field.value;
+    if (focused?.key === key) {
+      field.focus();
+      if (focused.start !== null && focused.end !== null) field.setSelectionRange(focused.start, focused.end);
+    }
+  }
 }
 
 function parseList(value: string): string[] {
@@ -454,7 +504,7 @@ async function saveFeatureOptionsWithFeedback(form: HTMLElement): Promise<void> 
     saveFeedbackTimer = window.setTimeout(() => {
       if (saveFeedback?.key === key) {
         saveFeedback = null;
-        void render();
+        void render({ preserveDrafts: true });
       }
       saveFeedbackTimer = null;
     }, 1600);
@@ -470,6 +520,9 @@ app.addEventListener('click', async (event) => {
   if (target.hasAttribute('data-prefix-tag-add')) {
     const field = app.querySelector<HTMLInputElement>('[data-prefix-tag-new]');
     const label = field?.value ?? '';
+    // 저장 전에 비운다. 저장이 부르는 두 렌더(이 동작의 렌더, 저장소 변경 렌더)가 경합해서
+    // 값 보존 쪽이 늦게 끝나면 방금 추가한 글자가 입력칸에 되살아난다.
+    if (field) field.value = '';
     if (label.trim()) await updatePrefixTagOptions((options) => addCustomTag(options, label));
     return;
   }
@@ -562,7 +615,8 @@ app.addEventListener('change', async (event) => {
 
 window.addEventListener('hashchange', () => void render());
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'sync' && changes[SETTINGS_STORAGE_KEY]) void render();
+  // 다른 탭(예: Jira 화면의 스위치)에서 바뀐 것이다. 입력 중이던 값은 지키면서 다시 그린다
+  if (areaName === 'sync' && changes[SETTINGS_STORAGE_KEY]) void render({ preserveDrafts: true });
 });
 
 void render();

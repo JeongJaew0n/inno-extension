@@ -28,7 +28,7 @@ button { color: inherit; }
   align-items: center;
   justify-content: center;
   height: 48px;
-  background: linear-gradient(110deg, var(--inno-primary-40), var(--inno-primary-30));
+  background: linear-gradient(110deg, var(--inno-primary), var(--inno-primary-30));
   color: var(--inno-on-primary);
 }
 
