@@ -135,6 +135,27 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
   }
 
   /**
+   * 편집기 **첫 줄**의 사각형.
+   *
+   * `$` 를 지운 뒤에는 편집기가 비어서 접힌 선택 영역이 높이 0 사각형을 준다. 그때 편집기
+   * 사각형으로 떨어지면 목록이 편집기 **바닥**(빈 상태에서도 70px 쯤 아래)에 붙어 "한참 밑"
+   * 이 되살아난다. e2e 에서 88px 로 잡혔다.
+   *
+   * 첫 블록(빈 문단)이 높이를 가지면 그것을, 아니면 안쪽 여백과 줄 높이로 첫 줄을 계산한다.
+   */
+  function firstLineRect(editor: HTMLElement, editorRect: DOMRect): { top: number; bottom: number } {
+    const first = editor.firstElementChild as HTMLElement | null;
+    const firstRect = first?.getBoundingClientRect();
+    if (firstRect && firstRect.height > 0) return { top: firstRect.top, bottom: firstRect.bottom };
+
+    const style = editor.ownerDocument.defaultView?.getComputedStyle(editor);
+    const padding = Number.parseFloat(style?.paddingTop ?? '0') || 0;
+    const lineHeight = Number.parseFloat(style?.lineHeight ?? '') || (Number.parseFloat(style?.fontSize ?? '14') || 14) * 1.4;
+    const top = editorRect.top + padding;
+    return { top, bottom: top + lineHeight };
+  }
+
+  /**
    * 목록을 **캐럿 줄** 밑에 붙인다.
    *
    * 편집기 아래에 붙이면 안 된다. 이 편집기는 빈 상태에서도 70px 쯤 되는 블록이라
@@ -153,7 +174,7 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
       : null;
     const anchored = caret && caret.height > 0 && caret.top >= editorRect.top
       ? caret
-      : editorRect;
+      : firstLineRect(editor, editorRect);
     const rect = {
       left: editorRect.left,
       top: anchored.top,
