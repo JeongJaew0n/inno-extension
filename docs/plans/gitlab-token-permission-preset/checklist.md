@@ -8,7 +8,8 @@
 - [x] e2e — 가짜 토큰 화면
 - [x] `npm run check` · `npm run test:e2e`
 - [x] spec · README
-- [ ] 실제 GitLab — 버튼 표시 확인 (누르기는 사용자)
+- [x] 실제 GitLab — 버튼 표시 확인 (누르기는 사용자)
+      2026-09-30 사용자가 실제 화면에서 눌러 동작을 확인했다
       사전 확인(2026-09-30, 읽기만): 화면 경로 · 선택기 컴포넌트 · `emitInput` · `syncSelectedResources` ·
       프리셋 카테고리 전부 존재. 확장을 다시 로드해야 버튼이 뜬다.
 
