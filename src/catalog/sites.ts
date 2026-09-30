@@ -214,6 +214,14 @@ export const SITES = [
         defaultEnabled: true,
         hasDetails: true,
       },
+      {
+        id: 'tokenPermissionPreset',
+        name: '토큰 권한 프리셋',
+        description: 'fine-grained 토큰 생성 화면에서 개발·배포 권한을 한 번에 선택합니다. 토큰 생성은 직접 누릅니다.',
+        routeSummary: 'User Settings > Personal access tokens > Generate fine-grained token',
+        defaultEnabled: true,
+        hasDetails: true,
+      },
     ],
   },
 ] as const satisfies readonly SiteDescriptor[];

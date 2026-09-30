@@ -24,6 +24,7 @@ export const FEATURE_IDS = [
   'commitShaCopy',
   'githubCommitShaCopy',
   'mergeRequestTitleCopy',
+  'tokenPermissionPreset',
 ] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 

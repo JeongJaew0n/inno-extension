@@ -56,6 +56,12 @@
     },
     {
       "matches": ["https://rnd-app.innogrid.com/*"],
+      "js": ["src/sites/gitlab/main.ts"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://rnd-app.innogrid.com/*"],
       "js": ["src/sites/gitlab/content.ts"],
       "run_at": "document_idle"
     },

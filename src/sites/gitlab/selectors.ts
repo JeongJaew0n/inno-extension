@@ -24,3 +24,11 @@ export const MERGE_REQUEST_ROW = '.issuable-list > li';
 
 /** 목록 행의 제목 링크. */
 export const MERGE_REQUEST_ROW_TITLE_LINK = 'a[data-testid="issuable-title-link"]';
+
+export const TOKEN_PERMISSION_PRESET_ROOT = 'gitlab-token-permission-preset';
+
+/**
+ * 토큰 생성 화면의 페이지 제목 블록. 프리셋 버튼을 이 바로 아래에 둔다.
+ * 실측(2026-09-30): `Generate fine-grained token` 제목과 설명을 감싼다.
+ */
+export const TOKEN_PAGE_HEADING = '[data-testid="page-heading"]';

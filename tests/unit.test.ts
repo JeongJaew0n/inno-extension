@@ -142,6 +142,13 @@ import {
   normalizeEditLockOptions,
   shouldBlockDescriptionClick,
 } from '../src/sites/jira/features/descriptionEditLock/contracts';
+import {
+  describeResult as describeTokenPresetResult,
+  isTokenCreateRoute,
+  normalizeResult as normalizeTokenPresetResult,
+  PRESET_CATEGORIES,
+  selectPresetPermissions,
+} from '../src/sites/gitlab/features/tokenPermissionPreset/contracts';
 
 function createFakeIssueLink(href: string): HTMLAnchorElement {
   return {
@@ -2734,4 +2741,93 @@ test('디자인 조각은 닫히지 않은 주석 없이 이어 붙일 수 있�
     assert.ok(!css.includes('/*') && !css.includes('*/'), `${name} 에 주석이 남았다`);
     assert.equal((css.match(/{/g) ?? []).length, (css.match(/}/g) ?? []).length, `${name} 중괄호 짝`);
   }
+});
+
+// ------------------------------------------------------------------ GitLab 토큰 권한 프리셋
+
+test('토큰 권한 프리셋은 fine-grained 토큰 생성 화면에서만 돈다', () => {
+  const at = (path: string) => isTokenCreateRoute(new URL(`https://rnd-app.innogrid.com${path}`));
+  assert.equal(at('/-/user_settings/personal_access_tokens/granular/new'), true);
+  assert.equal(at('/-/user_settings/personal_access_tokens/granular/new/'), true);
+  // 토큰 목록 화면 — 만들어진 토큰이 보이는 곳에서는 돌지 않는다
+  assert.equal(at('/-/user_settings/personal_access_tokens'), false);
+  assert.equal(at('/-/user_settings/personal_access_tokens/new'), false);
+});
+
+test('토큰 권한 프리셋은 프리셋 카테고리의 권한만 고르고 이름을 중복 없이 모은다', () => {
+  const entry = (name: string, resource: string, categoryName: string) => ({ name, resource, categoryName });
+  const selection = selectPresetPermissions({
+    namespace: [
+      entry('read_pipeline', 'pipeline', 'CI/CD'),
+      entry('update_pipeline', 'pipeline', 'CI/CD'),
+      entry('read_pipeline', 'pipeline', 'CI/CD'),
+      entry('read_vulnerability', 'vulnerability', 'Application Security'),
+      { nonsense: true },
+    ],
+    user: [entry('read_user', 'user', 'System Access')],
+    instance: [],
+  }, {
+    namespace: ['CI/CD', 'Wiki'],
+    user: ['System Access'],
+    instance: ['Projects'],
+  });
+
+  assert.deepEqual(selection.value, {
+    namespace: ['read_pipeline', 'update_pipeline'],
+    user: ['read_user'],
+    instance: [],
+  });
+  assert.deepEqual(selection.stats, [
+    { boundary: 'namespace', resources: 1, permissions: 2 },
+    { boundary: 'user', resources: 1, permissions: 1 },
+    { boundary: 'instance', resources: 0, permissions: 0 },
+  ]);
+  // 프리셋에 있는데 화면에 없는 카테고리는 알린다
+  assert.deepEqual(selection.missing, ['Group and project > Wiki', 'Global > Projects']);
+});
+
+test('토큰 권한 프리셋의 기본 카테고리는 실측한 묶음이다', () => {
+  assert.equal(PRESET_CATEGORIES.namespace.length, 11);
+  assert.equal(PRESET_CATEGORIES.user.length, 10);
+  assert.equal(PRESET_CATEGORIES.instance.length, 6);
+  // 넓은 권한이지만 이 카테고리들은 넣지 않았다
+  for (const category of ['Duo', 'Secrets Management', 'Subscription and Licensing']) {
+    assert.equal(Object.values(PRESET_CATEGORIES).some((list) => list.includes(category)), false);
+  }
+});
+
+test('토큰 권한 프리셋 결과 문구는 요약과 경고를 나눈다', () => {
+  const ok = describeTokenPresetResult(normalizeTokenPresetResult({
+    ok: true,
+    stats: [
+      { boundary: 'namespace', resources: 140, permissions: 383 },
+      { boundary: 'user', resources: 38, permissions: 73 },
+      { boundary: 'instance', resources: 34, permissions: 87 },
+    ],
+    missing: [],
+    scopeSelected: true,
+    unsetResources: 0,
+  }));
+  assert.equal(ok.tone, 'ok');
+  assert.deepEqual(ok.lines, ['권한 543개 선택 — Group and project 383 · User 73 · Global 87']);
+
+  const warn = describeTokenPresetResult(normalizeTokenPresetResult({
+    ok: true, stats: [], missing: ['Global > Projects'], scopeSelected: false, unsetResources: 2,
+  }));
+  assert.equal(warn.tone, 'warn');
+  assert.equal(warn.lines.length, 4);
+
+  // 모양이 틀린 응답은 실패로 본다
+  const fail = describeTokenPresetResult(normalizeTokenPresetResult({ message: '권한 선택기를 찾지 못했습니다.' }));
+  assert.equal(fail.tone, 'fail');
+  assert.deepEqual(fail.lines, ['권한 선택기를 찾지 못했습니다.']);
+});
+
+test('토큰 권한 프리셋은 제출하지 않고 네트워크를 쓰지 않는다', async () => {
+  const dir = 'src/sites/gitlab/features/tokenPermissionPreset/';
+  for (const file of ['contracts.ts', 'mainBridge.ts', 'runtime.ts', 'client.ts']) {
+    const source = (await readFile(dir + file, 'utf8')).replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+    assert.doesNotMatch(source, /\.submit\(|requestSubmit|Generate token|fetch\(|XMLHttpRequest/, file);
+  }
+  assert.equal(findFeatureDescriptor('gitlab', 'tokenPermissionPreset').usesNetwork, undefined);
 });

@@ -112,6 +112,10 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
             enabled: true,
             options: {},
           },
+          tokenPermissionPreset: {
+            enabled: true,
+            options: {},
+          },
         },
       },
       confluence: {
