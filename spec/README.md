@@ -28,6 +28,7 @@
 | [features/gitlab-commit-sha-copy.md](./features/gitlab-commit-sha-copy.md) | GitLab MR 개요 탭 커밋 번호 복사의 범위, SHA 계약, 댓글 제외 근거, 리스크 |
 | [features/github-pr-commit-sha-copy.md](./features/github-pr-commit-sha-copy.md) | GitHub Enterprise PR Conversation 탭 커밋 번호 복사의 범위, SHA 계약, Commits 탭 배제 근거 |
 | [features/gitlab-merge-request-title-copy.md](./features/gitlab-merge-request-title-copy.md) | GitLab MR 제목을 Markdown 링크 또는 평문으로 복사하는 기능의 범위, 클립보드 계약, DOM 계약 |
+| [features/gitlab-token-permission-preset.md](./features/gitlab-token-permission-preset.md) | GitLab fine-grained 토큰 생성 화면의 권한 프리셋 선택 — 범위, 선택 방식, 제출하지 않는 근거, 리스크 |
 | [AGENTS.md](./AGENTS.md) | `spec/` 문서를 작성·수정하는 에이전트와 기여자가 따라야 할 규칙 |
 
 새 기능을 추가할 때는 `features/<feature-name>.md`를 만들고 이 목록에 연결한다.
