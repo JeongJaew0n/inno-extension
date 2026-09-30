@@ -360,6 +360,8 @@ const suites = {
       const u = new URL(url);
       if (/\/-\/merge_requests\/\d+\/?$/.test(u.pathname)) return git.gitlabMrDetail;
       if (/\/-\/merge_requests\/?$/.test(u.pathname)) return git.gitlabMrList;
+      if (/personal_access_tokens\/granular\/new\/?$/.test(u.pathname)) return git.gitlabTokenNew;
+      if (/personal_access_tokens\/?$/.test(u.pathname)) return git.gitlabTokenList;
       return null;
     };
     const p = await b.newPage('gitlab', map);
@@ -383,6 +385,28 @@ const suites = {
     await p.goto('https://rnd-app.innogrid.com/g/p/-/merge_requests', 2500);
     const list = await hosts(p, 'gitlab-merge-request-title-copy');
     R.check('GitLab', 'MR 제목 복사 — 목록 행마다', list === 2, `호스트 ${list}개`);
+
+    // 토큰 권한 프리셋 — 선택만 하고 제출하지 않는다
+    await p.goto('https://rnd-app.innogrid.com/-/user_settings/personal_access_tokens', 2500);
+    R.check('GitLab', '토큰 프리셋 — 토큰 목록 화면에는 없다', await hosts(p, 'gitlab-token-permission-preset') === 0);
+    await p.goto('https://rnd-app.innogrid.com/-/user_settings/personal_access_tokens/granular/new', 2500);
+    const presetHosts = await hosts(p, 'gitlab-token-permission-preset');
+    R.check('GitLab', '토큰 프리셋 — 생성 화면 제목 아래에 버튼 하나', presetHosts === 1
+      && await p.ev(`document.querySelector('[data-testid="page-heading"]').nextElementSibling?.getAttribute('data-inno-extension-feature')`) === 'gitlab-token-permission-preset', `호스트 ${presetHosts}개`);
+    const untouched = await p.ev(`({ emitted: window.__emitted ?? null, scope: document.querySelector('input[value="all"]').checked })`);
+    R.check('GitLab', '토큰 프리셋 — 누르기 전에는 아무것도 바꾸지 않는다', untouched.emitted === null && untouched.scope === false, JSON.stringify(untouched));
+    await p.clickEl(`${shadowBtns('gitlab-token-permission-preset')}[0]`);
+    await wait(2500);
+    const after = await p.ev(`({ emitted: window.__emitted ?? null, synced: !!window.__synced, submitted: window.__submitted ?? 0,
+      scope: document.querySelector('input[value="all"]').checked,
+      result: ${sroot('gitlab-token-permission-preset')}.shadowRoot.querySelector('.result').innerText,
+      tone: ${sroot('gitlab-token-permission-preset')}.shadowRoot.querySelector('.result').dataset.tone })`);
+    R.check('GitLab', '토큰 프리셋 — 프리셋 카테고리 권한만 선택기에 넘긴다', JSON.stringify(after.emitted) === JSON.stringify({
+      namespace: ['read_pipeline', 'update_pipeline', 'read_wiki'], user: ['read_user'], instance: ['read_project'] }) && after.synced, JSON.stringify(after.emitted));
+    R.check('GitLab', '토큰 프리셋 — 접근 범위를 All groups and projects 로 고른다', after.scope === true);
+    R.check('GitLab', '토큰 프리셋 — 폼을 제출하지 않는다', after.submitted === 0, `submit ${after.submitted}회`);
+    R.check('GitLab', '토큰 프리셋 — 결과 문구 (없는 카테고리 경고 포함)', /권한 5개 선택/.test(after.result) && /화면에 없는 카테고리/.test(after.result) && after.tone === 'warn', after.result.replace(/\n/g, ' / '));
+    await p.shot(`${SP}/gitlab-token-preset.png`);
   },
 
   async github() {

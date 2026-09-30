@@ -31,3 +31,48 @@ export const githubPrList = page('PR 목록', `
 <div class="js-issue-row"><a data-hovercard-type="pull_request" href="/o/r/pull/6">[BE] 토큰 갱신 수정</a></div>`);
 
 export const SHAS = { SHA1, SHA2 };
+
+// GitLab fine-grained 토큰 생성 화면 대역.
+// 실측(2026-09-30)한 모양을 흉내 낸다 — Vue 2 인스턴스가 `__vue__` 로 붙어 있고, 선택기는
+// 체크박스의 조상이다. 권한 목록은 조금 늦게 채워진다(화면이 불러오는 동안).
+// 폼 제출은 기록만 한다. 확장이 제출하면 e2e 가 잡는다.
+export const gitlabTokenNew = page('Generate fine-grained token', `
+<main id="content-body">
+  <div data-testid="page-heading"><h1>Generate fine-grained token</h1><p>Fine-grained personal access tokens</p></div>
+  <form id="token-form" onsubmit="window.__submitted = (window.__submitted || 0) + 1; return false;">
+    <h2>Group and project access</h2>
+    <label><input type="radio" name="scope" value="personal"> Only my personal projects</label>
+    <label><input type="radio" name="scope" value="all"> All groups and projects that I'm a member of</label>
+    <label><input type="radio" name="scope" value="specific"> Only specific groups or projects that I'm a member of</label>
+    <h2>Add resource permissions</h2>
+    <section id="selector"><label><input type="checkbox"> CI/CD</label>
+      <button type="button" aria-haspopup="true">Select permissions</button>
+      <button type="button" aria-haspopup="true">Select permissions</button>
+    </section>
+    <button type="submit">Generate token</button>
+  </form>
+</main>
+<script>
+  const e = (name, resource, categoryName) => ({ name, resource, categoryName });
+  const selector = {
+    $options: { name: 'PersonalAccessTokenPermissionsSelector' }, $parent: null, $children: [],
+    permissionsByBoundary: { namespace: [], user: [], instance: [] },
+    emitInput(value) { window.__emitted = value; },
+    syncSelectedResources() {
+      window.__synced = true;
+      document.querySelectorAll('#selector button[aria-haspopup]').forEach((b) => { b.textContent = '2 permissions'; });
+    },
+  };
+  document.getElementById('selector').__vue__ = selector;
+  setTimeout(() => {
+    selector.permissionsByBoundary = {
+      namespace: [e('read_pipeline', 'pipeline', 'CI/CD'), e('update_pipeline', 'pipeline', 'CI/CD'),
+        e('read_wiki', 'wiki', 'Wiki'), e('use_duo', 'duo', 'Duo')],
+      user: [e('read_user', 'user', 'System Access'), e('read_notification', 'notification', 'Notifications')],
+      instance: [e('read_project', 'project', 'Projects')],
+    };
+  }, 400);
+</script>`);
+
+export const gitlabTokenList = page('Personal access tokens', `
+<main id="content-body"><div data-testid="page-heading"><h1>Personal access tokens</h1></div></main>`);
