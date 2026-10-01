@@ -195,6 +195,11 @@ export const amaranthMain = doc('아마란스', `
  <ul>${noti('[메일]', 'AuthCode: 039911', 'Your authentication token code is 039911.', '17:11')}${noti('[메일]', '[WBlock] 메일 리스트', '일반 메일입니다.', '09:01')}</ul>
 </div></div></div>`);
 
+// 근태신청서 상신정보 단계. 왼쪽 양식 카드 중 선택된 것에만 .selectedList 가 붙는다(실측 2026-10-01).
+const card = (name, selected = false) => `<li class="OBTCardList_li_x"><div class="${selected ? 'selectedList' : ''}"><div data-orbit-component="OBTTooltip"><div class="tbl-tdl ico"><div>${name}</div></div></div></div></li>`;
 export const amaranthForm = doc('근태신청', `
+<div data-orbit-component="OBTCardList" style="float:left;width:200px"><ul>
+${card('근태일정')}${card('연차휴가신청서', true)}${card('외근신청서')}${card('출장신청서')}
+</ul></div>
 <table><tbody><tr><th scope="row"><div>제목</div></th>
 <td><div id="text4" data-orbit-component="OBTTextField"><input type="text" value="" style="width:360px"></div></td></tr></tbody></table>`);

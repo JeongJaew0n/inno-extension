@@ -87,6 +87,8 @@ const suites = {
     await wait(500);
     const st = await storage(p);
     R.check('Popup', '제목 자동채움 문구 저장', st?.sites?.amaranth?.features?.titleAutofill?.options?.titleText === '연차휴가 신청', st?.sites?.amaranth?.features?.titleAutofill?.options?.titleText);
+    const formInputs = await p.ev(`document.querySelectorAll('[data-title-form]').length`);
+    R.check('Popup', '자동채움 양식별 입력칸 (알려진 양식 9개)', formInputs === 9, `${formInputs}개`);
 
     // prefix 태그 추가
     await p.ev(`location.hash = '#/sites/jira/features/backlogSlashTemplate'`); await wait(300);
@@ -352,6 +354,35 @@ const suites = {
     await p.clickEl(`document.getElementById('inno-amaranth-title-autofill')`);
     const v = await p.ev(`document.querySelector('#text4 input').value`);
     R.check('아마란스', '누르면 Popup 에서 저장한 문구로 채움', v === '연차휴가 신청', JSON.stringify(v));
+
+    // 양식별 문구 — ⚙ 버튼 → 모달 → 저장 → 그 양식에서만 쓰인다
+    const order = await p.ev(`document.getElementById('inno-amaranth-title-autofill-settings')?.nextElementSibling?.id ?? null`);
+    R.check('아마란스', '자동채움 왼쪽에 설정 버튼', order === 'inno-amaranth-title-autofill', String(order));
+    const modal = `document.querySelector('[data-inno-extension-feature="amaranth-title-autofill-modal"]')`;
+    await p.clickEl(`document.getElementById('inno-amaranth-title-autofill-settings')`);
+    await wait(300);
+    const opened = await p.ev(`(() => { const m = ${modal}; if (!m) return null; const s = m.shadowRoot; return { current: s.querySelector('.current')?.textContent, focused: s.activeElement?.dataset.form ?? null, others: s.querySelectorAll('details [data-form]').length, def: s.querySelector('[data-default]').value }; })()`);
+    R.check('아마란스', '설정 모달 — 현재 양식 칸에 커서, 기본 문구 표시', opened?.current === '연차휴가신청서' && opened.focused === '연차휴가신청서' && opened.def === '연차휴가 신청' && opened.others === 2, JSON.stringify(opened));
+    await p.type('연차 4일 신청');
+    await p.clickEl(`${modal}.shadowRoot.querySelector('[data-save]')`);
+    await wait(700);
+    const saved = b.popup ? (await storage(b.popup))?.sites?.amaranth?.features?.titleAutofill?.options : null;
+    const closed = await p.ev(`!${modal}`);
+    R.check('아마란스', '설정 모달 — 저장하면 양식별로 남고 닫힌다', saved?.titleTextsByForm?.['연차휴가신청서'] === '연차 4일 신청' && saved?.titleText === '연차휴가 신청' && closed, JSON.stringify(saved));
+    await p.clickEl(`document.getElementById('inno-amaranth-title-autofill')`);
+    const v2 = await p.ev(`document.querySelector('#text4 input').value`);
+    R.check('아마란스', '자동채움 — 지금 양식의 문구로 채움', v2 === '연차 4일 신청', JSON.stringify(v2));
+    // 양식을 외근신청서로 바꾼다 — 그 양식 문구가 없으니 기본 문구
+    await p.ev(`(() => { document.querySelector('.selectedList').className = ''; const cards = [...document.querySelectorAll('[data-orbit-component="OBTCardList"] li > div')]; cards.find((d) => d.textContent.trim() === '외근신청서').className = 'selectedList'; })()`);
+    await wait(600);
+    await p.clickEl(`document.getElementById('inno-amaranth-title-autofill')`);
+    const v3 = await p.ev(`document.querySelector('#text4 input').value`);
+    R.check('아마란스', '자동채움 — 양식 문구가 없으면 기본 문구', v3 === '연차휴가 신청', JSON.stringify(v3));
+    await p.clickEl(`document.getElementById('inno-amaranth-title-autofill-settings')`);
+    await wait(200);
+    await p.shot(`${SP}/amaranth-title-modal.png`);
+    await p.key('Escape', 'Escape', 27);
+    R.check('아마란스', '설정 모달 — Esc 로 저장 없이 닫힌다', await p.ev(`!${modal}`));
     await p.shot(`${SP}/amaranth-form.png`);
   },
 
