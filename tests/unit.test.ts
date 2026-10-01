@@ -23,8 +23,14 @@ import { createDefaultSettings } from '../src/platform/settings/defaults';
 import { getSettings, saveSettings } from '../src/platform/settings/repository';
 import { isFeatureEffectivelyEnabled, normalizeSettings } from '../src/platform/settings/schema';
 import {
+  applyTitleTextEdits,
+  filterFormNames,
+  formNamesForSettings,
   isTitleAutofillRoute,
+  KNOWN_FORM_NAMES,
+  normalizeTitleAutofillOptions,
   normalizeTitleAutofillText,
+  resolveTitleText,
   TITLE_AUTOFILL_MAX_LENGTH,
 } from '../src/sites/amaranth/features/titleAutofill/contracts';
 import {
@@ -2830,4 +2836,53 @@ test('토큰 권한 프리셋은 제출하지 않고 네트워크를 쓰지 않�
     assert.doesNotMatch(source, /\.submit\(|requestSubmit|Generate token|fetch\(|XMLHttpRequest/, file);
   }
   assert.equal(findFeatureDescriptor('gitlab', 'tokenPermissionPreset').usesNetwork, undefined);
+});
+
+// ------------------------------------------------------------------ 아마란스 자동채움 양식별 문구
+
+test('자동채움 옵션 정규화는 예전 단일 문구를 기본 문구로 그대로 쓴다', () => {
+  // 양식별 기능 이전에 저장된 설정
+  assert.deepEqual(normalizeTitleAutofillOptions({ titleText: '  연차 신청  ' }), {
+    titleText: '연차 신청',
+    titleTextsByForm: {},
+  });
+  // 빈 문구 · 빈 이름 · 문자열이 아닌 값은 버린다
+  assert.deepEqual(normalizeTitleAutofillOptions({
+    titleText: 3,
+    titleTextsByForm: { ' 외근신청서 ': ' 외근 ', 출장신청서: '   ', '': 'x', 교육신청서: 7 },
+  }), { titleText: '', titleTextsByForm: { 외근신청서: '외근' } });
+  assert.deepEqual(normalizeTitleAutofillOptions({ titleTextsByForm: ['x'] }).titleTextsByForm, {});
+});
+
+test('자동채움 문구는 지금 양식의 문구, 없으면 기본 문구다', () => {
+  const options = normalizeTitleAutofillOptions({ titleText: '기본', titleTextsByForm: { 외근신청서: '외근 신청' } });
+  assert.equal(resolveTitleText(options, '외근신청서'), '외근 신청');
+  assert.equal(resolveTitleText(options, '출장신청서'), '기본');
+  assert.equal(resolveTitleText(options, null), '기본');
+  assert.equal(resolveTitleText(normalizeTitleAutofillOptions({}), '외근신청서'), '');
+});
+
+test('자동채움 편집은 들어온 양식만 덮어쓰고 비운 칸은 지운다', () => {
+  const options = normalizeTitleAutofillOptions({
+    titleText: '기본',
+    titleTextsByForm: { 외근신청서: '외근', 출장신청서: '출장', 교육신청서: '교육' },
+  });
+  const next = applyTitleTextEdits(options, ' 새 기본 ', [
+    ['외근신청서', '외근 수정'],
+    ['출장신청서', '  '],
+    ['연차휴가신청서', '연차'],
+  ]);
+  assert.deepEqual(next, {
+    titleText: '새 기본',
+    // 교육신청서는 입력에 없었으니 그대로 남는다
+    titleTextsByForm: { 외근신청서: '외근 수정', 교육신청서: '교육', 연차휴가신청서: '연차' },
+  });
+  assert.equal(applyTitleTextEdits(options, 'x'.repeat(300), []).titleText.length, TITLE_AUTOFILL_MAX_LENGTH);
+});
+
+test('자동채움 양식 목록은 근태일정을 빼고 Popup 에는 저장된 이름도 보인다', () => {
+  assert.deepEqual(filterFormNames(['근태일정', ' 연차휴가신청서 ', '연차휴가신청서', null]), ['연차휴가신청서']);
+  assert.equal(KNOWN_FORM_NAMES.includes('근태일정' as never), false);
+  const names = formNamesForSettings(normalizeTitleAutofillOptions({ titleTextsByForm: { 새양식: 'x', 외근신청서: 'y' } }));
+  assert.deepEqual(names, [...KNOWN_FORM_NAMES, '새양식']);
 });

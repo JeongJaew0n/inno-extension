@@ -155,6 +155,8 @@ code { padding: 2px 5px; border-radius: var(--inno-shape-xs); background: var(--
 .option-fields input { width: 100%; padding: 8px 10px; border: 1px solid var(--inno-outline-variant); border-radius: var(--inno-shape-sm); background: var(--inno-surface-container-lowest); color: var(--inno-on-surface); font-size: 12px; }
 .option-fields textarea { width: 100%; min-height: 240px; resize: vertical; padding: 10px 12px; border: 1px solid var(--inno-outline-variant); border-radius: var(--inno-shape-sm); background: var(--inno-surface-container-lowest); color: var(--inno-on-surface); font: 12px/18px var(--inno-font-mono); }
 .option-fields small { color: var(--inno-outline); font-weight: 400; }
+.title-forms summary { cursor: pointer; color: var(--inno-on-surface-variant); font-size: 11px; font-weight: 700; }
+.title-forms > .option-fields { margin-top: 10px; gap: 8px; }
 .secondary-button { width: 100%; padding: 9px 12px; border: 1px solid var(--inno-outline-variant); border-radius: var(--inno-shape-sm); background: var(--inno-surface-container-lowest); cursor: pointer; font-size: 11px; font-weight: 700; }
 .secondary-button:hover { border-color: var(--inno-primary); color: var(--inno-primary); }
 .option-save-button {

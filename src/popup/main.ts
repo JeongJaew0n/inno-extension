@@ -22,6 +22,9 @@ import {
 } from '../platform/settings/repository';
 import type { ExtensionSettingsV1 } from '../platform/settings/types';
 import {
+  applyTitleTextEdits,
+  formNamesForSettings,
+  normalizeTitleAutofillOptions,
   normalizeTitleAutofillText,
   TITLE_AUTOFILL_MAX_LENGTH,
 } from '../sites/amaranth/features/titleAutofill/contracts';
@@ -198,9 +201,20 @@ function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
   }
 
   if (siteId === 'amaranth' && featureId === 'titleAutofill') {
-    const titleText = normalizeTitleAutofillText(
-      settings.sites.amaranth.features.titleAutofill?.options.titleText,
-    );
+    const titleOptions = normalizeTitleAutofillOptions(settings.sites.amaranth.features.titleAutofill?.options);
+    const titleText = titleOptions.titleText;
+    const formRows = formNamesForSettings(titleOptions).map((name) => `
+          <label>
+            <span>${escapeHtml(name)}</span>
+            <input
+              type="text"
+              data-title-form="${escapeHtml(name)}"
+              value="${escapeHtml(titleOptions.titleTextsByForm[name] ?? '')}"
+              maxlength="${TITLE_AUTOFILL_MAX_LENGTH}"
+              placeholder="비우면 기본 문구"
+            />
+          </label>`).join('');
+    const filledForms = Object.keys(titleOptions.titleTextsByForm).length;
     const feedback = saveFeedback?.key === `${siteId}.${featureId}`
       ? saveFeedback.status
       : null;
@@ -214,7 +228,7 @@ function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
     return `
       <div class="option-fields" data-options-form data-site-id="amaranth" data-feature-id="titleAutofill">
         <label>
-          <span>자동채움 내용</span>
+          <span>기본 문구</span>
           <input
             type="text"
             data-option="titleText"
@@ -223,8 +237,12 @@ function renderFeatureOptions(siteId: SiteId, featureId: FeatureId): string {
             maxlength="${TITLE_AUTOFILL_MAX_LENGTH}"
             placeholder="예: 연차휴가 신청"
           />
-          <small>근태신청서에서 자동채움 버튼을 누르면 현재 제목을 이 문구로 교체합니다.</small>
+          <small>양식별 문구가 없을 때 씁니다. 근태신청서 제목 옆 ⚙ 버튼에서도 고칠 수 있습니다.</small>
         </label>
+        <details class="title-forms" ${filledForms ? 'open' : ''}>
+          <summary>양식별 문구 (${filledForms}/${formNamesForSettings(titleOptions).length})</summary>
+          <div class="option-fields">${formRows}</div>
+        </details>
         <button
           type="button"
           class="secondary-button option-save-button ${feedback ? `is-${feedback}` : ''}"
@@ -386,6 +404,7 @@ function draftKey(element: Element): string | null {
   if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) return null;
   if (element.type === 'checkbox') return null;
   if (element.dataset.option) return `option:${element.dataset.option}`;
+  if (element.dataset.titleForm) return `title-form:${element.dataset.titleForm}`;
   if (element.hasAttribute('data-prefix-tag-new')) return 'prefix-tag-new';
   return null;
 }
@@ -449,6 +468,17 @@ function collectFeatureOptions(form: HTMLElement): Record<string, unknown> {
     options[optionInput.dataset.option] = optionInput.dataset.optionKind === 'string'
       ? normalizeTitleAutofillText(optionInput.value)
       : parseList(optionInput.value);
+  }
+
+  // 자동채움 양식별 문구. 비운 칸은 지운다 — 그 양식은 기본 문구를 쓴다
+  const formInputs = [...form.querySelectorAll<HTMLInputElement>('[data-title-form]')];
+  if (formInputs.length) {
+    const current = normalizeTitleAutofillOptions(settings.sites.amaranth.features.titleAutofill?.options);
+    Object.assign(options, applyTitleTextEdits(
+      current,
+      typeof options.titleText === 'string' ? options.titleText : current.titleText,
+      formInputs.map((input) => [input.dataset.titleForm ?? '', input.value] as [string, string]),
+    ));
   }
   return options;
 }
@@ -608,7 +638,8 @@ app.addEventListener('change', async (event) => {
     return;
   }
 
-  if (target.dataset.optionKind === 'string') return;
+  // 글 입력칸은 저장 버튼으로만 저장한다
+  if (target.dataset.optionKind === 'string' || target.dataset.titleForm !== undefined) return;
   const form = target.closest<HTMLElement>('[data-options-form]');
   if (form) await saveFeatureOptions(form);
 });

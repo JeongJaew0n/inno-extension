@@ -23,6 +23,15 @@ export const TITLE_AUTOFILL_STYLE_ID = `${TITLE_AUTOFILL_BUTTON_ID}-style`;
 export const TITLE_FIELD_ROOT = '#text4[data-orbit-component="OBTTextField"]';
 export const TITLE_INPUT = `${TITLE_FIELD_ROOT} input[type="text"]`;
 export const TITLE_ROW_HEADER = 'th[scope="row"] > div';
+export const TITLE_AUTOFILL_SETTINGS_BUTTON_ID = 'inno-amaranth-title-autofill-settings';
+
+/**
+ * 근태신청서 양식 카드 목록. 선택된 카드에만 `.selectedList` 가 붙고 `.tbl-tdl` 이 양식 이름이다.
+ * 실측(2026-10-01): 주소 hash 는 양식을 바꿔도 같아서 이것으로 양식을 구분한다.
+ */
+export const FORM_CARD_LIST = '[data-orbit-component="OBTCardList"]';
+export const FORM_CARD_NAME = '.tbl-tdl';
+export const SELECTED_FORM_CARD = '.selectedList';
 
 export const INTEGRATED_NOTIFICATION_TRIGGER = '#intergratedNotificationBtn';
 export const INTEGRATED_NOTIFICATION_POPUP = `${INTEGRATED_NOTIFICATION_TRIGGER} .commonPopup.integratedNotification`;

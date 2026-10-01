@@ -14,7 +14,9 @@ export function createDefaultSettings(): ExtensionSettingsV1 {
           titleAutofill: {
             enabled: true,
             options: {
+              // 기본 문구. 양식별 문구(titleTextsByForm)가 없을 때 쓴다
               titleText: '',
+              titleTextsByForm: {},
             },
           },
           notificationTools: {
