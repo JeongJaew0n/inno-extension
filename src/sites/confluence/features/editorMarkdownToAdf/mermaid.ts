@@ -70,3 +70,23 @@ export function buildConfluenceMermaidReplacementHtml(
     buildCollapsedMermaidSourceHtml(source),
   ].join('');
 }
+
+const normalizeSource = (text: string): string => text.replace(/\r\n?/g, '\n').trim();
+
+/**
+ * 서버 초안이 따라잡았는지 — 각 후보의 순번 자리에 그 Mermaid 원문이 있는가.
+ *
+ * 매크로는 넣는 순간 이 순번으로 서버 초안을 읽는다. 하나라도 어긋나면 그 다이어그램은 다른 블록을
+ * 읽거나 `not found` 가 된다.
+ *
+ * docs/plans/confluence-mermaid-wait-for-draft/spec.md
+ */
+export function draftHasMermaidSourcesAt(
+  draftCodeBlocks: readonly string[],
+  candidates: ReadonlyArray<{ index: number; source: string }>,
+): boolean {
+  return candidates.every(({ index, source }) => (
+    typeof draftCodeBlocks[index] === 'string'
+    && normalizeSource(draftCodeBlocks[index]) === normalizeSource(source)
+  ));
+}

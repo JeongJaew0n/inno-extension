@@ -42,7 +42,13 @@ export function createEditorMarkdownToAdfRuntimeForConfluence(): FeatureRuntime 
       }
     },
 
-    extraPhaseNotice: 'Mermaid 다이어그램이 오류로 보이면 편집기를 새로고침하세요. 문서는 그대로 두고 새로고침하면 정상으로 그려집니다.',
-    extraPhase: { name: 'Mermaid', run: runMermaidPhase },
+    // 새로고침 안내는 서버 초안을 기다리지 못했을 때만 Mermaid 단계가 직접 남긴다.
+    extraPhase: {
+      name: 'Mermaid',
+      run: (editor, onProgress, onStatus) => runMermaidPhase(editor, onProgress, {
+        pageId: parseConfluenceEditPageUrl(new URL(window.location.href))?.pageId ?? null,
+        onStatus,
+      }),
+    },
   });
 }

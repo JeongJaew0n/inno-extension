@@ -63,8 +63,11 @@ import {
   summarizeConversionFailure,
 } from '../src/platform/editor/markdown-to-adf-runtime';
 import {
+  DRAFT_WAIT_TIMEOUT_MS,
   mayBeMermaidCodeBlock,
+  waitForDraftToCatchUp,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid-phase';
+import { collectCodeBlockTexts } from '../src/sites/confluence/api/draft';
 import {
   describeUnconvertedMarkdown,
   findUnconvertedMarkdown,
@@ -77,6 +80,7 @@ import {
   buildConfluenceMermaidExtensionHtml,
   buildConfluenceMermaidReplacementHtml,
   CONFLUENCE_MERMAID_EXTENSION_KEY,
+  draftHasMermaidSourcesAt,
   isMermaidCodeBlockSource,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
 import {
@@ -552,6 +556,7 @@ test('네트워크를 쓰는 기능은 카탈로그에 표시돼 있어야 한�
   /** 네트워크를 써도 되는 자리. 여기 말고는 안 된다. */
   const ALLOWED = [
     'src/sites/jira/api/',
+    'src/sites/confluence/api/',
   ];
 
   const files = await walk('src');
@@ -1765,7 +1770,7 @@ test('Jira 는 Mermaid 단계를 붙이지 않는다', async () => {
 
   // Jira 에는 Mermaid 앱이 없다. 같은 노드를 넣어도 그릴 주체가 없다.
   assert.doesNotMatch(jiraSource, /extraPhase/);
-  assert.match(confluenceSource, /extraPhase: \{ name: 'Mermaid', run: runMermaidPhase \}/);
+  assert.match(confluenceSource, /extraPhase: \{\s*name: 'Mermaid',\s*run: \(editor, onProgress, onStatus\) => runMermaidPhase\(/);
 });
 
 test('Jira 버튼은 툴바 오른쪽 끝에 붙는다', async () => {
@@ -1831,16 +1836,14 @@ test('되돌리기 판정은 innerHTML 완전 일치에만 기대지 않는다',
   assert.match(fn, /editor\.textContent \?\? ''\) === before\.text/);
 });
 
-test('Mermaid 변환 뒤에는 새로고침 안내를 붙인다', async () => {
-  const confluence = await readFile(
-    'src/sites/confluence/features/editorMarkdownToAdf/runtime.ts',
-    'utf8',
-  );
+test('Mermaid 새로고침 안내는 서버 초안을 기다리지 못했을 때만 붙인다', async () => {
+  const phase = await readFile('src/sites/confluence/features/editorMarkdownToAdf/mermaid-phase.ts', 'utf8');
   const runtime = await readFile('src/platform/editor/markdown-to-adf-runtime.ts', 'utf8');
 
-  // 매크로가 변환 직후에만 엉뚱한 블록을 가리킨다. 안내가 없으면 변환 실패로 오해한다.
-  assert.match(confluence, /extraPhaseNotice: '.*새로고침/);
-  assert.match(runtime, /if \(extraConverted > 0 && site\.extraPhaseNotice\)/);
+  // 매크로는 넣는 순간 서버 초안을 순번으로 읽는다. 초안이 따라잡았으면 오류가 나지 않으니 안내도 없다.
+  // docs/plans/confluence-mermaid-wait-for-draft/context.md
+  assert.match(phase, /const notices = outcome === 'ready' \? \[\] : \[MERMAID_REFRESH_NOTICE\]/);
+  assert.match(runtime, /notices\.push\(\.\.\.\(extra\.notices \?\? \[\]\)\)/);
 });
 
 test('Mermaid 교체 판정은 노드 재사용에 기대지 않는다', async () => {
@@ -2885,4 +2888,69 @@ test('자동채움 양식 목록은 근태일정을 빼고 Popup 에는 저장�
   assert.equal(KNOWN_FORM_NAMES.includes('근태일정' as never), false);
   const names = formNamesForSettings(normalizeTitleAutofillOptions({ titleTextsByForm: { 새양식: 'x', 외근신청서: 'y' } }));
   assert.deepEqual(names, [...KNOWN_FORM_NAMES, '새양식']);
+});
+
+// ------------------------------------------------------------------ Confluence Mermaid — 서버 초안 대기
+
+test('초안 ADF 의 코드블럭은 목록 · 접힌 영역 안까지 문서 순서대로 센다', () => {
+  const code = (text: string) => ({ type: 'codeBlock', content: [{ type: 'text', text }] });
+  const adf = {
+    type: 'doc',
+    content: [
+      code('{ "id": 1 }'),
+      { type: 'bulletList', content: [{ type: 'listItem', content: [code('echo hi')] }] },
+      { type: 'extension', attrs: {} },
+      { type: 'expand', content: [code('flowchart LR\n  A --> B')] },
+      { type: 'codeBlock' },
+    ],
+  };
+  // 실측(2026-10-01): 매크로가 센 순서와 같다 — 접힌 Mermaid 원본도 순번에 들어간다
+  assert.deepEqual(collectCodeBlockTexts(adf), ['{ "id": 1 }', 'echo hi', 'flowchart LR\n  A --> B', '']);
+  assert.deepEqual(collectCodeBlockTexts(null), []);
+});
+
+test('서버 초안이 따라잡았는지는 후보 순번 자리의 원문으로 판단한다', () => {
+  const candidates = [{ index: 1, source: 'flowchart LR\n  A --> B\n' }];
+  assert.equal(draftHasMermaidSourcesAt(['{}', 'flowchart LR\r\n  A --> B'], candidates), true);
+  // 벗기기 전 초안 — 코드블럭이 하나뿐이다 (position 2 not found)
+  assert.equal(draftHasMermaidSourcesAt(['# 문서 전체'], candidates), false);
+  // 다른 블록이 그 자리에 있다 (No diagram type detected … for text: echo hi)
+  assert.equal(draftHasMermaidSourcesAt(['{}', 'echo hi', 'flowchart LR\n  A --> B'], candidates), false);
+});
+
+test('Mermaid 는 서버 초안이 따라잡을 때까지 기다렸다 넣는다', async () => {
+  const candidates = [{ index: 1, source: 'flowchart LR' }];
+  let clock = 0;
+  const reads: number[] = [];
+  const labels: string[] = [];
+  const drafts = [['# 옛 문서'], ['# 옛 문서'], ['{}', 'flowchart LR']];
+  const outcome = await waitForDraftToCatchUp(candidates, {
+    pageId: '2285568104',
+    readDraft: async () => { reads.push(clock); return drafts[Math.min(reads.length - 1, drafts.length - 1)]; },
+    sleep: async (ms) => { clock += ms; },
+    now: () => clock,
+    onStatus: (label) => labels.push(label),
+  });
+  assert.equal(outcome, 'ready');
+  assert.deepEqual(reads, [0, 1000, 2000]);
+  assert.equal(labels.length, 2);
+  assert.match(labels[0], /서버 저장 대기/);
+});
+
+test('Mermaid 서버 초안 대기는 이미 맞으면 한 번만 읽고, 못 읽거나 시간이 지나면 그대로 진행한다', async () => {
+  const candidates = [{ index: 0, source: 'flowchart LR' }];
+  let reads = 0;
+  assert.equal(await waitForDraftToCatchUp(candidates, {
+    pageId: '1', readDraft: async () => { reads += 1; return ['flowchart LR']; }, sleep: async () => {},
+  }), 'ready');
+  assert.equal(reads, 1);
+
+  assert.equal(await waitForDraftToCatchUp(candidates, { pageId: '1', readDraft: async () => null }), 'unavailable');
+  assert.equal(await waitForDraftToCatchUp(candidates, { pageId: null }), 'unavailable');
+
+  let clock = 0;
+  assert.equal(await waitForDraftToCatchUp(candidates, {
+    pageId: '1', readDraft: async () => ['다른 것'], sleep: async (ms) => { clock += ms; }, now: () => clock,
+  }), 'timeout');
+  assert.ok(clock >= DRAFT_WAIT_TIMEOUT_MS && clock < DRAFT_WAIT_TIMEOUT_MS + 2000);
 });

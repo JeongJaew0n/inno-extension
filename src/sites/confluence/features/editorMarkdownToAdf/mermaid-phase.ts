@@ -26,9 +26,11 @@ import {
   type ExtraPhaseResult,
   type PhaseFailure,
 } from '../../../../platform/editor/markdown-to-adf-runtime';
+import { readDraftCodeBlockTexts } from '../../api/draft';
 import {
   buildConfluenceMermaidReplacementHtml,
   CONFLUENCE_MERMAID_EXTENSION_KEY,
+  draftHasMermaidSourcesAt,
   isMermaidCodeBlockSource,
 } from './mermaid';
 
@@ -214,6 +216,56 @@ async function replaceMermaidCodeBlock(
   }
 }
 
+/** 서버 초안을 기다리는 최대 시간. 실측 지연은 약 10.7초였다 */
+export const DRAFT_WAIT_TIMEOUT_MS = 30_000;
+const DRAFT_POLL_MS = 1_000;
+
+export const MERMAID_REFRESH_NOTICE = 'Mermaid 다이어그램이 오류로 보이면 편집기를 새로고침하세요. 문서는 그대로 두고 새로고침하면 정상으로 그려집니다.';
+
+export interface MermaidPhaseOptions {
+  /** 서버 초안을 확인할 페이지. 없으면 기다리지 않는다 */
+  pageId?: string | null;
+  /** 진행 라벨을 바꾼다 */
+  onStatus?: (label: string) => void;
+  /** 테스트용 대체 */
+  readDraft?: (pageId: string) => Promise<string[] | null>;
+  sleep?: (ms: number) => Promise<void>;
+  now?: () => number;
+}
+
+export type DraftWaitOutcome = 'ready' | 'timeout' | 'unavailable';
+
+/**
+ * 매크로를 넣기 전에 **서버 초안이 따라잡을 때까지** 기다린다.
+ *
+ * 매크로는 넣는 순간 순번으로 서버 초안의 코드블럭을 읽고, 실패하면 스스로 다시 그리지 않는다.
+ * 앞 단계(코드블럭 벗기기 · 문단 변환)가 문서를 바꾼 직후에는 서버 초안이 옛 문서라 오류가 난다.
+ * 이미 맞으면 GET 한 번으로 끝난다.
+ *
+ * docs/plans/confluence-mermaid-wait-for-draft/context.md
+ */
+export async function waitForDraftToCatchUp(
+  candidates: ReadonlyArray<{ index: number; source: string }>,
+  options: MermaidPhaseOptions,
+): Promise<DraftWaitOutcome> {
+  const pageId = options.pageId;
+  if (!pageId) return 'unavailable';
+  const readDraft = options.readDraft ?? readDraftCodeBlockTexts;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms)));
+  const now = options.now ?? (() => Date.now());
+
+  const started = now();
+  for (;;) {
+    const draft = await readDraft(pageId);
+    if (!draft) return 'unavailable';
+    if (draftHasMermaidSourcesAt(draft, candidates)) return 'ready';
+    const waited = now() - started;
+    if (waited >= DRAFT_WAIT_TIMEOUT_MS) return 'timeout';
+    options.onStatus?.(`Mermaid 서버 저장 대기 ${Math.max(1, Math.round(waited / 1000))}초`);
+    await sleep(DRAFT_POLL_MS);
+  }
+}
+
 /**
  * Mermaid 코드블럭을 `extension + 접힌 원본`으로 교체한다.
  *
@@ -222,6 +274,7 @@ async function replaceMermaidCodeBlock(
 export async function runMermaidPhase(
   editor: HTMLElement,
   onProgress: (done: number, total: number) => void,
+  options: MermaidPhaseOptions = {},
 ): Promise<ExtraPhaseResult> {
   const allCodeBlocks = Array.from(editor.querySelectorAll<HTMLElement>(EDITOR_CODE_BLOCK))
     .map((codeBlock, index) => ({ codeBlock, index }));
@@ -244,6 +297,11 @@ export async function runMermaidPhase(
     return { convertedCount: 0, failures: noFailures };
   }
 
+  // 매크로를 넣어도 코드블럭 순번은 그대로다(원본이 같은 자리의 접힌 영역으로 들어간다).
+  // 그래서 넣기 전에 한 번 맞추면 된다.
+  const outcome = await waitForDraftToCatchUp(candidates, options);
+  const notices = outcome === 'ready' ? [] : [MERMAID_REFRESH_NOTICE];
+
   let convertedCount = 0;
   const total = candidates.length;
   onProgress(0, total);
@@ -253,5 +311,5 @@ export async function runMermaidPhase(
     onProgress(convertedCount, total);
   }
 
-  return { convertedCount, failures };
+  return { convertedCount, failures, notices };
 }

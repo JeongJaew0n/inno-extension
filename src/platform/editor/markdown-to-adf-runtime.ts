@@ -73,6 +73,8 @@ export interface PhaseFailure {
 export interface ExtraPhaseResult {
   convertedCount: number;
   failures: PhaseFailure[];
+  /** 결과와 함께 보여 줄 안내 */
+  notices?: string[];
 }
 
 /** 사이트가 채워 넣는 부분. 이것 말고는 두 사이트가 같다. */
@@ -122,6 +124,7 @@ export interface EditorMarkdownToAdfSite {
     run(
       editor: HTMLElement,
       onProgress: (done: number, total: number) => void,
+      onStatus: (label: string) => void,
     ): Promise<ExtraPhaseResult>;
   };
 }
@@ -815,8 +818,11 @@ export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite):
           const extra = await site.extraPhase.run(editor, (done, total) => {
             extraConverted = done;
             markdownLabel.textContent = `${extraName} ${done}/${total}`;
+          }, (label) => {
+            markdownLabel.textContent = label;
           });
           extraConverted = extra.convertedCount;
+          notices.push(...(extra.notices ?? []));
           if (extraConverted > 0 && site.extraPhaseNotice) {
             notices.push(site.extraPhaseNotice);
           }
