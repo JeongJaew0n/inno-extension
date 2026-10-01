@@ -121,7 +121,11 @@ const suites = {
   },
 
   async jiraIssue() {
-    const p = await b.newPage('jira-issue', (url) => (new URL(url).pathname.startsWith('/browse/') ? site.jiraIssue : null));
+    const p = await b.newPage('jira-issue', (url) => {
+      const path = new URL(url).pathname;
+      if (path === '/browse/NPT-170') return site.jiraIssueEmpty;
+      return path.startsWith('/browse/') ? site.jiraIssue : null;
+    });
     await p.goto('https://pms-innogrid.atlassian.net/browse/NPT-143', 3000);
     for (const [root, n] of [['jira-issue-link-copy', 1], ['jira-description-markdown-copy', 1], ['jira-description-edit-lock', 1]]) {
       const c = await hosts(p, root);
@@ -182,6 +186,15 @@ const suites = {
       R.check('Jira 업무', '화면 스위치 → Popup 스위치도 켜짐(전역 공유)', popupSees === true, `popup checked=${popupSees}`);
     }
     await p.shot(`${SP}/jira-issue.png`);
+
+    // 설명이 빈 업무 — 첫 블록이 없다. 편집 버튼은 Jira 자체 편집 버튼을 눌러야 한다(사용자 보고 2026-10-01)
+    await p.goto('https://pms-innogrid.atlassian.net/browse/NPT-170', 3000);
+    const emptyShown = await p.ev(`${sroot('jira-description-edit-lock')}?.shadowRoot.querySelector('[data-edit]').hidden === false`);
+    R.check('Jira 업무(빈 설명)', '방지 켜짐 — 편집 버튼 나타남', emptyShown, '');
+    await p.clickEl(`[...document.querySelectorAll('[data-testid="issue.views.field.rich-text.description"] div')].find((d) => d.textContent.trim() === '설명 편집')`);
+    R.check('Jira 업무(빈 설명)', '방지 켜짐 — 자리표시 클릭해도 편집 안 됨', await p.ev('__editCount') === 0, `editCount=${await p.ev('__editCount')}`);
+    await p.clickEl(`${sroot('jira-description-edit-lock')}.shadowRoot.querySelector('[data-edit]')`);
+    R.check('Jira 업무(빈 설명)', '방지 켜짐 — 편집 버튼으로 진입', await p.ev('__editCount') === 1, `editCount=${await p.ev('__editCount')}`);
   },
 
   async jiraBoard() {

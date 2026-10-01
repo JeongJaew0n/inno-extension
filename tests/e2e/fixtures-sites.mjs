@@ -17,36 +17,51 @@ const EDITOR = `<div data-testid="issue.views.field.rich-text.editor-container">
   <div class="ProseMirror" contenteditable="true" role="textbox" style="min-height:60px;padding:8px">목표 문단</div>
   <div style="display:flex;gap:8px;margin-top:8px"><button data-testid="comment-save-button" id="native-save">저장</button><button data-testid="comment-cancel-button" id="native-cancel">취소</button></div>
 </div>`;
-const READ = `<div data-testid="issue.views.field.rich-text.description" role="button" style="padding:8px;border:1px solid transparent">${RENDERER}</div>`;
+// 실제 Jira 처럼 설명 필드 안에 **화면에 안 보이는 편집 버튼**이 있다. 라벨 끝이 `edit` 다(실측 2026-10-01).
+// 설명이 비면 렌더러 대신 그 버튼과 `설명 편집` 자리표시만 있다.
+const HIDDEN_EDIT = (label) => `<button aria-label="${label}, edit" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden"></button>`;
+// 실측 구조: 필드 > div > div > div > form > div > div[클릭 영역] > [편집 버튼, 본문]. 편집 전환은 **클릭 영역 안**의
+// 클릭만 받는다. 바깥 껍데기 div 에 보낸 이벤트는 안쪽 처리기에 닿지 않는다(옛 편집 버튼이 그래서 먹통이었다).
+const readField = (body, label) => `<div data-testid="issue.views.field.rich-text.description" role="presentation" style="position:relative;padding:8px;border:1px solid transparent">`
+  + `<div><div><div><form role="presentation"><div><div data-edit-area>${HIDDEN_EDIT(label)}${body}</div></div></form></div></div></div></div>`;
+const READ = readField(RENDERER, '설명 편집');
+const READ_EMPTY = readField('<div role="presentation" style="color:#6b778c">설명 편집</div>', '설명 추가');
 
-export const jiraIssue = doc('[NPT-143] Jira', `
+const issuePage = (key, read) => doc(`[${key}] Jira`, `
 <div id="jira-root"><main>
-  <nav><a data-testid="issue.views.issue-base.foundation.breadcrumbs.current-issue.item" href="/browse/NPT-143">NPT-143</a></nav>
+  <nav><a data-testid="issue.views.issue-base.foundation.breadcrumbs.current-issue.item" href="/browse/${key}">${key}</a></nav>
   <h1 data-testid="issue.views.issue-base.foundation.summary.heading">[공통] 사내 Gitlab CI 연계 분석</h1>
   <div data-testid="issue.views.issue-base.common.description.label"><div style="display:flex;align-items:center;gap:8px;justify-content:space-between"><h2 style="margin:0">설명</h2></div></div>
-  <div id="desc-slot">${READ}</div>
+  <div id="desc-slot">${read}</div>
   <section id="comments"><h3>댓글</h3><div class="ak-renderer-document"><p>댓글 본문은 복사되면 안 된다</p></div></section>
 </main></div>
 <script>
   // Jira(React) 흉내: 루트에 위임된 click 이 설명을 편집 상태로 바꾼다
   window.__editCount = 0; window.__saved = 0;
-  const READ = ${JSON.stringify(READ)}, EDITOR = ${JSON.stringify(EDITOR)};
+  const READ = ${JSON.stringify(read)}, EDITOR = ${JSON.stringify(EDITOR)};
   const slot = document.getElementById('desc-slot');
   // 실제 Jira 처럼 **앞선 mousedown 이 있어야** 클릭을 편집으로 받는다. click() 만 보내면 안 열린다(실측)
   let downInField = false;
   document.getElementById('jira-root').addEventListener('mousedown', (e) => {
-    downInField = !!e.target.closest('[data-testid="issue.views.field.rich-text.description"]');
+    downInField = !!e.target.closest('[data-testid="issue.views.field.rich-text.description"] [data-edit-area]');
   });
   document.getElementById('jira-root').addEventListener('click', (e) => {
     if (e.target.closest('#native-cancel')) { slot.innerHTML = READ; return; }
     if (e.target.closest('#native-save')) { window.__saved++; slot.innerHTML = READ; return; }
-    const field = e.target.closest('[data-testid="issue.views.field.rich-text.description"]');
+    // Jira 자체 편집 버튼 — click() 한 번으로 편집이 열린다(실측). mousedown 은 필요 없다
+    if (e.target.closest('[data-testid="issue.views.field.rich-text.description"] button[aria-label$="edit"]')) {
+      window.__editCount++; slot.innerHTML = EDITOR; return;
+    }
+    const field = e.target.closest('[data-testid="issue.views.field.rich-text.description"] [data-edit-area]');
     if (!field || e.target.closest('a')) return;
     if (!downInField) return;
     downInField = false;
     window.__editCount++; slot.innerHTML = EDITOR;
   });
 </script>`);
+
+export const jiraIssue = issuePage('NPT-143', READ);
+export const jiraIssueEmpty = issuePage('NPT-170', READ_EMPTY);
 
 // ---------------------------------------------------------------- Jira 보드
 const today = new Date();

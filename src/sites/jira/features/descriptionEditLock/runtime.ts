@@ -25,6 +25,7 @@ import {
   DESCRIPTION_EDIT_LOCK_ROOT,
   DESCRIPTION_FIELD,
   DESCRIPTION_MARKDOWN_COPY_ROOT,
+  DESCRIPTION_EDIT_BUTTON,
   DESCRIPTION_RENDERER,
 } from '../../selectors';
 import { normalizeEditLockOptions, shouldBlockDescriptionClick } from './contracts';
@@ -89,23 +90,35 @@ export function createDescriptionEditLockRuntime(): FeatureRuntime {
   /**
    * 편집에 들어간다.
    *
-   * Jira 가 사람 클릭에서 받는 것과 **같은 이벤트 순서**를 본문 첫 블록에 보낸다.
+   * **Jira 자체 편집 버튼을 누른다.** 설명 필드 안에 화면에 안 보이는 `…, edit` 버튼이 있고,
+   * `click()` 한 번으로 내용이 있든 비어 있든 편집이 열린다(실측 2026-10-01).
+   *
+   * 예전에는 본문 첫 블록에 사람 클릭과 같은 이벤트 순서를 보냈다. **설명이 비어 있으면 첫 블록이
+   * 없어** 바깥 껍데기 div 를 눌렀고, 거기엔 편집 전환이 없어 버튼이 먹통이었다(사용자 보고).
+   * 그 방식은 편집 버튼을 못 찾을 때의 대비로만 남긴다.
    *
    * ```
    * pointerdown → mousedown → pointerup → mouseup → click
    * ```
    *
-   * **`click()` 한 번으로는 안 된다.** 실제 Jira 에서 방지를 끈 상태로 재봤을 때도 `click()` 만으로는
-   * 편집이 열리지 않았고, 위 순서를 좌표와 함께 보내자 열렸다. 편집 전환 요소가 `onMouseDown` 과
-   * `onClick` 을 짝으로 갖고 있어, 앞선 mousedown 이 없으면 클릭을 편집으로 받지 않는다.
-   * (처음 구현은 `click()` 만 보냈고 e2e 대역은 click 만 봐서 통과했다 — 실제 사이트에서 잡았다.)
-   *
-   * 좌표는 첫 블록 안쪽이다. 링크 위를 누르면 링크로 받으므로 줄 왼쪽 끝을 쓴다.
-   * 설명이 비어 렌더러가 없으면 필드 자체를 누른다.
+   * **`click()` 한 번으로는 안 된다**(본문 블록에서는). 편집 전환 요소가 `onMouseDown` 과 `onClick`
+   * 을 짝으로 갖고 있어, 앞선 mousedown 이 없으면 클릭을 편집으로 받지 않는다.
    */
   function enterEdit(document: Document): void {
     const field = findReadField(document);
     if (!field) return;
+
+    const editButton = field.querySelector<HTMLButtonElement>(DESCRIPTION_EDIT_BUTTON);
+    if (editButton) {
+      bypass = true;
+      try {
+        editButton.click();
+      } finally {
+        bypass = false;
+      }
+      return;
+    }
+
     const renderer = field.querySelector<HTMLElement>(DESCRIPTION_RENDERER);
     const target = renderer?.querySelector<HTMLElement>('p, li, h1, h2, h3, h4, h5, h6')
       ?? renderer

@@ -91,6 +91,13 @@ export const DESCRIPTION_FIELD = '[data-testid="issue.views.field.rich-text.desc
 export const DESCRIPTION_RENDERER = '.ak-renderer-document';
 
 /**
+ * 읽기 상태 설명 필드 안의 Jira 자체 편집 버튼. 화면에 보이지 않는 접근성용 버튼이다.
+ * 라벨은 `설명 편집, edit`(내용 있음) · `설명 추가, edit`(비어 있음) — 끝의 `edit` 로 잡는다.
+ * 실측(2026-10-01, NPT-170 · NPT-92): `click()` 한 번으로 두 경우 모두 편집이 열린다.
+ */
+export const DESCRIPTION_EDIT_BUTTON = 'button[aria-label$="edit"]';
+
+/**
  * `설명` 라벨 줄. 버튼을 이 안쪽 flex 줄에 붙인다.
  *
  * 라벨 자신은 `display: block` 이고, 그 첫 자식이 `display: flex` 줄이다. 실측에서 라벨 텍스트가
