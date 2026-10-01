@@ -6,7 +6,7 @@
 
 ## 한 줄 요약
 
-Confluence 편집기에서 Markdown 원문을 네트워크 요청 없이 편집 콘텐츠로 바꾼다.
+Confluence 편집기에서 Markdown 원문을 편집 콘텐츠로 바꾼다. 네트워크는 Mermaid 를 넣기 전 서버 초안 확인(읽기) 한 가지에만 쓴다.
 
 ## 배경과 사용자 문제
 
@@ -24,7 +24,7 @@ Markdown 문서를 Confluence 편집 형식으로 옮기려면 제목, 목록, �
 
 ## 비목표
 
-- Confluence 문서를 API로 조회, 생성, 수정하거나 저장하지 않는다.
+- Confluence 문서를 API로 생성, 수정하거나 저장하지 않는다. 조회는 Mermaid 단계의 초안 확인(GET) 하나뿐이다.
 - 기존 본문 뒤에 내용을 추가하거나 본문 전체를 변환하지 않는다. 편집기 동작은 대상 코드블럭의 원위치 교체다.
 - ADF를 Markdown으로 역변환하지 않는다.
 - 결과 복사, 파일 다운로드, 자동 업로드 기능을 제공하지 않는다.
@@ -157,7 +157,7 @@ Markdown 문서 판정은 ATX 제목, 표 구분선, 코드 펜스, 목록, 인�
 - 입력: 현재 편집 본문의 코드블럭 원문 또는 문단으로 남은 Markdown
 - 편집기 출력: 변환된 ADF를 Confluence 편집기가 수용하는 paste 표현으로 전달한 현재 draft 본문
 - 처리 위치: Confluence content script의 로컬 JavaScript 실행 환경
-- 네트워크: 사용하지 않음
+- 네트워크: Mermaid 후보가 있을 때만 `GET /wiki/rest/api/content/{pageId}?status=draft&expand=body.atlas_doc_format` (변환 클릭 때만, 상대 경로, 세션 쿠키, 토큰 저장 없음). 카탈로그 `usesNetwork: true`
 - 외부 상태 변경: 편집기 draft 상태만 변경하며 페이지 저장은 하지 않음
 
 ## 변환 지원 범위
@@ -285,3 +285,23 @@ Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위�
 센다.**
 
 [troubleshooting 기록](../../docs/troubleshootings/reusable/2026-09-18-confluence-mermaid-macro-renders-before-document-settles.md)
+
+## Mermaid 를 넣기 전에 서버 초안을 기다린다 (2026-10-01)
+
+위 "가라앉지 않은 문서 상태"는 **서버에 저장된 초안**이었다. 실측:
+
+- 편집 후 서버 초안(GET draft)은 약 10.7초 뒤에 바뀐다. 화면은 즉시 바뀐다.
+- Mermaid 앞 순번에 코드블럭을 끼우고 새로고침하면 매크로가 그 블록을 읽는다 — 순번으로 서버 초안을 읽는다.
+- 매크로는 실패 뒤 스스로 다시 그리지 않는다(15초 관찰).
+
+그래서 코드블럭 벗기기 직후(0.6초) 넣은 매크로가 옛 초안을 읽어 오류가 났다. 되돌렸다가 다시 변환하면
+그 사이 초안이 따라잡아 정상이었다.
+
+| 상황 | 동작 |
+| --- | --- |
+| 초안의 후보 순번 자리에 그 Mermaid 원문이 이미 있다 | 바로 넣는다 (GET 1회) |
+| 아직 아니다 | 1초마다 다시 읽는다. 버튼: `Mermaid 서버 저장 대기 n초` |
+| 30초가 지나도 안 맞거나 초안을 못 읽는다 | 그대로 넣고 새로고침 안내를 남긴다 |
+
+새로고침 안내는 이제 기다리지 못했을 때만 나온다.
+
