@@ -18,6 +18,8 @@ import {
   visibleTagLabels,
 } from '../src/sites/jira/features/backlogSlashTemplate/contracts';
 import { isExtensionContextValid } from '../src/platform/runtime/createSiteRuntime';
+import { marked } from 'marked';
+import { listContentIndent } from '../src/platform/markdown/format';
 import { createUpdateScheduler } from '../src/platform/runtime/updateScheduler';
 import { createDefaultSettings } from '../src/platform/settings/defaults';
 import { getSettings, saveSettings } from '../src/platform/settings/repository';
@@ -2953,4 +2955,46 @@ test('Mermaid 서버 초안 대기는 이미 맞으면 한 번만 읽고, 못 �
     pageId: '1', readDraft: async () => ['다른 것'], sleep: async (ms) => { clock += ms; }, now: () => clock,
   }), 'timeout');
   assert.ok(clock >= DRAFT_WAIT_TIMEOUT_MS && clock < DRAFT_WAIT_TIMEOUT_MS + 2000);
+});
+
+/* ============================================================
+ * 리뷰에서 나온 수정(2026-10-02). 고친 자리가 되돌아가지 않게 붙잡는다.
+ * ============================================================ */
+
+test('목록 자식 들여쓰기는 마커 폭을 따른다', () => {
+  assert.equal(listContentIndent('', '-'), '  ');
+  assert.equal(listContentIndent('', '1.'), '   ');
+  assert.equal(listContentIndent('', '10.'), '    ');
+  // 체크박스는 내용이다. 마커는 `-` 뿐이다
+  assert.equal(listContentIndent('', '- [x]'), '  ');
+  assert.equal(listContentIndent('   ', '2.'), '      ');
+});
+
+test('번호 목록 안의 하위 목록은 Markdown 에서도 그 항목 안에 남는다', () => {
+  const item = (text: string, nested?: unknown) => ({
+    type: 'listItem',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }, ...(nested ? [nested] : [])],
+  });
+  const bullet = { type: 'bulletList', content: [item('child')] };
+  const { markdown } = adfToMarkdown({
+    type: 'doc',
+    version: 1,
+    content: [{
+      type: 'orderedList',
+      // 열 번째 항목은 마커가 `10.` 이라 4칸이 필요하다
+      content: [item('parent', bullet), ...Array.from({ length: 8 }, (_, i) => item(`n${i}`)), item('tenth', bullet)],
+    }],
+  } as never);
+
+  const html = marked.parse(markdown) as string;
+  // 하위 목록이 떨어져 나가면 `</ol>` 뒤에 `<ul>` 이 따로 생긴다
+  assert.equal((html.match(/<ol/g) ?? []).length, 1, html);
+  assert.match(html, /parent[\s\S]*?<ul>\s*<li>child<\/li>\s*<\/ul>\s*<\/li>/);
+  assert.match(html, /tenth[\s\S]*?<ul>\s*<li>child<\/li>\s*<\/ul>\s*<\/li>\s*<\/ol>/);
+});
+
+test('렌더러 경로도 목록 들여쓰기를 공용 규칙으로 정한다', async () => {
+  const source = await readFile('src/platform/editor/renderer-to-markdown.ts', 'utf8');
+  assert.match(source, /listContentIndent\(indent, marker\)/);
+  assert.doesNotMatch(source, /'  '\.repeat\(depth\)/);
 });

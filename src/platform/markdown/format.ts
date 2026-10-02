@@ -39,6 +39,21 @@ export function normalizeTableCell(value: string): string {
     .replace(/\|/g, '\\|');
 }
 
+/**
+ * 목록 항목의 내용이 시작하는 들여쓰기. 이어지는 줄과 하위 목록을 여기에 맞춰야 그 항목에 속한다.
+ *
+ * CommonMark 는 **목록 마커 폭만큼** 들여써야 자식으로 본다. `- ` 는 2칸이지만 `1. ` 은 3칸,
+ * `10. ` 은 4칸이다. 2칸으로 고정했더니 번호 목록 안의 하위 목록이 바깥 목록으로 떨어져 나갔다
+ * (재현 2026-10-02: `1. parent` 밑의 `  - child` 가 별도 목록이 됨).
+ *
+ * 체크박스(`- [x]`)는 목록 마커가 `-` 이고 `[x]` 는 내용이다. 체크박스 폭까지 더하면 내용 기준으로
+ * 4칸이 넘게 밀려 들여쓴 코드블럭으로 읽힌다. 그래서 첫 토막만 센다.
+ */
+export function listContentIndent(indent: string, marker: string): string {
+  const listMarker = marker.split(' ')[0] ?? marker;
+  return `${indent}${' '.repeat(listMarker.length + 1)}`;
+}
+
 export function normalizeListItem(value: string): string {
   return value
     .trim()

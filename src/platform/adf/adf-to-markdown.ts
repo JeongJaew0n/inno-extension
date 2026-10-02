@@ -13,6 +13,7 @@
 
 import {
   escapeMarkdownText,
+  listContentIndent,
   normalizeListItem,
   normalizeMarkdown,
   normalizeTableCell,
@@ -103,7 +104,12 @@ function formatAdfDate(timestamp: string): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-function renderList(node: AdfNode, depth: number, warnings: Set<string>): string {
+function renderList(
+  node: AdfNode,
+  depth: number,
+  warnings: Set<string>,
+  indent = '  '.repeat(depth),
+): string {
   const ordered = node.type === 'orderedList';
   const lines: string[] = [];
 
@@ -117,7 +123,6 @@ function renderList(node: AdfNode, depth: number, warnings: Set<string>): string
       (child) => child.type !== 'bulletList' && child.type !== 'orderedList',
     );
 
-    const indent = '  '.repeat(depth);
     const marker = item.type === 'taskItem'
       ? (stringAttr(item, 'state') === 'DONE' ? '- [x]' : '- [ ]')
       : (ordered ? `${index + 1}.` : '-');
@@ -126,12 +131,13 @@ function renderList(node: AdfNode, depth: number, warnings: Set<string>): string
       item.type === 'taskItem' ? renderInline(own) : renderBlocks(own, depth, warnings),
     );
     const contentLines = content.split('\n');
+    const contentIndent = listContentIndent(indent, marker);
 
     lines.push(`${indent}${marker} ${contentLines[0] ?? ''}`.trimEnd());
     for (const continuation of contentLines.slice(1)) {
-      lines.push(`${indent}  ${continuation}`.trimEnd());
+      lines.push(`${contentIndent}${continuation}`.trimEnd());
     }
-    for (const child of nested) lines.push(renderList(child, depth + 1, warnings));
+    for (const child of nested) lines.push(renderList(child, depth + 1, warnings, contentIndent));
   });
 
   return `\n\n${lines.join('\n')}\n\n`;

@@ -1,6 +1,7 @@
 import { MARKDOWN_IGNORED_ELEMENTS } from './selectors';
 import {
   escapeMarkdownText,
+  listContentIndent,
   longestBacktickRun,
   normalizeListItem,
   normalizeMarkdown,
@@ -64,7 +65,7 @@ function isNestedList(element: Element): boolean {
   return element.tagName === 'UL' || element.tagName === 'OL';
 }
 
-function renderList(list: Element, depth: number): string {
+function renderList(list: Element, indent = ''): string {
   const ordered = list.tagName === 'OL';
   const listItems = Array.from(list.children).filter((child) => child.tagName === 'LI');
   const lines: string[] = [];
@@ -76,16 +77,16 @@ function renderList(list: Element, depth: number): string {
     const content = normalizeListItem(
       contentNodes.map((node) => renderNode(node, DEFAULT_CONTEXT)).join(''),
     );
-    const indent = '  '.repeat(depth);
     const marker = ordered ? `${index + 1}.` : '-';
+    const contentIndent = listContentIndent(indent, marker);
     const contentLines = (content || '').split('\n');
     lines.push(`${indent}${marker} ${contentLines[0] ?? ''}`.trimEnd());
     for (const continuation of contentLines.slice(1)) {
-      lines.push(`${indent}  ${continuation}`.trimEnd());
+      lines.push(`${contentIndent}${continuation}`.trimEnd());
     }
 
     for (const child of Array.from(item.children).filter(isNestedList)) {
-      lines.push(renderList(child, depth + 1));
+      lines.push(renderList(child, contentIndent));
     }
   });
 
@@ -216,7 +217,7 @@ function renderNode(node: Node, context: RenderContext): string {
       return renderCodeBlock(element);
     case 'UL':
     case 'OL':
-      return `\n\n${renderList(element, 0)}\n\n`;
+      return `\n\n${renderList(element)}\n\n`;
     case 'LI':
       return renderChildren(element);
     case 'BLOCKQUOTE': {
