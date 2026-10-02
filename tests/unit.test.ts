@@ -2998,3 +2998,17 @@ test('렌더러 경로도 목록 들여쓰기를 공용 규칙으로 정한다',
   assert.match(source, /listContentIndent\(indent, marker\)/);
   assert.doesNotMatch(source, /'  '\.repeat\(depth\)/);
 });
+
+test('활성 스프린트를 못 읽은 보드에서는 자리를 만들었다 지우며 돌지 않는다', async () => {
+  const source = await readFile('src/sites/jira/features/boardSprintInfo/runtime.ts', 'utf8');
+  const reconcile = source.slice(source.indexOf('reconcile(context: PageContext)'));
+  const beforeRequest = reconcile.slice(0, reconcile.indexOf('requestActiveSprints('));
+  // 요청 전에 자리를 만드는 건 이미 그려 둔 칩의 자리를 확인할 때뿐이다
+  assert.ok(
+    beforeRequest.indexOf('renderedKey.startsWith') < beforeRequest.indexOf('ensureBoardToolSlot('),
+    '요청 전 ensureBoardToolSlot 은 이미 그린 경우 안에만 있어야 한다',
+  );
+  const failure = reconcile.slice(reconcile.indexOf('if (!summary)'), reconcile.indexOf('const key ='));
+  assert.match(failure, /clearRendered\(\)/);
+  assert.doesNotMatch(failure, /dispose\(\)/);
+});

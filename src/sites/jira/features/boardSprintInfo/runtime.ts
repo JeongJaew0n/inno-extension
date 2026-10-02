@@ -31,14 +31,19 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
   let resizeObserver: ResizeObserver | null = null;
   let activeDocument: Document | null = null;
 
-  function dispose(): void {
+  /** 그려 둔 것을 걷는다. 요청 상태와 문서는 그대로 둔다 */
+  function clearRendered(): void {
     resizeObserver?.disconnect();
     resizeObserver = null;
     host?.remove();
     host = null;
     renderedKey = '';
-    pendingBoardId = null;
     if (activeDocument) releaseBoardToolSlot(activeDocument, SLOT_NAME);
+  }
+
+  function dispose(): void {
+    clearRendered();
+    pendingBoardId = null;
     activeDocument = null;
   }
 
@@ -123,16 +128,16 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
       }
 
       activeDocument = context.document;
-      const anchor = ensureBoardToolSlot(context.document, SLOT_NAME, BOARD_TOOL_ORDER.sprintInfo);
-      if (!anchor) {
-        dispose();
-        return;
-      }
-
       const boardId = route.boardId;
+
       // 이미 같은 보드 내용을 그려 뒀으면 자리만 확인하고 끝낸다.
-      if (renderedKey.startsWith(`${boardId}:`) && host?.isConnected && host.parentElement === anchor) {
-        return;
+      if (renderedKey.startsWith(`${boardId}:`) && host?.isConnected) {
+        const anchor = ensureBoardToolSlot(context.document, SLOT_NAME, BOARD_TOOL_ORDER.sprintInfo);
+        if (!anchor) {
+          dispose();
+          return;
+        }
+        if (host.parentElement === anchor) return;
       }
       if (pendingBoardId === boardId) return;
       pendingBoardId = boardId;
@@ -142,8 +147,15 @@ export function createBoardSprintInfoRuntime(): FeatureRuntime {
 
         const summary = sprints.map(summarizeSprint).find((entry) => entry !== null);
         if (!summary) {
-          // 읽지 못했으면 아무것도 보여주지 않는다. 틀린 기간을 띄우는 것보다 낫다.
-          dispose();
+          /*
+           * 읽지 못했으면 아무것도 보여주지 않는다. 틀린 기간을 띄우는 것보다 낫다.
+           *
+           * **자리도 미리 만들지 않는다.** 예전에는 자리를 만들고 읽은 뒤 지웠는데, 그 DOM 변화가
+           * 다시 reconcile 을 불러 활성 스프린트가 없는 보드(Kanban 등)에서 약 180ms 마다 끝없이
+           * 돌았다(재현 2026-10-02: 3초에 17번). 우리가 DOM 을 건드리지 않으면 페이지가 스스로
+           * 바뀔 때만 다시 읽는다.
+           */
+          clearRendered();
           return;
         }
 
