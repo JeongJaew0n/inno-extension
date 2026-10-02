@@ -3012,3 +3012,14 @@ test('활성 스프린트를 못 읽은 보드에서는 자리를 만들었다 �
   assert.match(failure, /clearRendered\(\)/);
   assert.doesNotMatch(failure, /dispose\(\)/);
 });
+
+test('지난 스프린트 선택은 보드가 바뀌면 자리를 만들기 전에 정리하고 리스너를 쌓지 않는다', async () => {
+  const source = await readFile('src/sites/jira/features/pastSprintView/runtime.ts', 'utf8');
+  const reconcile = source.slice(source.indexOf('reconcile(context: PageContext)'));
+  assert.ok(
+    reconcile.indexOf('route.boardId !== boardId') < reconcile.indexOf('ensureBoardToolSlot('),
+    '보드 전환 정리가 자리 만들기보다 앞서야 한다',
+  );
+  assert.match(source, /removeEventListener\('click', onOutsideClick\)/);
+  assert.match(source.slice(source.indexOf('function dispose')), /removeOutsideClick\?\.\(\)/);
+});

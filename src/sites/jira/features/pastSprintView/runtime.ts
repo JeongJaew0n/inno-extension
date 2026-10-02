@@ -75,6 +75,8 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
   let shownIssues: JiraBoardIssue[] = [];
   let groupMode: 'all' | 'assignee' = 'all';
   let activeDocument: Document | null = null;
+  /** 바깥을 누르면 메뉴를 닫는 리스너를 뗀다. host 를 새로 만들 때마다 갈아 끼운다 */
+  let removeOutsideClick: (() => void) | null = null;
 
   function closePanel(): void {
     panel?.remove();
@@ -84,6 +86,8 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
 
   function dispose(): void {
     closePanel();
+    removeOutsideClick?.();
+    removeOutsideClick = null;
     host?.remove();
     host = null;
     sprints = null;
@@ -347,12 +351,16 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
       if (opening) void ensureSprints(context);
     });
 
-    // 바깥을 누르면 닫는다.
-    context.document.addEventListener('click', (event) => {
+    // 바깥을 누르면 닫는다. 앞서 만든 host 의 리스너는 떼어 낸다 — 보드가 다시 그려질 때마다
+    // host 를 새로 만들므로 떼지 않으면 문서에 계속 쌓인다.
+    const onOutsideClick = (event: MouseEvent): void => {
       if (!next.isConnected) return;
       if (event.composedPath().includes(next)) return;
       menu.hidden = true;
-    });
+    };
+    removeOutsideClick?.();
+    context.document.addEventListener('click', onOutsideClick);
+    removeOutsideClick = () => context.document.removeEventListener('click', onOutsideClick);
 
     anchor.append(next);
     return next;
@@ -377,6 +385,13 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
         return;
       }
 
+      // 보드가 바뀌면 **자리를 만들기 전에** 정리한다. 만든 뒤에 정리하면 `dispose()` 가 방금 만든
+      // 자리를 떼어 내서, 첫 host 가 문서 밖 자리에 붙어 버려진다(재현 2026-10-02).
+      if (route.boardId !== boardId) {
+        dispose();
+        boardId = route.boardId;
+      }
+
       activeDocument = context.document;
       const anchor = ensureBoardToolSlot(context.document, SLOT_NAME, BOARD_TOOL_ORDER.sprintPicker);
       if (!anchor) {
@@ -384,10 +399,6 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
         return;
       }
 
-      if (route.boardId !== boardId) {
-        dispose();
-        boardId = route.boardId;
-      }
       if (host?.isConnected && host.parentElement === anchor) return;
 
       host?.remove();
