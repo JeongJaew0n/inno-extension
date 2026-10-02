@@ -54,8 +54,17 @@ function field(label: string, name: string | null, value: string, help = ''): st
     </label>`;
 }
 
+/**
+ * 열려 있는 모달의 닫기 함수.
+ *
+ * 밖에서 닫을 때도 이걸 불러야 한다. 요소만 지우면 Escape 를 잡던 `keydown` 리스너가 문서에 남아
+ * 다음 Escape 한 번을 삼킨다.
+ */
+let closeOpenModal: (() => void) | null = null;
+
 /** 열려 있으면 닫는다. 기능이 꺼지거나 화면을 떠날 때 부른다 */
 export function closeTitleAutofillModal(document: Document): void {
+  closeOpenModal?.();
   document.querySelectorAll(`[${FEATURE_ROOT_ATTRIBUTE}="${TITLE_AUTOFILL_MODAL_ROOT}"]`).forEach((host) => host.remove());
 }
 
@@ -96,6 +105,7 @@ export function openTitleAutofillModal(document: Document, input: TitleAutofillM
   const close = (): void => {
     document.removeEventListener('keydown', onKeydown, true);
     host.remove();
+    if (closeOpenModal === close) closeOpenModal = null;
   };
   const onKeydown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') {
@@ -104,6 +114,7 @@ export function openTitleAutofillModal(document: Document, input: TitleAutofillM
     }
   };
   document.addEventListener('keydown', onKeydown, true);
+  closeOpenModal = close;
 
   shadow.querySelector('[data-scrim]')?.addEventListener('mousedown', (event) => {
     if (event.target === event.currentTarget) close();

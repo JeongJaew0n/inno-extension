@@ -3051,3 +3051,9 @@ test('Popup API 배지는 특정 사이트 이름을 박아 두지 않는다', a
   const badge = source.slice(source.indexOf('class="network-badge"'), source.indexOf('>API</span>'));
   assert.doesNotMatch(badge, /Jira|Confluence|스프린트/);
 });
+
+test('자동채움 모달을 밖에서 닫아도 Escape 리스너가 남지 않는다', async () => {
+  const source = await readFile('src/sites/amaranth/features/titleAutofill/modal.ts', 'utf8');
+  const close = source.slice(source.indexOf('export function closeTitleAutofillModal'));
+  assert.match(close.slice(0, close.indexOf('\n}')), /closeOpenModal\?\.\(\)/);
+});
