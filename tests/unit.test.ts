@@ -3057,3 +3057,9 @@ test('자동채움 모달을 밖에서 닫아도 Escape 리스너가 남지 않�
   const close = source.slice(source.indexOf('export function closeTitleAutofillModal'));
   assert.match(close.slice(0, close.indexOf('\n}')), /closeOpenModal\?\.\(\)/);
 });
+
+test('날짜 단축은 달을 옮길 때마다 직전 달과 비교해 기다린다', async () => {
+  const source = await readFile('src/sites/jira/features/createQuickDates/runtime.ts', 'utf8');
+  assert.doesNotMatch(source, /monthDistance\(now, target\) !== steps/);
+  assert.match(source, /!isSameMonth\(now, before\)/);
+});

@@ -80,11 +80,14 @@ async function setDate(modal: HTMLElement, label: string, target: CalendarDate):
     for (let moved = 0; moved < Math.min(Math.abs(steps), MAX_MONTH_STEPS); moved += 1) {
       const step = findMonthStepButton(field, direction);
       if (!step) break;
+      // **누르기 직전 달과** 비교한다. 처음 거리(`steps`)와 비교하면 두 번째 이동부터는 이미 거리가
+      // 달라 있어 기다리지 않고 바로 다음을 누른다.
+      const before = readVisibleMonth(field);
       step.click();
       // 격자가 다시 그려질 틈을 준다.
       await waitFor(() => {
         const now = readVisibleMonth(field);
-        return now && monthDistance(now, target) !== steps ? now : null;
+        return now && (!before || !isSameMonth(now, before)) ? now : null;
       }, 800);
     }
   }
