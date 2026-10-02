@@ -16,8 +16,6 @@ import type { FeatureSettings } from '../../../../platform/settings/types';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
 import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
 import { MENU_CSS } from '../../../../platform/design/parts';
-import { requestOpenSettings } from '../../../../platform/messaging/openSettings';
-import { featureRoute } from '../../../../popup/router';
 import { CREATE_MODAL_DESCRIPTION, CREATE_TEMPLATE_INSERT_ROOT } from '../../selectors';
 import { findCreateModal } from '../../createModal';
 import type { CodeBlockAdfPayload } from '../../../../platform/editor/code-block-to-adf';
@@ -29,8 +27,6 @@ import {
   visibleTemplates,
   type Template,
 } from './contracts';
-
-const SETTINGS_ROUTE = featureRoute('jira', 'createTemplateInsert');
 
 /**
  * Markdown -> 편집기 HTML 변환기를 **쓸 때만** 불러온다.
@@ -117,18 +113,10 @@ export function createTemplateInsertRuntime(): FeatureRuntime {
     shadow.innerHTML = `
       <style>${DESIGN_TOKENS}${MENU_CSS}</style>
       <ul class="inno-listbox" role="listbox" aria-label="업무 템플릿 목록"></ul>
-      <button type="button" class="inno-listbox__footer" tabindex="-1">＋ 템플릿 추가·관리…</button>
     `;
+    // prefix 태그 목록과 달리 `추가·관리` 바닥 줄을 두지 않는다. **템플릿 관리 화면이 아직 없다** —
+    // 눌러도 Popup 에 "추가 옵션이 없습니다"만 떠서 막다른 길이었다. 관리 화면을 만들 때 되살린다.
     listRoot = shadow.querySelector('ul');
-
-    // **마우스 전용이다.** prefix 태그와 같은 이유 — `Enter` 로 닿으면 템플릿을 넣으려다
-    // 창이 뜬다. `mousedown` 으로 처리해 편집기의 `blur` 보다 먼저 잡는다.
-    shadow.querySelector('button.inno-listbox__footer')?.addEventListener('mousedown', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      closeList();
-      requestOpenSettings(SETTINGS_ROUTE);
-    });
 
     document.body.appendChild(host);
     return listRoot as HTMLElement;

@@ -294,8 +294,9 @@ const suites = {
     R.check('Jira 업무 생성', '$ 는 문서에 남지 않는다', !dollar.includes('$'), JSON.stringify(dollar));
     const gap = await p.ev(`(() => { const l = ${sroot('jira-create-template-insert')}.getBoundingClientRect(); const e = document.querySelector('[data-testid$="field.description"] .ProseMirror').getBoundingClientRect(); return Math.round(l.top - e.top); })()`);
     R.check('Jira 업무 생성', '목록이 편집기 첫 줄 가까이(한참 밑 아님)', gap < 60, `편집기 위에서 ${gap}px`);
-    const footer = await p.ev(`getComputedStyle(${sroot('jira-create-template-insert')}.shadowRoot.querySelector('.inno-listbox__footer')).backgroundColor`);
-    R.check('Jira 업무 생성', '목록 바닥 줄 배경이 불투명', footer !== 'rgba(0, 0, 0, 0)' && footer !== 'transparent', footer);
+    // 템플릿 관리 화면이 아직 없어 `추가·관리` 바닥 줄을 두지 않는다. 있으면 막다른 길로 보낸다
+    const footer = await p.ev(`!!${sroot('jira-create-template-insert')}.shadowRoot.querySelector('.inno-listbox__footer')`);
+    R.check('Jira 업무 생성', '목록에 관리 바닥 줄이 없다(관리 화면 없음)', footer === false, String(footer));
     await cssIntegrity(p, 'Jira 업무 생성');
     await p.shot(`${SP}/jira-create-list.png`);
     await p.clickEl(`[...${sroot('jira-create-template-insert')}.shadowRoot.querySelectorAll('li')].find(l => l.textContent === '버그')`);
