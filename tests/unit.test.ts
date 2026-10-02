@@ -3045,3 +3045,9 @@ test('업무 생성 템플릿 목록은 관리 화면이 생기기 전까지 관
   assert.doesNotMatch(source, /inno-listbox__footer/);
   assert.doesNotMatch(source, /requestOpenSettings/);
 });
+
+test('Popup API 배지는 특정 사이트 이름을 박아 두지 않는다', async () => {
+  const source = await readFile('src/popup/main.ts', 'utf8');
+  const badge = source.slice(source.indexOf('class="network-badge"'), source.indexOf('>API</span>'));
+  assert.doesNotMatch(badge, /Jira|Confluence|스프린트/);
+});
