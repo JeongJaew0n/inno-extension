@@ -3023,3 +3023,19 @@ test('지난 스프린트 선택은 보드가 바뀌면 자리를 만들기 전�
   assert.match(source, /removeEventListener\('click', onOutsideClick\)/);
   assert.match(source.slice(source.indexOf('function dispose')), /removeOutsideClick\?\.\(\)/);
 });
+
+test('편집기 되돌리기는 문서가 실제로 바뀌었을 때만 누른다', async () => {
+  const source = await readFile('src/platform/editor/markdown-to-adf-runtime.ts', 'utf8');
+  const fromGuard = source.slice(source.indexOf('export function hasEditorChanged'));
+  const guard = fromGuard.slice(0, fromGuard.indexOf('\n}') + 2);
+  // innerHTML 은 CodeMirror 클래스명 때문에 아무것도 안 바뀌어도 달라진다
+  assert.doesNotMatch(guard, /innerHTML/);
+  assert.match(guard, /countEditorNodes\(editor\) !== before\.nodeCount/);
+
+  // 실행 취소를 부르는 자리는 모두 가드를 거친다(정의부 제외)
+  const calls = source.split('await rollbackEditorChange(').slice(1);
+  assert.equal(calls.length, 2);
+  for (const line of source.split('\n').filter((l) => l.includes('await rollbackEditorChange('))) {
+    assert.match(line, /hasEditorChanged\(editor, before\) && !await rollbackEditorChange/);
+  }
+});

@@ -270,10 +270,27 @@ export async function pasteAndWaitForChange(
 export interface EditorSnapshot {
   html: string;
   text: string;
+  /** 문서가 담은 ProseMirror 노드 수. `countEditorNodes()` 값이다 */
+  nodeCount: number;
 }
 
 export function snapshotEditor(editor: HTMLElement): EditorSnapshot {
-  return { html: editor.innerHTML, text: editor.textContent ?? '' };
+  return { html: editor.innerHTML, text: editor.textContent ?? '', nodeCount: countEditorNodes(editor) };
+}
+
+/**
+ * 스냅샷 이후 문서가 실제로 바뀌었는지.
+ *
+ * **되돌리기 전에 반드시 확인한다.** 붙여넣기가 아무것도 바꾸지 않았는데 실행 취소를 누르면
+ * 이번 변경이 아니라 **그 앞의 기록** — 앞 단계의 변환이나 사용자가 친 글 — 이 날아간다. 재현에서
+ * 앞 단계가 만든 제목이 문단으로 되돌아갔고, 안내 문구가 실행 취소를 한 번 더 누르라고 해서
+ * 하나가 더 날아갈 수 있었다(2026-10-02).
+ *
+ * `innerHTML` 은 쓰지 않는다. CodeMirror 가 자동 생성하는 클래스명이 다시 렌더될 때마다 바뀌어
+ * 아무것도 안 바뀌어도 다르게 나온다. 글자와 노드 수로 본다.
+ */
+export function hasEditorChanged(editor: HTMLElement, before: EditorSnapshot): boolean {
+  return (editor.textContent ?? '') !== before.text || countEditorNodes(editor) !== before.nodeCount;
 }
 
 /**
@@ -467,7 +484,7 @@ async function replaceCodeBlockWithAdf(
       '코드블럭을 원래 위치의 ADF 내용으로 교체하지 못했습니다.',
     );
   } catch (error) {
-    if (editor.innerHTML !== before.html && !await rollbackEditorChange(editor, before)) {
+    if (hasEditorChanged(editor, before) && !await rollbackEditorChange(editor, before)) {
       throw new Error(`코드블럭 -> ADF 결과가 올바르지 않고 자동 되돌리기도 실패했습니다. ${siteName} 실행 취소를 한 번 눌러주세요.`);
     }
     throw error;
@@ -653,7 +670,8 @@ export async function runParagraphMarkdownPhase(
         '문단으로 남은 Markdown을 원래 위치에서 교체하지 못했습니다.',
       );
     } catch (error) {
-      if (!await rollbackEditorChange(editor, before)) {
+      // 붙여넣기가 아무것도 바꾸지 않았으면 되돌릴 것도 없다. 이유는 `hasEditorChanged()` 에 있다.
+      if (hasEditorChanged(editor, before) && !await rollbackEditorChange(editor, before)) {
         throw new Error(`Markdown 변환 결과가 올바르지 않고 자동 되돌리기도 실패했습니다. ${siteName} 실행 취소를 한 번 눌러주세요.`);
       }
       throw error;
