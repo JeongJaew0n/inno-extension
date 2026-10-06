@@ -1897,12 +1897,21 @@ test('문단 Markdown 변환은 Confluence 파서에 맡긴다', async () => {
   assert.match(helper, /setData\('text\/plain'/);
   assert.doesNotMatch(helper, /setData\('text\/html'/);
 
-  // 문단 단계는 우리 변환기를 쓰지 않는다. 취소선 구분자 규칙이 Confluence와 다르다.
+  // 붙여넣기로 넣는 편집기에서는 문단 단계가 우리 변환기를 쓰지 않는다. 편집기 파서가 실제 규칙이다.
+  // 우리 변환기는 붙여넣기를 받아 주지 않는 편집기(Jira 댓글)의 트랜잭션 분기에서만 쓴다.
   const phase = runtimeSource.slice(
     runtimeSource.indexOf('async function runParagraphMarkdownPhase'),
     runtimeSource.indexOf('export function describeConversionResult'),
   );
-  assert.doesNotMatch(phase, /loadCodeBlockConverter|convertMarkdown/);
+  const transactionBranch = phase.slice(
+    phase.indexOf("if (insertMode === 'transaction') {"),
+    phase.indexOf('} else {'),
+  );
+  const outsideTransaction = phase.replace(transactionBranch, '');
+  assert.match(transactionBranch, /loadCodeBlockConverter/);
+  assert.doesNotMatch(outsideTransaction, /loadCodeBlockConverter|convertMarkdown/);
+  // 기본은 붙여넣기다
+  assert.match(phase, /insertMode: EditorInsertMode = 'paste'/);
 });
 
 test('Mermaid 후보 사전 판정은 DOM 원문으로 확실히 아닌 코드블럭만 제외한다', () => {
@@ -3113,4 +3122,48 @@ test('물결표 하나는 취소선이 아니라 글자다', () => {
   assert.deepEqual(struck, ['진짜 취소']);
   // 범위 표기의 물결표와 그 사이 글자가 그대로 남는다
   assert.equal(nodes.map((node) => node.text ?? '').join(''), '1~3장 그리고 4~5장, 진짜 취소');
+});
+
+test('코드블럭 변환 결과는 붙여넣기용 HTML 과 트랜잭션용 ADF 를 함께 싣는다', () => {
+  const payload = codeBlockMarkdownToAdfPayload('## 제목\n\n| a | b |\n| --- | --- |\n| 1 | 2 |');
+  assert.match(payload.html, /<h2>제목<\/h2>/);
+  assert.deepEqual(payload.adf.content.map((node) => node.type), ['heading', 'table']);
+});
+
+test('브리지는 구간을 ADF 로 트랜잭션 교체할 수 있다', async () => {
+  const bridge = await readFile('src/platform/editor/main-world-bridge.ts', 'utf8');
+  const block = bridge.slice(bridge.indexOf("if (action === 'replace-range')"), bridge.indexOf('const selectionClass'));
+  // 붙여넣기를 거치지 않고 스키마로 노드를 만들어 바꾼다
+  assert.match(block, /view\.state\.schema\.nodeFromJSON\(adf\)/);
+  assert.match(block, /\.replaceWith\(from as number, \(endPos as number\) \+ \(endSize as number\), replacement\.content\)/);
+  // 위치를 못 찾으면 아무것도 바꾸지 않고 실패한다
+  assert.ok(block.indexOf('편집기 교체 구간 위치를 찾을 수 없습니다') < block.indexOf('view.dispatch('));
+});
+
+test('Jira 댓글은 트랜잭션으로, 설명은 붙여넣기로 넣는다', async () => {
+  const jira = await readFile('src/sites/jira/features/editorMarkdownToAdf/runtime.ts', 'utf8');
+  const comment = jira.slice(jira.indexOf('function resolveCommentTargets'), jira.indexOf('export function'));
+  const description = jira.slice(jira.indexOf('function resolveDescriptionTarget'), jira.indexOf('function resolveCommentTargets'));
+  assert.match(comment, /insertMode: 'transaction'/);
+  // 설명은 실측으로 붙여넣기가 되는 편집기다. 편집기 자체 파서를 그대로 쓴다
+  assert.doesNotMatch(description, /insertMode/);
+
+  const runtime = await readFile('src/platform/editor/markdown-to-adf-runtime.ts', 'utf8');
+  // 두 단계 모두 넣는 방법을 따른다
+  assert.match(runtime, /if \(insertMode === 'transaction'\) \{\s*await replaceEditorRange\(editor, codeBlock, codeBlock, payload\.adf, 'codeBlock'\)/);
+  assert.match(runtime, /await replaceEditorRange\(editor, first, last, convert\(run\.markdown\)\.adf\)/);
+  assert.match(runtime, /\}, site\.siteName, insertMode\);/);
+});
+
+test('실행 취소는 그 편집기의 버튼을 누른다', async () => {
+  const runtime = await readFile('src/platform/editor/markdown-to-adf-runtime.ts', 'utf8');
+  const mermaid = await readFile('src/sites/confluence/features/editorMarkdownToAdf/mermaid-phase.ts', 'utf8');
+  // 문서 전체의 첫 실행 취소를 누르면 함께 열린 다른 편집기 내용이 날아간다
+  for (const source of [runtime, mermaid]) {
+    assert.doesNotMatch(source, /ownerDocument\.querySelector<HTMLButtonElement>\(EDITOR_UNDO_BUTTON\)/);
+  }
+  assert.match(runtime, /const undoButton = findUndoButton\(editor\)/);
+  assert.match(mermaid, /const undoButton = findUndoButton\(editor\)/);
+  const finder = runtime.slice(runtime.indexOf('export function findUndoButton'));
+  assert.match(finder.slice(0, finder.indexOf('\n}')), /for \(let node = editor\.parentElement; node; node = node\.parentElement\)/);
 });

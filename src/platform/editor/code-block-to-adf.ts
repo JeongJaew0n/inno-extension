@@ -1,8 +1,11 @@
-import { markdownToAdf } from '../adf';
+import { markdownToAdf, type AdfDocument } from '../adf';
 import { adfDocumentToEditorHtml } from './adf-to-editor-html';
 
 export interface CodeBlockAdfPayload {
+  /** 붙여넣기로 넣을 때 쓴다 */
   html: string;
+  /** 트랜잭션으로 넣을 때 쓴다. `html` 과 같은 내용이다 */
+  adf: AdfDocument;
   markdown: string;
   warnings: string[];
 }
@@ -18,6 +21,7 @@ export function codeBlockMarkdownToAdfPayload(markdown: string): CodeBlockAdfPay
 
   return {
     html,
+    adf: conversion.doc,
     markdown,
     warnings: conversion.warnings,
   };

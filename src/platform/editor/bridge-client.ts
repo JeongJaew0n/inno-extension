@@ -27,6 +27,7 @@ async function requestBridge(
   node: HTMLElement,
   endNode?: HTMLElement,
   nodeName?: string,
+  adf?: unknown,
 ): Promise<BridgeResponse> {
   const document = editor.ownerDocument;
   const requestId = crypto.randomUUID();
@@ -70,7 +71,14 @@ async function requestBridge(
 
       document.addEventListener(BRIDGE_RESPONSE_EVENT, onResponse);
       document.dispatchEvent(new CustomEvent(BRIDGE_REQUEST_EVENT, {
-        detail: JSON.stringify({ action, requestId, target: targetMark, endTarget: endMark, nodeName }),
+        detail: JSON.stringify({
+          action,
+          requestId,
+          target: targetMark,
+          endTarget: endMark,
+          nodeName,
+          adf: adf === undefined ? undefined : JSON.stringify(adf),
+        }),
       }));
     });
   } finally {
@@ -92,6 +100,22 @@ export async function selectEditorRange(
   last: HTMLElement,
 ): Promise<void> {
   await requestBridge(editor, 'select-range', first, last);
+}
+
+/**
+ * `first` 앞에서 `last` 뒤까지를 ADF 문서로 **트랜잭션 교체**한다. 붙여넣기를 거치지 않는다.
+ *
+ * `nodeName` 을 주면 두 요소에서 그 이름의 노드까지 거슬러 올라간다(코드블럭 안쪽 요소를 줘도 된다).
+ * 이유는 `main-world-bridge.ts` 의 `replace-range` 에 있다.
+ */
+export async function replaceEditorRange(
+  editor: HTMLElement,
+  first: HTMLElement,
+  last: HTMLElement,
+  adf: unknown,
+  nodeName?: string,
+): Promise<void> {
+  await requestBridge(editor, 'replace-range', first, last, nodeName, adf);
 }
 
 /**

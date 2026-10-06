@@ -19,7 +19,7 @@ export const BRIDGE_RESPONSE_EVENT = 'inno-extension:prosemirror-bridge:response
 /** 브리지가 찾을 대상에 임시로 붙이는 속성. 요청이 끝나면 지운다. */
 export const BRIDGE_TARGET_ATTRIBUTE = 'data-inno-bridge-target';
 
-export type BridgeAction = 'read-node' | 'read-doc' | 'select-node' | 'select-range';
+export type BridgeAction = 'read-node' | 'read-doc' | 'select-node' | 'select-range' | 'replace-range';
 
 export interface BridgeRequest {
   action: BridgeAction;
@@ -28,8 +28,15 @@ export interface BridgeRequest {
   target: string;
   /** `select-range`에서 구간의 끝 노드 표식. 없으면 `target`과 같다 */
   endTarget: string;
-  /** codeBlock으로 좁힐 때 쓰는 노드 이름. `select-node`에서만 의미가 있다 */
+  /** codeBlock으로 좁힐 때 쓰는 노드 이름. `select-node` · `read-node` · `replace-range`에서 쓴다 */
   nodeName?: string;
+  /**
+   * `replace-range`에서 구간 자리에 넣을 ADF 문서(JSON 문자열).
+   *
+   * 붙여넣기를 거치지 않고 트랜잭션으로 바꿀 때 쓴다. Jira 댓글 편집기는 우리가 보내는 붙여넣기의
+   * HTML 을 버리고 평문 Markdown 도 목록만 해석한다(실측 2026-10-06).
+   */
+  adf?: string;
 }
 
 export interface BridgeResponse {

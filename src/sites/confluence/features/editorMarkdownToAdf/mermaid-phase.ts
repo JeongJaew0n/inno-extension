@@ -12,12 +12,10 @@ import { readEditorCodeBlockText } from '../../../../platform/editor/code-block'
 import {
   selectEditorNode,
 } from '../../../../platform/editor/bridge-client';
-import {
-  EDITOR_CODE_BLOCK,
-  EDITOR_UNDO_BUTTON,
-} from '../../../../platform/editor/selectors';
+import { EDITOR_CODE_BLOCK } from '../../../../platform/editor/selectors';
 import {
   findEditorTopLevelNode,
+  findUndoButton,
   matchesCodeBlockSource,
   pasteAndWaitForChange,
   readCodeBlockSources,
@@ -159,7 +157,7 @@ async function rollbackMermaidReplacement(
   localId: string,
   source: string,
 ): Promise<boolean> {
-  const undoButton = editor.ownerDocument.querySelector<HTMLButtonElement>(EDITOR_UNDO_BUTTON);
+  const undoButton = findUndoButton(editor);
   if (!undoButton || undoButton.disabled) return false;
   undoButton.click();
 

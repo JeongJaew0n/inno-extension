@@ -22,15 +22,22 @@ interface ProseMirrorSelection {
 
 interface ProseMirrorTransaction {
   setSelection(selection: ProseMirrorSelection): ProseMirrorTransaction;
+  replaceWith(from: number, to: number, content: unknown): ProseMirrorTransaction;
   scrollIntoView(): ProseMirrorTransaction;
 }
 
 interface ProseMirrorDoc {
   toJSON(): unknown;
+  content: unknown;
+}
+
+interface ProseMirrorSchema {
+  nodeFromJSON(json: unknown): ProseMirrorDoc;
 }
 
 interface ProseMirrorEditorState {
   doc: ProseMirrorDoc;
+  schema: ProseMirrorSchema;
   selection: ProseMirrorSelection & { constructor: Function };
   tr: ProseMirrorTransaction;
 }
@@ -174,6 +181,7 @@ export function installProseMirrorBridge(): void {
     const action: BridgeAction = detail.action === 'read-node'
       || detail.action === 'read-doc'
       || detail.action === 'select-range'
+      || detail.action === 'replace-range'
       ? detail.action
       : 'select-node';
     const targetMark = typeof detail.target === 'string' ? detail.target : '';
@@ -224,6 +232,37 @@ export function installProseMirrorBridge(): void {
       if (!editor || !view) throw new Error('편집기 상태를 찾을 수 없습니다.');
       cachedEditor = editorElement;
       cachedView = view;
+
+      /**
+       * 구간을 ADF 로 **트랜잭션 교체**한다. 붙여넣기를 거치지 않는다.
+       *
+       * Jira 댓글 편집기는 우리가 보내는 붙여넣기를 받아 주지 않는다 — HTML 은 버리고 평문 Markdown
+       * 은 목록만 해석한다. 스키마에는 제목·표·코드블럭이 다 있어서 노드를 직접 만들어 넣으면 된다.
+       * 트랜잭션이라 편집기 실행 취소 한 번으로 되돌아간다(실측 2026-10-06, NPT-671 댓글 초안).
+       *
+       * 구간은 시작 노드 앞에서 끝 노드 뒤까지다. `nodeName` 이 있으면 그 이름의 노드로 좁힌다.
+       */
+      if (action === 'replace-range') {
+        const adf = typeof detail.adf === 'string' ? JSON.parse(detail.adf) as unknown : null;
+        if (!adf) throw new Error('바꿔 넣을 ADF 가 없습니다.');
+        const endTarget = findByTarget(endMark) ?? target;
+        const endDesc = endTarget && editor
+          ? (nodeName ? findNodeDescByName(endTarget, editor, nodeName) : endTarget.pmViewDesc)
+          : undefined;
+        const from = desc?.posBefore;
+        const endPos = endDesc?.posBefore;
+        const endSize = endDesc?.node?.nodeSize;
+        if (!Number.isInteger(from) || !Number.isInteger(endPos) || !Number.isInteger(endSize)) {
+          throw new Error('편집기 교체 구간 위치를 찾을 수 없습니다.');
+        }
+        const replacement = view.state.schema.nodeFromJSON(adf);
+        view.dispatch(view.state.tr
+          .replaceWith(from as number, (endPos as number) + (endSize as number), replacement.content)
+          .scrollIntoView());
+        view.focus();
+        respond(requestId, true);
+        return;
+      }
 
       const selectionClass = Object.getPrototypeOf(view.state.selection.constructor) as {
         fromJSON(

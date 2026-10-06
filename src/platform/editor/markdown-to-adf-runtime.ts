@@ -30,6 +30,7 @@ import {
 } from './markdown-detection';
 import {
   readProseMirrorCodeBlockText,
+  replaceEditorRange,
   selectEditorNode,
   selectEditorRange,
 } from './bridge-client';
@@ -78,6 +79,21 @@ export interface ExtraPhaseResult {
 }
 
 /** 버튼을 붙일 편집기 하나. */
+/**
+ * 변환 결과를 편집기에 넣는 방법.
+ *
+ * | 방법 | 어떻게 | 쓰는 곳 |
+ * | --- | --- | --- |
+ * | `paste` (기본) | 블록을 선택하고 붙여넣기 이벤트를 보낸다. 문단 단계는 편집기 자체 Markdown 파서에 맡긴다 | Confluence · Jira 설명 |
+ * | `transaction` | 우리 변환기가 만든 ADF 로 브리지가 구간을 트랜잭션 교체한다 | Jira 댓글 |
+ *
+ * Jira 댓글 편집기는 우리가 보내는 붙여넣기를 받아 주지 않는다. HTML 은 버리고 평문 Markdown 은
+ * 목록만 해석한다. 스키마에는 제목·표·코드블럭이 다 있어서 트랜잭션으로는 들어간다(실측 2026-10-06).
+ *
+ * docs/plans/jira-comment-markdown-to-adf/context.md
+ */
+export type EditorInsertMode = 'paste' | 'transaction';
+
 export interface EditorTarget {
   /** 버튼을 넣을 편집기 툴바 */
   toolbar: HTMLElement;
@@ -88,6 +104,8 @@ export interface EditorTarget {
   container: HTMLElement;
   /** 바뀌면 그 툴바의 버튼을 다시 만든다 */
   key: string;
+  /** 결과를 넣는 방법. 기본은 `paste` */
+  insertMode?: EditorInsertMode;
 }
 
 /** 사이트가 채워 넣는 부분. 이것 말고는 두 사이트가 같다. */
@@ -305,6 +323,21 @@ export function hasEditorChanged(editor: HTMLElement, before: EditorSnapshot): b
 }
 
 /**
+ * 이 편집기의 실행 취소 버튼.
+ *
+ * **문서 전체에서 첫 번째 것을 잡으면 안 된다.** Jira는 설명과 댓글 편집기가 함께 열릴 수 있고
+ * 툴바마다 실행 취소가 있다. 엉뚱한 편집기의 실행 취소를 누르면 그쪽 내용이 날아간다. 편집기에서
+ * 위로 올라가며 실행 취소 버튼을 담은 가장 가까운 조상을 찾는다 — 그 편집기의 툴바다.
+ */
+export function findUndoButton(editor: HTMLElement): HTMLButtonElement | null {
+  for (let node = editor.parentElement; node; node = node.parentElement) {
+    const button = node.querySelector<HTMLButtonElement>(EDITOR_UNDO_BUTTON);
+    if (button) return button;
+  }
+  return null;
+}
+
+/**
  * 실행 취소를 눌러 되돌린다.
  *
  * 복원 판정에 `innerHTML` 완전 일치**만** 쓰면 안 된다. **CodeMirror가 자동 생성하는 스타일
@@ -320,7 +353,7 @@ export async function rollbackEditorChange(
   editor: HTMLElement,
   before: EditorSnapshot,
 ): Promise<boolean> {
-  const undoButton = editor.ownerDocument.querySelector<HTMLButtonElement>(EDITOR_UNDO_BUTTON);
+  const undoButton = findUndoButton(editor);
   if (!undoButton || undoButton.disabled) return false;
   undoButton.click();
   return waitForEditorChange(editor, () => (
@@ -438,9 +471,9 @@ export interface CodeBlockPhaseResult {
 async function replaceCodeBlockWithAdf(
   editor: HTMLElement,
   index: number,
-  html: string,
-  markdown: string,
+  payload: CodeBlockAdfPayload,
   siteName: string,
+  insertMode: EditorInsertMode,
 ): Promise<void> {
   /**
    * 순번으로 다시 찾는다.
@@ -456,7 +489,8 @@ async function replaceCodeBlockWithAdf(
   const beforeSource = readEditorCodeBlockText(codeBlock);
   const beforeNodeCount = countEditorNodes(editor);
 
-  await selectEditorNode(editor, codeBlock);
+  // 트랜잭션은 구간을 직접 지정하므로 선택하지 않는다.
+  if (insertMode === 'paste') await selectEditorNode(editor, codeBlock);
   const before = snapshotEditor(editor);
 
   /**
@@ -486,14 +520,14 @@ async function replaceCodeBlockWithAdf(
     || readEditorCodeBlockText(codeBlock) !== beforeSource
   );
 
+  const failureMessage = '코드블럭을 원래 위치의 ADF 내용으로 교체하지 못했습니다.';
   try {
-    await pasteAndWaitForChange(
-      editor,
-      html,
-      markdown,
-      didReplace,
-      '코드블럭을 원래 위치의 ADF 내용으로 교체하지 못했습니다.',
-    );
+    if (insertMode === 'transaction') {
+      await replaceEditorRange(editor, codeBlock, codeBlock, payload.adf, 'codeBlock');
+      if (!await waitForEditorChange(editor, didReplace)) throw new Error(failureMessage);
+    } else {
+      await pasteAndWaitForChange(editor, payload.html, payload.markdown, didReplace, failureMessage);
+    }
   } catch (error) {
     if (hasEditorChanged(editor, before) && !await rollbackEditorChange(editor, before)) {
       throw new Error(`코드블럭 -> ADF 결과가 올바르지 않고 자동 되돌리기도 실패했습니다. ${siteName} 실행 취소를 한 번 눌러주세요.`);
@@ -514,6 +548,7 @@ export async function runCodeBlockPhase(
     siteName: string;
     isProtected?: (editor: HTMLElement, codeBlock: HTMLElement) => boolean;
     protectedNotice?: string;
+    insertMode?: EditorInsertMode;
   },
 ): Promise<CodeBlockPhaseResult> {
   const isProtected = options.isProtected ?? (() => false);
@@ -547,7 +582,7 @@ export async function runCodeBlockPhase(
   const total = candidates.length;
   onProgress(0, total);
   for (const { index, payload } of candidates.reverse()) {
-    await replaceCodeBlockWithAdf(editor, index, payload.html, payload.markdown, options.siteName);
+    await replaceCodeBlockWithAdf(editor, index, payload, options.siteName, options.insertMode ?? 'paste');
     convertedCount += 1;
     onProgress(convertedCount, total);
   }
@@ -635,6 +670,7 @@ export async function runParagraphMarkdownPhase(
   editor: HTMLElement,
   onProgress: (done: number, total: number) => void,
   siteName: string,
+  insertMode: EditorInsertMode = 'paste',
 ): Promise<{ convertedRuns: number }> {
   const targets = collectParagraphRuns(editor).filter(
     (run) => findUnconvertedMarkdown(
@@ -665,7 +701,8 @@ export async function runParagraphMarkdownPhase(
       .map((line) => line.trim())
       .find((line) => /^ {0,3}#{1,6}[ \t]+\S/.test(line) || line.includes('|'));
 
-    await selectEditorRange(editor, first, last);
+    // 트랜잭션은 구간을 직접 지정하므로 선택하지 않는다.
+    if (insertMode === 'paste') await selectEditorRange(editor, first, last);
     const didReplace = (): boolean => {
       if (editor.innerHTML === before.html) return false;
       if (!signature) return true;
@@ -673,13 +710,19 @@ export async function runParagraphMarkdownPhase(
         .some((paragraph) => (paragraph.textContent ?? '').trim() === signature);
     };
 
+    const failureMessage = '문단으로 남은 Markdown을 원래 위치에서 교체하지 못했습니다.';
     try {
-      await pastePlainTextAndWaitForChange(
-        editor,
-        run.markdown,
-        didReplace,
-        '문단으로 남은 Markdown을 원래 위치에서 교체하지 못했습니다.',
-      );
+      if (insertMode === 'transaction') {
+        /*
+         * 편집기 파서에 맡길 수 없는 편집기(Jira 댓글)다. 우리 변환기로 ADF 를 만들어 넣는다.
+         * 물결표 하나(`1~3`)는 변환기가 취소선으로 만들지 않는다 — `markdown-to-adf.ts` 의 `del`.
+         */
+        const convert = await loadCodeBlockConverter();
+        await replaceEditorRange(editor, first, last, convert(run.markdown).adf);
+        if (!await waitForEditorChange(editor, didReplace)) throw new Error(failureMessage);
+      } else {
+        await pastePlainTextAndWaitForChange(editor, run.markdown, didReplace, failureMessage);
+      }
     } catch (error) {
       // 붙여넣기가 아무것도 바꾸지 않았으면 되돌릴 것도 없다. 이유는 `hasEditorChanged()` 에 있다.
       if (hasEditorChanged(editor, before) && !await rollbackEditorChange(editor, before)) {
@@ -722,12 +765,9 @@ export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite):
     hosts = [];
   }
 
-  function createButtonHost(
-    context: PageContext,
-    toolbar: HTMLElement,
-    container: HTMLElement,
-    key: string,
-  ): HTMLSpanElement | null {
+  function createButtonHost(context: PageContext, target: EditorTarget): HTMLSpanElement | null {
+    const { toolbar, container, key } = target;
+    const insertMode = target.insertMode ?? 'paste';
     const nextHost = context.document.createElement('span');
     nextHost.setAttribute(FEATURE_ROOT_ATTRIBUTE, site.rootAttributeValue);
     nextHost.dataset.targetKey = key;
@@ -822,6 +862,7 @@ export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite):
               siteName: site.siteName,
               isProtected: site.isProtectedCodeBlock,
               protectedNotice: site.extraPhase ? 'Mermaid 컴포넌트 원본은 보호됩니다.' : undefined,
+              insertMode,
             },
           );
           unwrapped = result.convertedCount;
@@ -839,7 +880,7 @@ export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite):
         const paragraphPhase = await runParagraphMarkdownPhase(editor, (done, total) => {
           paragraphRuns = done;
           markdownLabel.textContent = `문단 Markdown ${done}/${total}`;
-        }, site.siteName);
+        }, site.siteName, insertMode);
         paragraphRuns = paragraphPhase.convertedRuns;
         if (paragraphRuns > 0) editor = getEditor();
 
@@ -930,7 +971,7 @@ export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite):
         const existing = hosts.find((host) => host.isConnected
           && host.dataset.targetKey === target.key
           && host.parentElement === target.toolbar);
-        const host = existing ?? createButtonHost(context, target.toolbar, target.container, target.key);
+        const host = existing ?? createButtonHost(context, target);
         if (host) next.push(host);
       }
 

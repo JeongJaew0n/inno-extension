@@ -77,7 +77,8 @@ function resolveCommentTargets(document: Document, issueKey: string): EditorTarg
     const toolbar = container.querySelector<HTMLElement>(EDITOR_PRIMARY_TOOLBAR);
     if (!toolbar) continue;
 
-    targets.push({ toolbar, container, key: `${issueKey}:comment` });
+    // 댓글 편집기는 우리가 보내는 붙여넣기를 받아 주지 않는다. 트랜잭션으로 넣는다(실측 2026-10-06).
+    targets.push({ toolbar, container, key: `${issueKey}:comment`, insertMode: 'transaction' });
   }
 
   return targets;
