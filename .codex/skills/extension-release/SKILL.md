@@ -1,6 +1,6 @@
 ---
 name: extension-release
-description: Inno Extension의 다음 Semantic Version을 결정하고 버전 동기화, 검증, ZIP 패키징, release commit, annotated tag, develop push, GitHub Release 자산 업로드와 공개 발행까지 수행한다. 이 저장소에서 사용자가 릴리즈, 배포 버전 생성, 버전 올리기, 태그·GitHub Release 발행, pre-release를 요청할 때 사용한다.
+description: Inno Extension의 다음 Semantic Version을 결정하고 버전 동기화, 검증, ZIP 패키징, release commit, annotated tag, develop push, main fast-forward, GitHub Release 자산 업로드와 공개 발행까지 수행한다. 이 저장소에서 사용자가 릴리즈, 배포 버전 생성, 버전 올리기, 태그·GitHub Release 발행, pre-release를 요청할 때 사용한다.
 ---
 
 # Extension Release
@@ -9,8 +9,9 @@ Inno Extension의 재현 가능하고 검증된 릴리즈를 만든다. 상세 �
 
 ## 핵심 계약
 
-- 기본 릴리즈 브랜치는 `develop`이다.
-- `main` 병합은 릴리즈 범위에 포함하지 않는다. 사용자가 명시적으로 요청한 경우에만 별도로 수행한다.
+- 기본 릴리즈 브랜치는 `develop`이다. 릴리즈 commit 은 `develop`에서 만든다.
+- **`main`을 릴리즈 commit으로 fast-forward 하는 것까지가 릴리즈다.** `main`은 항상 최신 릴리즈 태그를 가리킨다. `main`에 직접 commit 하지 않고, merge commit 도 만들지 않는다.
+- fast-forward 가 불가능하면(원격 `main`이 릴리즈 commit의 조상이 아니면) 중단하고 상태를 보고한다. 강제로 맞추지 않는다.
 - 이미 공개된 버전, 태그, ZIP은 수정하거나 재사용하지 않는다. 변경이 필요하면 새 버전을 발행한다.
 - force push, 기존 태그 이동, 기존 Release 자산 덮어쓰기를 하지 않는다.
 - 테스트, 빌드, ZIP 무결성, 업로드 중 하나라도 실패하면 공개 발행하지 않는다.
@@ -25,6 +26,7 @@ Inno Extension의 재현 가능하고 검증된 릴리즈를 만든다. 상세 �
 ```bash
 git status --short --branch
 git branch -vv
+git merge-base --is-ancestor origin/main HEAD && echo main-ff-ok
 git tag --sort=-v:refname
 git log --oneline --decorate <latest-tag>..HEAD
 git diff --stat <latest-tag>..HEAD
@@ -38,6 +40,7 @@ gh auth status --hostname github.com
 - 최신 태그 이후 변경 중 가장 영향도가 큰 항목으로 버전을 결정한다.
 - `gh`가 GitHub.com에 인증되어 있는지 확인하고, 인증되지 않았다면 로그인된 Chrome과 Computer Use 사용 가능 여부를 미리 확인한다.
 - `gh` 인증 실패는 엔터프라이즈 호스트 상태와 섞지 않는다. 반드시 `--hostname github.com`으로 확인한다.
+- 원격 `main`이 `HEAD`의 조상인지 확인한다(`main-ff-ok`). 아니면 버전을 올리기 전에 멈추고 보고한다.
 
 ## 2. 버전 결정
 
@@ -108,7 +111,16 @@ git push git@github.com:JeongJaew0n/inno-extension.git develop
 git push git@github.com:JeongJaew0n/inno-extension.git v<version>
 ```
 
-푸시 후 `git ls-remote`로 원격 branch와 tag를 검증한다.
+그다음 `main`을 릴리즈 commit으로 fast-forward 한다. 로컬 `main`을 checkout 하지 않고 원격에 직접 올린 뒤 로컬을 맞춘다.
+
+```bash
+git push origin "$(git rev-parse v<version>^{commit})":refs/heads/main   # fast-forward 가 아니면 서버가 거부한다
+git fetch origin && git branch -f main origin/main
+```
+
+`--force`를 쓰지 않는다. 거부되면 중단하고 상태를 보고한다.
+
+푸시 후 `git ls-remote`로 원격 `develop`, `main`, tag를 검증한다. 셋이 같은 릴리즈 commit을 가리켜야 한다.
 
 ## 6. GitHub Release 발행
 
@@ -164,8 +176,9 @@ commit과 tag push는 끝났지만 GitHub Release가 발행되지 않았다면 �
 - `package.json`, `package-lock.json`, `manifest.json` 버전
 - release commit과 annotated tag target
 - 원격 `develop` commit
+- 원격 `main` commit (release commit과 같아야 한다)
 - GitHub Release tag
 - 첨부 ZIP 파일명
 - 릴리즈 노트 SHA-256과 로컬 ZIP SHA-256
 
-최종 보고에는 버전, commit, tag, 공개 Release URL, ZIP URL, SHA-256, 테스트 결과를 포함한다. 실패한 인증 경로가 있었더라도 안전한 fallback으로 완료했다면 한 줄로 원인을 남긴다.
+최종 보고에는 버전, commit, tag, `main` 반영 여부, 공개 Release URL, ZIP URL, SHA-256, 테스트 결과를 포함한다. 실패한 인증 경로가 있었더라도 안전한 fallback으로 완료했다면 한 줄로 원인을 남긴다.
