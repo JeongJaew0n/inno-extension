@@ -224,8 +224,20 @@ class Converter {
         return this.withMark(this.renderInline((token as Tokens.Strong).tokens), { type: 'strong' });
       case 'em':
         return this.withMark(this.renderInline((token as Tokens.Em).tokens), { type: 'em' });
-      case 'del':
-        return this.withMark(this.renderInline((token as Tokens.Del).tokens), { type: 'strike' });
+      case 'del': {
+        const del = token as Tokens.Del;
+        /*
+         * **물결표 두 개만 취소선이다.** `marked` 는 하나짜리도 취소선으로 읽어 `1~3장 ... 4~5장` 의
+         * 범위 표기에서 `~` 를 지우고 사이를 긋는다. 편집기 파서는 `~~` 만 인정한다. 하나짜리는
+         * 글자를 그대로 돌려놓는다.
+         *
+         * docs/troubleshootings/reusable/2026-09-04-tilde-range-becomes-strikethrough.md
+         */
+        if (!del.raw.startsWith('~~')) {
+          return [{ type: 'text', text: '~' }, ...this.renderInline(del.tokens), { type: 'text', text: '~' }];
+        }
+        return this.withMark(this.renderInline(del.tokens), { type: 'strike' });
+      }
       case 'codespan':
         return [{ type: 'text', text: (token as Tokens.Codespan).text, marks: [{ type: 'code' }] }];
       case 'br':

@@ -48,7 +48,7 @@ import {
   escapeMarkdownText,
   isRedundantHeaderOnlyTable,
 } from '../src/platform/editor/renderer-to-markdown';
-import { adfToMarkdown } from '../src/platform/adf';
+import { adfToMarkdown, markdownToAdf } from '../src/platform/adf';
 import {
   closedSprintsNewestFirst,
   groupIssuesByAssignee,
@@ -3104,4 +3104,13 @@ test('설명·댓글 Markdown 변환은 기능 ID 를 바꾸지 않는다', () =
   const feature = findFeatureDescriptor('jira', 'editorMarkdownToAdf');
   assert.equal(feature.name, '설명·댓글 Markdown 변환');
   assert.match(feature.description, /댓글/);
+});
+
+test('물결표 하나는 취소선이 아니라 글자다', () => {
+  const { doc } = markdownToAdf('1~3장 그리고 4~5장, ~~진짜 취소~~');
+  const nodes = doc.content[0].content ?? [];
+  const struck = nodes.filter((node) => node.marks?.some((mark) => mark.type === 'strike')).map((node) => node.text);
+  assert.deepEqual(struck, ['진짜 취소']);
+  // 범위 표기의 물결표와 그 사이 글자가 그대로 남는다
+  assert.equal(nodes.map((node) => node.text ?? '').join(''), '1~3장 그리고 4~5장, 진짜 취소');
 });
