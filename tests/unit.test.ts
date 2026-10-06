@@ -3063,3 +3063,45 @@ test('날짜 단축은 달을 옮길 때마다 직전 달과 비교해 기다린
   assert.doesNotMatch(source, /monthDistance\(now, target\) !== steps/);
   assert.match(source, /!isSameMonth\(now, before\)/);
 });
+
+/* ============================================================
+ * Jira 댓글 Markdown 변환(2026-10-06)
+ * ============================================================ */
+
+test('Markdown 변환 공용 런타임은 편집기마다 버튼을 하나씩 맞춘다', async () => {
+  const source = await readFile('src/platform/editor/markdown-to-adf-runtime.ts', 'utf8');
+  // 대상이 하나라고 가정하지 않는다
+  assert.match(source, /resolveTargets\(context: PageContext\): EditorTarget\[\]/);
+  assert.doesNotMatch(source, /resolveTarget\(context/);
+  const reconcile = source.slice(source.indexOf('reconcile(context: PageContext): void {'));
+  // 이미 그 툴바에 같은 key 로 붙은 버튼은 다시 만들지 않는다 — 진행 중인 변환 라벨이 거기 있다
+  assert.match(reconcile, /host\.parentElement === target\.toolbar/);
+  assert.match(reconcile, /if \(!next\.includes\(host\)\) host\.remove\(\)/);
+});
+
+test('Jira 댓글 편집기는 그 편집기의 컨테이너 안에서만 툴바를 찾는다', async () => {
+  const source = await readFile('src/sites/jira/features/editorMarkdownToAdf/runtime.ts', 'utf8');
+  const fn = source.slice(source.indexOf('function resolveCommentTargets'), source.indexOf('export function'));
+  // 새 댓글 칸과 기존 댓글 목록 안의 편집기만
+  assert.match(fn, /editor\.closest\(`\$\{COMMENT_COMPOSER\}, \$\{COMMENT_LIST\}`\)/);
+  // 설명은 따로 다룬다. 겹쳐 붙이지 않는다
+  assert.match(fn, /if \(editor\.closest\(DESCRIPTION_EDITOR_CONTAINER\)\) continue/);
+  // 편집기 하나를 담는 컨테이너 안에서 툴바를 찾는다. 짝이 불확실하면 붙이지 않는다
+  assert.match(fn, /editor\.closest<HTMLElement>\(ISSUE_EDITOR\)/);
+  assert.match(fn, /querySelectorAll\(EDITOR_PROSEMIRROR\)\.length !== 1/);
+  assert.match(fn, /container\.querySelector<HTMLElement>\(EDITOR_PRIMARY_TOOLBAR\)/);
+  assert.doesNotMatch(fn, /document\.querySelector<HTMLElement>\(EDITOR_PRIMARY_TOOLBAR\)/);
+  // 저장은 누르지 않는다
+  assert.doesNotMatch(source, /comment-save-button|\.click\(\)/);
+
+  const selectors = await readFile('src/sites/jira/selectors.ts', 'utf8');
+  assert.match(selectors, /ISSUE_EDITOR = '\[data-testid="issue\.component\.editor\.default-editor"\]'/);
+  assert.match(selectors, /COMMENT_COMPOSER = '\[data-testid="issue\.activity\.comment"\]'/);
+  assert.match(selectors, /COMMENT_LIST = '\[data-testid="issue\.activity\.comments-list"\]'/);
+});
+
+test('설명·댓글 Markdown 변환은 기능 ID 를 바꾸지 않는다', () => {
+  const feature = findFeatureDescriptor('jira', 'editorMarkdownToAdf');
+  assert.equal(feature.name, '설명·댓글 Markdown 변환');
+  assert.match(feature.description, /댓글/);
+});

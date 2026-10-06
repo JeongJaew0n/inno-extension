@@ -17,6 +17,16 @@ const EDITOR = `<div data-testid="issue.views.field.rich-text.editor-container">
   <div class="ProseMirror" contenteditable="true" role="textbox" style="min-height:60px;padding:8px">목표 문단</div>
   <div style="display:flex;gap:8px;margin-top:8px"><button data-testid="comment-save-button" id="native-save">저장</button><button data-testid="comment-cancel-button" id="native-cancel">취소</button></div>
 </div>`;
+// 댓글 편집기. 실측(2026-10-06, NPT-316): 편집기 하나와 툴바·저장/취소가 `default-editor` 안에 함께 있다.
+// 저장·취소의 testid 는 설명 편집과 같은 `comment-*` 다. 우리 기능이 이걸 누르면 안 된다.
+const COMMENT_EDITOR = (who) => `<div data-testid="issue.component.editor.default-editor" data-comment-editor="${who}">
+  <div data-testid="editor-primary-toolbar" style="display:flex;gap:6px;align-items:center;border-bottom:1px solid #ddd;padding:4px"><button>B</button><button>I</button></div>
+  <div class="ProseMirror" contenteditable="true" role="textbox" style="min-height:40px;padding:8px">${who} 댓글 초안</div>
+  <div style="display:flex;gap:8px;margin-top:8px"><button data-testid="comment-save-button" data-comment-save="${who}">저장</button><button data-testid="comment-cancel-button" data-comment-cancel="${who}">취소</button></div>
+</div>`;
+const COMMENT_PLACEHOLDER = '<button id="comment-open" style="width:100%;text-align:left">댓글 추가...</button>';
+const EXISTING_COMMENT = '<div class="ak-renderer-document"><p>댓글 본문은 복사되면 안 된다</p></div><button id="comment-edit">편집</button>';
+
 // 실제 Jira 처럼 설명 필드 안에 **화면에 안 보이는 편집 버튼**이 있다. 라벨 끝이 `edit` 다(실측 2026-10-01).
 // 설명이 비면 렌더러 대신 그 버튼과 `설명 편집` 자리표시만 있다.
 const HIDDEN_EDIT = (label) => `<button aria-label="${label}, edit" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden"></button>`;
@@ -33,12 +43,17 @@ const issuePage = (key, read) => doc(`[${key}] Jira`, `
   <h1 data-testid="issue.views.issue-base.foundation.summary.heading">[공통] 사내 Gitlab CI 연계 분석</h1>
   <div data-testid="issue.views.issue-base.common.description.label"><div style="display:flex;align-items:center;gap:8px;justify-content:space-between"><h2 style="margin:0">설명</h2></div></div>
   <div id="desc-slot">${read}</div>
-  <section id="comments"><h3>댓글</h3><div class="ak-renderer-document"><p>댓글 본문은 복사되면 안 된다</p></div></section>
+  <section id="comments"><h3>댓글</h3>
+    <div data-testid="issue.activity.comment" id="composer-slot">${COMMENT_PLACEHOLDER}</div>
+    <div data-testid="issue.activity.comments-list"><div data-testid="issue-comment-base.ui.comment.ak-comment.10001" id="existing-slot">${EXISTING_COMMENT}</div></div>
+  </section>
 </main></div>
 <script>
   // Jira(React) 흉내: 루트에 위임된 click 이 설명을 편집 상태로 바꾼다
-  window.__editCount = 0; window.__saved = 0;
+  window.__editCount = 0; window.__saved = 0; window.__commentSaved = 0;
   const READ = ${JSON.stringify(read)}, EDITOR = ${JSON.stringify(EDITOR)};
+  const COMMENT = { composer: [${JSON.stringify(COMMENT_PLACEHOLDER)}, ${JSON.stringify(COMMENT_EDITOR('composer'))}], existing: [${JSON.stringify(EXISTING_COMMENT)}, ${JSON.stringify(COMMENT_EDITOR('existing'))}] };
+  const commentSlot = (who) => document.getElementById(who === 'composer' ? 'composer-slot' : 'existing-slot');
   const slot = document.getElementById('desc-slot');
   // 실제 Jira 처럼 **앞선 mousedown 이 있어야** 클릭을 편집으로 받는다. click() 만 보내면 안 열린다(실측)
   let downInField = false;
@@ -46,6 +61,16 @@ const issuePage = (key, read) => doc(`[${key}] Jira`, `
     downInField = !!e.target.closest('[data-testid="issue.views.field.rich-text.description"] [data-edit-area]');
   });
   document.getElementById('jira-root').addEventListener('click', (e) => {
+    // 댓글: 열기 · 편집 · 저장 · 취소
+    if (e.target.closest('#comment-open')) { commentSlot('composer').innerHTML = COMMENT.composer[1]; return; }
+    if (e.target.closest('#comment-edit')) { commentSlot('existing').innerHTML = COMMENT.existing[1]; return; }
+    const commentDone = e.target.closest('[data-comment-save], [data-comment-cancel]');
+    if (commentDone) {
+      const who = commentDone.dataset.commentSave ?? commentDone.dataset.commentCancel;
+      if (commentDone.dataset.commentSave) window.__commentSaved++;
+      commentSlot(who).innerHTML = COMMENT[who][0];
+      return;
+    }
     if (e.target.closest('#native-cancel')) { slot.innerHTML = READ; return; }
     if (e.target.closest('#native-save')) { window.__saved++; slot.innerHTML = READ; return; }
     // Jira 자체 편집 버튼 — click() 한 번으로 편집이 열린다(실측). mousedown 은 필요 없다

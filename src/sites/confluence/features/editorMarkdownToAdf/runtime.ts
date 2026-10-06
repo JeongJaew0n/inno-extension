@@ -22,15 +22,16 @@ export function createEditorMarkdownToAdfRuntimeForConfluence(): FeatureRuntime 
     rootAttributeValue: EDITOR_MARKDOWN_TO_ADF_ROOT,
     siteName: 'Confluence',
 
-    resolveTarget(context: PageContext) {
+    // Confluence 편집 화면에는 편집기가 하나다. 대상은 0개 또는 1개다.
+    resolveTargets(context: PageContext) {
       const route = parseConfluenceEditPageUrl(context.url);
-      if (!route) return null;
+      if (!route) return [];
 
       const toolbar = context.document.querySelector<HTMLElement>(EDITOR_PRIMARY_TOOLBAR);
       const container = context.document.querySelector<HTMLElement>(EDITOR_WRAPPER);
-      if (!toolbar || !container) return null;
+      if (!toolbar || !container) return [];
 
-      return { toolbar, container, key: route.pageId };
+      return [{ toolbar, container, key: route.pageId }];
     },
 
     isProtectedCodeBlock: hasValidMermaidPair,

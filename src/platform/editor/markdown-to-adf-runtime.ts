@@ -77,6 +77,19 @@ export interface ExtraPhaseResult {
   notices?: string[];
 }
 
+/** 버튼을 붙일 편집기 하나. */
+export interface EditorTarget {
+  /** 버튼을 넣을 편집기 툴바 */
+  toolbar: HTMLElement;
+  /**
+   * 편집기를 담은 안정적인 조상. 단계마다 본문을 다시 잡을 때 이 안에서 찾는다.
+   * **Jira는 한 화면에 편집기가 여럿(설명·댓글)이라 문서 전체에서 찾으면 안 된다.**
+   */
+  container: HTMLElement;
+  /** 바뀌면 그 툴바의 버튼을 다시 만든다 */
+  key: string;
+}
+
 /** 사이트가 채워 넣는 부분. 이것 말고는 두 사이트가 같다. */
 export interface EditorMarkdownToAdfSite {
   featureId: FeatureId;
@@ -85,14 +98,12 @@ export interface EditorMarkdownToAdfSite {
   /** 사용자에게 보여줄 사이트 이름. 되돌리기 안내 문구에 쓴다 */
   siteName: string;
   /**
-   * 이 화면이 대상인지 판정한다.
+   * 지금 화면에서 버튼을 붙일 편집기들. 없으면 빈 목록이다.
    *
-   * `container`는 편집기를 담은 안정적인 조상이다. 단계마다 본문을 다시 잡을 때 이 안에서
-   * 찾는다. **Jira는 한 화면에 편집기가 여럿(설명·댓글)이라 문서 전체에서 찾으면 안 된다.**
-   *
-   * `key`가 바뀌면 버튼을 다시 만든다.
+   * **편집기마다 버튼이 하나씩 붙는다.** Jira는 설명과 여러 댓글 편집기가 동시에 열릴 수 있다.
+   * 같은 툴바가 두 번 나오면 첫 번째만 쓴다.
    */
-  resolveTarget(context: PageContext): { toolbar: HTMLElement; container: HTMLElement; key: string } | null;
+  resolveTargets(context: PageContext): EditorTarget[];
   /**
    * 툴바 안에서 버튼이 놓일 자리.
    *
@@ -700,14 +711,15 @@ export function describeConversionResult(
 }
 
 export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite): FeatureRuntime {
-  let host: HTMLSpanElement | null = null;
+  /** 편집기 툴바마다 하나씩 붙인 버튼 */
+  let hosts: HTMLSpanElement[] = [];
   const feedbackTimers = new Set<number>();
 
   function dispose(): void {
     feedbackTimers.forEach((timer) => window.clearTimeout(timer));
     feedbackTimers.clear();
-    host?.remove();
-    host = null;
+    hosts.forEach((host) => host.remove());
+    hosts = [];
   }
 
   function createButtonHost(
@@ -896,21 +908,37 @@ export function createEditorMarkdownToAdfRuntime(site: EditorMarkdownToAdfSite):
   return {
     id: site.featureId,
 
+    /**
+     * 열린 편집기마다 버튼을 하나씩 맞춘다.
+     *
+     * 이미 그 툴바에 같은 `key` 로 붙어 있는 버튼은 그대로 둔다. 진행 중인 변환의 라벨과 상태가
+     * 버튼에 있으므로, 다른 편집기가 열리고 닫힐 때 멀쩡한 버튼을 다시 만들면 안 된다.
+     */
     reconcile(context: PageContext): void {
-      const target = site.resolveTarget(context);
-      if (!target) {
+      const targets = site.resolveTargets(context);
+      if (targets.length === 0) {
         dispose();
         return;
       }
 
-      if (host?.isConnected
-        && host.dataset.targetKey === target.key
-        && host.parentElement === target.toolbar) {
-        return;
+      const next: HTMLSpanElement[] = [];
+      const seenToolbars = new Set<HTMLElement>();
+      for (const target of targets) {
+        if (seenToolbars.has(target.toolbar)) continue;
+        seenToolbars.add(target.toolbar);
+
+        const existing = hosts.find((host) => host.isConnected
+          && host.dataset.targetKey === target.key
+          && host.parentElement === target.toolbar);
+        const host = existing ?? createButtonHost(context, target.toolbar, target.container, target.key);
+        if (host) next.push(host);
       }
 
-      dispose();
-      host = createButtonHost(context, target.toolbar, target.container, target.key);
+      // 닫힌 편집기나 key 가 바뀐 편집기의 버튼을 걷는다.
+      for (const host of hosts) {
+        if (!next.includes(host)) host.remove();
+      }
+      hosts = next;
     },
 
     dispose,

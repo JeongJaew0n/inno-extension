@@ -55,7 +55,7 @@ export const BACKLOG_SLASH_TEMPLATE_ROOT = 'jira-backlog-slash-template';
 export const BACKLOG_SUMMARY_INPUT = 'input[aria-label="Work item summary"]';
 export const BACKLOG_CARD_LIST_CONTAINER = '[data-testid^="software-backlog.card-list.container"]';
 
-/** 설명 Markdown 변환 기능. */
+/** 설명·댓글 Markdown 변환 기능. */
 export const EDITOR_MARKDOWN_TO_ADF_ROOT = 'jira-editor-markdown-to-adf';
 
 /**
@@ -75,6 +75,25 @@ export const EDITOR_MARKDOWN_TO_ADF_ROOT = 'jira-editor-markdown-to-adf';
  */
 export const DESCRIPTION_EDITOR_CONTAINER =
   '[data-testid="issue.views.field.rich-text.editor-container"]';
+
+/**
+ * 편집기 **하나**와 그 툴바·저장/취소를 함께 담는 조상.
+ *
+ * 설명 편집기와 댓글 편집기 모두 이 요소 아래에 편집기가 하나씩 있다. 편집기 단위로 툴바와
+ * 짝을 지을 때 쓴다(실측 2026-10-06, NPT-316 새 댓글 칸).
+ *
+ * docs/plans/jira-comment-markdown-to-adf/context.md
+ */
+export const ISSUE_EDITOR = '[data-testid="issue.component.editor.default-editor"]';
+
+/** 새 댓글 작성 칸. 화면에 하나다 */
+export const COMMENT_COMPOSER = '[data-testid="issue.activity.comment"]';
+
+/**
+ * 기존 댓글 목록. 댓글마다 `issue-comment-base.ui.comment.ak-comment.<id>` 로 감싸져 있다.
+ * 기존 댓글을 **편집**할 때 뜨는 편집기도 이 안에 있을 것으로 본다 — 직접 열어 보지는 못했다.
+ */
+export const COMMENT_LIST = '[data-testid="issue.activity.comments-list"]';
 
 /** 설명 Markdown 복사 기능. */
 export const DESCRIPTION_MARKDOWN_COPY_ROOT = 'jira-description-markdown-copy';

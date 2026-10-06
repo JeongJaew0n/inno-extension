@@ -165,6 +165,29 @@ const suites = {
     const rowGap = await p.ev(`getComputedStyle(${sroot('jira-description-edit-actions')}.shadowRoot.querySelector('.row')).display`);
     // 부모 호스트가 flex 라 inline-flex 가 flex 로 블록화된다. 둘 다 규칙이 먹은 것이다
     R.check('Jira 업무', '저장·취소 줄 배치 규칙이 먹음', rowGap === 'inline-flex' || rowGap === 'flex', rowGap);
+
+    // 댓글 편집기 — 설명을 편집하는 중에 새 댓글 칸과 기존 댓글 편집을 함께 연다. 편집기마다 버튼이 하나씩 붙는다
+    const convIn = (sel) => p.ev(`[...document.querySelectorAll('${sel} [data-testid="editor-primary-toolbar"]')].map(t => t.querySelectorAll(':scope > [data-inno-extension-feature="jira-editor-markdown-to-adf"]').length)`);
+    await p.clickEl(`document.getElementById('comment-open')`);
+    await wait(600);
+    R.check('Jira 업무', '댓글 칸 열림 — 설명·댓글 편집기에 Markdown 변환 버튼 하나씩', await hosts(p, 'jira-editor-markdown-to-adf') === 2, `${await hosts(p, 'jira-editor-markdown-to-adf')}개`);
+    R.check('Jira 업무', '댓글 칸 버튼은 댓글 툴바 안', (await convIn('[data-comment-editor="composer"]')).join() === '1', '');
+    R.check('Jira 업무', '설명 버튼은 설명 툴바에 그대로 하나', (await convIn('[data-testid="issue.views.field.rich-text.editor-container"]')).join() === '1', '');
+    await p.clickEl(`document.getElementById('comment-edit')`);
+    await wait(600);
+    R.check('Jira 업무', '기존 댓글 편집까지 열림 — 버튼 3개', await hosts(p, 'jira-editor-markdown-to-adf') === 3, `${await hosts(p, 'jira-editor-markdown-to-adf')}개`);
+    R.check('Jira 업무', '기존 댓글 버튼은 그 댓글 툴바 안', (await convIn('[data-comment-editor="existing"]')).join() === '1', '');
+    const composerConv = `document.querySelector('[data-comment-editor="composer"] [data-inno-extension-feature="jira-editor-markdown-to-adf"]').shadowRoot.querySelector('button')`;
+    await p.clickEl(composerConv);
+    await wait(400);
+    const commentLabel = await p.ev(`${composerConv}.textContent.trim().replace(/\\s+/g, ' ')`);
+    R.check('Jira 업무', '댓글 Markdown 변환 — 그 댓글 본문만 보고 끝남', commentLabel === '변환할 내용이 없습니다', commentLabel);
+    R.check('Jira 업무', '댓글 Markdown 변환 — 댓글을 저장하지 않는다', await p.ev('__commentSaved') === 0, `saved=${await p.ev('__commentSaved')}`);
+    await p.shot(`${SP}/jira-edit-comments.png`);
+    for (const who of ['composer', 'existing']) await p.clickEl(`document.querySelector('[data-comment-cancel="${who}"]')`);
+    await wait(600);
+    R.check('Jira 업무', '댓글 편집기를 닫으면 그 버튼만 사라진다', await hosts(p, 'jira-editor-markdown-to-adf') === 1, `${await hosts(p, 'jira-editor-markdown-to-adf')}개`);
+    R.check('Jira 업무', '댓글 취소 중 설명 편집은 그대로', await p.ev(`!!document.querySelector('[data-testid="issue.views.field.rich-text.editor-container"]')`), '');
     await p.shot(`${SP}/jira-edit.png`);
     await p.clickEl(`${sroot('jira-description-edit-actions')}.shadowRoot.querySelector('[data-action="cancel"]')`);
     await wait(600);
