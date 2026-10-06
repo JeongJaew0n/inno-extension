@@ -35,7 +35,7 @@ Chrome 웹 스토어에는 없습니다. 릴리즈 ZIP 을 받아 **압축해제
 3. `chrome://extensions` → 오른쪽 위 **개발자 모드** 켜기 → **압축해제된 확장 프로그램을 로드합니다** → 방금 푼 폴더 선택.
 4. 이미 열려 있던 사내 사이트 탭은 새로고침합니다.
 
-현재 버전: [v0.15.1](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.15.1)
+현재 버전: [v0.16.0](https://github.com/JeongJaew0n/inno-extension/releases/tag/v0.16.0)
 
 ### 업데이트
 
