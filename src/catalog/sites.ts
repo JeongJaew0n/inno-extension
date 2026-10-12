@@ -132,10 +132,12 @@ export const SITES = [
       {
         id: 'descriptionMarkdownCopy',
         name: '설명 Markdown 복사',
-        description: '업무 설명 본문을 제목·표·목록·링크까지 Markdown으로 바꿔 복사합니다.',
+        description: '업무 설명 본문을 제목·표·목록·링크까지 Markdown으로 바꿔 복사합니다. 첨부 이미지는 복사할 때 받아 Markdown 안에 함께 넣습니다.',
         routeSummary: 'Jira 업무 설명 읽기 화면',
         defaultEnabled: true,
         hasDetails: false,
+        // 첨부 이미지를 받는다. 누를 때만, GET 만, 쿠키 없이 media-cdn.atlassian.com 에서(2026-10-12 허용).
+        usesNetwork: true,
       },
     ],
   },

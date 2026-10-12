@@ -121,11 +121,14 @@ const suites = {
   },
 
   async jiraIssue() {
-    const p = await b.newPage('jira-issue', (url) => {
+    const issueMap = (url) => {
       const path = new URL(url).pathname;
       if (path === '/browse/NPT-170') return site.jiraIssueEmpty;
       return path.startsWith('/browse/') ? site.jiraIssue : null;
-    });
+    };
+    // 첨부 이미지(다른 오리진 미디어 서버)는 작은 PNG 로 답한다
+    issueMap.binary = site.mediaBinary;
+    const p = await b.newPage('jira-issue', issueMap);
     await p.goto('https://pms-innogrid.atlassian.net/browse/NPT-143', 3000);
     for (const [root, n] of [['jira-issue-link-copy', 1], ['jira-description-markdown-copy', 1], ['jira-description-edit-lock', 1]]) {
       const c = await hosts(p, root);
@@ -137,9 +140,15 @@ const suites = {
     R.check('Jira 업무', '클릭 편집 방지가 Markdown 복사에 붙어 있음(줄 가운데로 뜨지 않음)', gapPx >= 0 && gapPx <= 16, `${gapPx}px`);
 
     await p.clickEl(`${sroot('jira-description-markdown-copy')}.shadowRoot.querySelector('button')`);
+    // 첨부 이미지를 받은 뒤에 복사한다. 클립보드를 너무 일찍 읽지 않게 기다린다
+    await wait(800);
+    const copyLabel = await p.ev(`${sroot('jira-description-markdown-copy')}.shadowRoot.querySelector('[data-copy-label]').textContent`);
+    R.check('Jira 업무', '설명 Markdown 복사 — 라벨에 넣은 이미지 수', copyLabel === '복사됨 · 이미지 1/1', copyLabel);
     const md = await p.clipboard();
     R.check('Jira 업무', '설명 Markdown 복사 — 제목·표·링크', md.includes('## 목표') && md.includes('| 이름 | 값 |') && md.includes('[설계 문서](https://example.com/doc)'), md.replace(/\n/g, '⏎').slice(0, 120));
     R.check('Jira 업무', '설명 Markdown 복사 — 댓글 제외', !md.includes('댓글 본문'), '');
+    R.check('Jira 업무', '설명 Markdown 복사 — 첨부 이미지가 data URI 로', md.includes(`![shot.png](data:image/png;base64,${site.MEDIA_IMAGE_PNG})`), md.match(/!\[[^\]]*\]\([^)]{0,60}/)?.[0] ?? '이미지 없음');
+    R.check('Jira 업무', '설명 Markdown 복사 — 토큰 붙은 주소는 남지 않는다', !md.includes('media-cdn.atlassian.com'), '');
 
     await p.clickEl(`${sroot('jira-issue-link-copy')}.shadowRoot.querySelectorAll('button')[1]`);
     const link = await p.clipboard();
@@ -336,6 +345,8 @@ const suites = {
       if (/\/wiki\/spaces\/[^/]+\/pages\/\d+/.test(u.pathname)) return site.confluencePage;
       return null;
     };
+    // 본문 대역이 Jira 와 같은 렌더러라 첨부 이미지가 들어 있다
+    map.binary = site.mediaBinary;
     const p = await b.newPage('confluence', map);
     await p.goto('https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/pages/2177630217/DevOpsit+CCP', 3000);
     const c = await hosts(p, 'confluence-page-markdown-copy');

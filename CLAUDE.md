@@ -51,7 +51,7 @@ Chrome MV3 확장이다. 사용자용 설명은 `README.md`, 기능별 행동 �
 | 표시 | 카탈로그 `usesNetwork: true`. Popup 에 배지가 뜬다 |
 | 범위 | GET 만. 쓰기가 필요해지면 그때 따로 결정한다 |
 | 시점 | 사용자가 그 기능을 실제로 쓸 때만. 화면을 연 것만으로는 요청하지 않는다 |
-| 대상 | 그 사이트 오리진의 상대 경로(`/rest/…`)만. 세션 쿠키를 쓰고 토큰을 저장하지 않는다 |
+| 대상 | 그 사이트 오리진의 상대 경로(`/rest/…`)만. 세션 쿠키를 쓰고 토큰을 저장하지 않는다. **예외**: Jira 설명 Markdown 복사의 첨부 이미지는 `https://media-cdn.atlassian.com/file/…` 에서 쿠키 없이 받는다(2026-10-12 허용, `src/sites/jira/api/media.ts`) |
 | 문서 | `spec/features/` 에 어떤 요청을 언제 보내는지 적는다 |
 
 테스트가 이 규칙을 지킨다. 네트워크 호출은 허용된 자리(`src/sites/jira/api/` · `src/sites/confluence/api/`) 밖에 두면 `tests/unit.test.ts` 가 깨진다. 자리를 늘리려면 테스트의 `ALLOWED` 와 카탈로그 표시를 함께 고친다.

@@ -4,11 +4,18 @@ const doc = (title, body, head = '') => `<!doctype html><html lang="ko"><head><m
 <style>body{font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;margin:24px;color:#172b4d}
 [role=button]{cursor:pointer}.ak-renderer-document table{border-collapse:collapse}.ak-renderer-document td,.ak-renderer-document th{border:1px solid #ccc;padding:2px 6px}</style>${head}</head><body>${body}</body></html>`;
 
+// Jira 첨부 이미지. 실측 주소 모양: media-cdn.atlassian.com/file/<uuid>/image/cdn?token=…&width=…
+export const MEDIA_IMAGE_URL = 'https://media-cdn.atlassian.com/file/00000000-0000-0000-0000-000000000001/image/cdn?token=t&width=1&height=1';
+// 1×1 투명 PNG
+export const MEDIA_IMAGE_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+export const mediaBinary = (url) => (url.startsWith('https://media-cdn.atlassian.com/file/') ? { contentType: 'image/png', base64: MEDIA_IMAGE_PNG } : null);
+
 const RENDERER = `<div class="ak-renderer-document">
   <h2>목표</h2>
   <p>CD 트리거 배선을 고쳐 형상 태그가 자동 갱신되도록 한다. <a href="https://example.com/doc">설계 문서</a></p>
   <ul><li>파이프라인 수정</li><li>레지스트리 프로필 추가</li></ul>
   <table><tbody><tr><th>이름</th><th>값</th></tr><tr><td>STREAM</td><td>dev-001</td></tr></tbody></table>
+  <div data-testid="ImageRendererWrapper"><img src="${MEDIA_IMAGE_URL}" alt="shot.png" width="1" height="1"></div>
 </div>`;
 
 // ---------------------------------------------------------------- Jira 업무 상세

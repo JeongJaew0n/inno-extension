@@ -20,6 +20,8 @@ import {
 import { isExtensionContextValid } from '../src/platform/runtime/createSiteRuntime';
 import { marked } from 'marked';
 import { listContentIndent } from '../src/platform/markdown/format';
+import { bytesToBase64, isMediaImageUrl, toDataUri } from '../src/sites/jira/api/media';
+import { describeCopyResult } from '../src/sites/jira/features/descriptionMarkdownCopy/runtime';
 import { createUpdateScheduler } from '../src/platform/runtime/updateScheduler';
 import { createDefaultSettings } from '../src/platform/settings/defaults';
 import { getSettings, saveSettings } from '../src/platform/settings/repository';
@@ -1723,11 +1725,12 @@ test('편집 중에는 ADF 를 읽고 읽기 중에는 렌더러를 옮긴다', 
 
   // 편집기 DOM 을 긁으면 코드블럭이 CodeMirror 라 깨지고 긴 블록은 잘린다.
   assert.match(source, /readProseMirrorDocument\(editor\)/);
-  assert.match(source, /adfToMarkdown\(doc\)/);
-  assert.match(source, /convertRendererToMarkdown\(body\)/);
+  // 두 경로 모두 첨부 이미지 해석기를 함께 넘긴다
+  assert.match(source, /adfToMarkdown\(doc, \{/);
+  assert.match(source, /convertRendererToMarkdown\(body, \{/);
   // 읽기가 먼저다. 렌더러가 있으면 그쪽을 쓴다.
   assert.ok(
-    source.indexOf('convertRendererToMarkdown(body)') < source.indexOf('readProseMirrorDocument(editor)'),
+    source.indexOf('convertRendererToMarkdown(body') < source.indexOf('readProseMirrorDocument(editor)'),
   );
 });
 
@@ -3166,4 +3169,65 @@ test('실행 취소는 그 편집기의 버튼을 누른다', async () => {
   assert.match(mermaid, /const undoButton = findUndoButton\(editor\)/);
   const finder = runtime.slice(runtime.indexOf('export function findUndoButton'));
   assert.match(finder.slice(0, finder.indexOf('\n}')), /for \(let node = editor\.parentElement; node; node = node\.parentElement\)/);
+});
+
+/* ============================================================
+ * Jira 설명 Markdown 복사 — 이미지 포함(2026-10-12)
+ * ============================================================ */
+
+test('첨부 이미지 주소만 받는다', () => {
+  assert.equal(isMediaImageUrl('https://media-cdn.atlassian.com/file/0b1c/image/cdn?token=x&width=720'), true);
+  // 다른 오리진·다른 경로·잘못된 주소는 받지 않는다
+  assert.equal(isMediaImageUrl('https://pms-innogrid.atlassian.net/file/0b1c/image'), false);
+  assert.equal(isMediaImageUrl('https://media-cdn.atlassian.com.evil.example/file/0b1c'), false);
+  assert.equal(isMediaImageUrl('https://media-cdn.atlassian.com/other/0b1c'), false);
+  assert.equal(isMediaImageUrl('data:image/png;base64,AAAA'), false);
+  assert.equal(isMediaImageUrl('not a url'), false);
+});
+
+test('이미지 바이트를 data URI 로 바꾼다 — 큰 배열도 조각으로', () => {
+  const small = new Uint8Array([137, 80, 78, 71, 0, 255]);
+  assert.equal(toDataUri('image/png', small), `data:image/png;base64,${Buffer.from(small).toString('base64')}`);
+  // 0x8000 조각 경계를 넘는 크기에서도 Node 의 base64 와 같다
+  const big = Uint8Array.from({ length: 0x8000 * 2 + 7 }, (_, index) => index % 256);
+  assert.equal(bytesToBase64(big), Buffer.from(big).toString('base64'));
+});
+
+test('편집 중 복사는 첨부 media 를 받아 온 데이터로 넣고, 못 받은 것은 (이미지 첨부) 로 둔다', () => {
+  const media = (id: string, alt: string) => ({
+    type: 'mediaSingle',
+    content: [{ type: 'media', attrs: { type: 'file', id, alt, collection: '' } }],
+  });
+  const { markdown } = adfToMarkdown({
+    type: 'doc',
+    version: 1,
+    content: [media('a1', 'shot [1].png'), media('b2', 'missing.png')],
+  } as never, { resolveMedia: (id) => (id === 'a1' ? 'data:image/png;base64,QUJD' : null) });
+
+  // alt 의 대괄호는 이스케이프한다. 링크 텍스트가 끊기지 않게
+  assert.match(markdown, /!\[shot \\\[1\\\]\.png\]\(data:image\/png;base64,QUJD\)/);
+  assert.match(markdown, /\(이미지 첨부\)/);
+  // 해석기가 없으면 지금처럼 (이미지 첨부)
+  assert.doesNotMatch(adfToMarkdown({ type: 'doc', version: 1, content: [media('a1', 'x.png')] } as never).markdown, /data:/);
+});
+
+test('복사 라벨은 이미지가 있을 때 넣은 수를 보여준다', () => {
+  assert.equal(describeCopyResult({ embedded: 0, total: 0 }), '복사됨');
+  assert.equal(describeCopyResult({ embedded: 2, total: 3 }), '복사됨 · 이미지 2/3');
+});
+
+test('첨부 이미지 요청은 쿠키 없이 GET 만, 허용한 주소로만 보낸다', async () => {
+  const source = await readFile('src/sites/jira/api/media.ts', 'utf8');
+  assert.match(source, /method: 'GET', mode: 'cors', credentials: 'omit'/);
+  assert.doesNotMatch(source, /method:\s*'(POST|PUT|PATCH|DELETE)'/);
+  assert.doesNotMatch(source, /credentials: 'include'|chrome\.storage/);
+  // 받기 전에 주소를 거른다
+  assert.match(source, /const unique = \[\.\.\.new Set\(urls\.filter\(isMediaImageUrl\)\)\]/);
+  assert.match(source, /export const MEDIA_ORIGIN = 'https:\/\/media-cdn\.atlassian\.com'/);
+
+  // 네트워크를 쓰는 기능으로 표시돼 Popup 에 배지가 뜬다
+  assert.equal(findFeatureDescriptor('jira', 'descriptionMarkdownCopy').usesNetwork, true);
+  // 복사 버튼에서만 부른다
+  const runtime = await readFile('src/sites/jira/features/descriptionMarkdownCopy/runtime.ts', 'utf8');
+  assert.equal(runtime.split('await fetchMediaImagesAsDataUris(').length - 1, 2, '읽기·편집 경로 각각 한 번');
 });

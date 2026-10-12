@@ -97,12 +97,22 @@ export async function launch({ port = 9340, width = 1400, height = 900 } = {}) {
     await cdp.send('Fetch.enable', { patterns: [
       { urlPattern: 'https://pms-innogrid.atlassian.net/*' }, { urlPattern: 'https://gw.innogrid.com/*' },
       { urlPattern: 'https://github.nhnent.com/*' }, { urlPattern: 'https://rnd-app.innogrid.com/*' },
+      // Jira 첨부 이미지는 다른 오리진의 미디어 서버에서 온다(실측 2026-10-12)
+      { urlPattern: 'https://media-cdn.atlassian.com/*' },
     ] }, s);
     cdp.on(async (d) => {
       if (d.sessionId !== s || d.method !== 'Fetch.requestPaused') return;
       const { requestId, request, resourceType } = d.params;
       const html = resourceType === 'Document' ? fixtures(request.url) : null;
       if (html == null) {
+        // 바이너리(첨부 이미지). 실제 미디어 서버처럼 CORS 를 열어 둔다
+        const binary = fixtures.binary?.(request.url);
+        if (binary != null) {
+          await cdp.send('Fetch.fulfillRequest', { requestId, responseCode: 200,
+            responseHeaders: [{ name: 'Content-Type', value: binary.contentType }, { name: 'Access-Control-Allow-Origin', value: '*' }],
+            body: binary.base64 }, s);
+          return;
+        }
         // API 호출(지난 스프린트 보기)은 픽스처 JSON 으로 답한다
         const json = fixtures.api?.(request.url);
         if (json != null) {

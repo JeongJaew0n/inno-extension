@@ -243,9 +243,32 @@ function renderNode(node: Node, context: RenderContext): string {
  *
  * docs/plans/jira-description-markdown-copy/context.md
  */
-export function convertRendererToMarkdown(body: HTMLElement): string {
+export interface RendererToMarkdownOptions {
+  /**
+   * 이미지 주소(`img.src`)를 무엇으로 바꿀지.
+   *
+   * | 돌려준 값 | 결과 |
+   * | --- | --- |
+   * | 문자열 | 그 주소로 `![alt](…)` — 보통 `data:` URI |
+   * | `null` | `(이미지 첨부)` 글자. 받아야 했는데 못 받은 첨부다. 밖에서 열리지 않는 주소를 넣지 않는다 |
+   * | `undefined` | 그대로 둔다 |
+   */
+  resolveImage?: (src: string) => string | null | undefined;
+}
+
+export function convertRendererToMarkdown(
+  body: HTMLElement,
+  options: RendererToMarkdownOptions = {},
+): string {
   const clone = body.cloneNode(true) as HTMLElement;
   clone.querySelectorAll(MARKDOWN_IGNORED_ELEMENTS).forEach((element) => element.remove());
   removeRedundantHeaderOnlyTables(clone);
+  if (options.resolveImage) {
+    for (const image of Array.from(clone.querySelectorAll<HTMLImageElement>('img'))) {
+      const resolved = options.resolveImage(image.src);
+      if (resolved === null) image.replaceWith(clone.ownerDocument.createTextNode('(이미지 첨부)'));
+      else if (resolved !== undefined) image.setAttribute('src', resolved);
+    }
+  }
   return normalizeMarkdown(renderChildren(clone));
 }

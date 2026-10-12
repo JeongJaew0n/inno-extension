@@ -18,6 +18,7 @@ import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
 import { BUTTON_CSS } from '../../../../platform/design/parts';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { findDescriptionLabelRow } from '../../descriptionLabel';
+import { fetchMediaImagesAsDataUris, isMediaImageUrl } from '../../api/media';
 import { parseJiraBoardUrl, parseJiraIssueUrl } from '../../routes';
 import {
   DESCRIPTION_EDITOR_CONTAINER_FIELD,
@@ -54,32 +55,67 @@ function findDescriptionEditor(document: Document): HTMLElement | null {
   return container?.querySelector<HTMLElement>(EDITOR_PROSEMIRROR) ?? null;
 }
 
+interface DescriptionMarkdown {
+  markdown: string;
+  /** 첨부 이미지 중 데이터로 넣은 수 / 넣으려 한 수 */
+  images: { embedded: number; total: number };
+}
+
 /**
  * 지금 화면에서 Markdown 을 만든다.
  *
  * 읽기 중이면 렌더러를 옮기고, 편집 중이면 **ProseMirror 에서 ADF 를 직접 읽어** 옮긴다.
  * 편집기 DOM 을 긁으면 코드블럭이 CodeMirror 라 깨지고 긴 블록은 30줄 안팎에서 잘린다.
  *
+ * **첨부 이미지는 데이터로 넣는다.** 화면에 그려진 이미지 주소로 다시 받아 `data:` URI 로 바꾼다.
+ * 주소만 넣으면 토큰이 만료되거나 로그인이 없는 곳(VS Code)에서 깨진다. 못 받은 이미지는
+ * `(이미지 첨부)` 로 남는다.
+ *
  * docs/plans/adf-to-markdown/spec.md
+ * docs/plans/jira-markdown-copy-images/spec.md
  */
-async function buildMarkdown(document: Document): Promise<string> {
+async function buildMarkdown(document: Document): Promise<DescriptionMarkdown> {
   const body = findDescriptionBody(document);
   if (body) {
-    const markdown = convertRendererToMarkdown(body);
+    const sources = Array.from(body.querySelectorAll<HTMLImageElement>('img'), (image) => image.src);
+    const { dataUris, total } = await fetchMediaImagesAsDataUris(sources);
+    const markdown = convertRendererToMarkdown(body, {
+      // 첨부 이미지만 바꾼다. 못 받았으면 밖에서 열리지 않는 주소 대신 `(이미지 첨부)` 를 넣는다.
+      resolveImage: (src) => (isMediaImageUrl(src) ? dataUris.get(src) ?? null : undefined),
+    });
     if (!markdown) throw new Error('복사할 업무 설명이 비어 있습니다.');
-    return markdown;
+    return { markdown, images: { embedded: dataUris.size, total } };
   }
 
   const editor = findDescriptionEditor(document);
   if (!editor) throw new Error('복사할 업무 설명을 찾을 수 없습니다.');
 
+  /*
+   * 편집 중에는 ADF 의 `media` 노드에 주소가 없다. 편집기가 그려 둔 이미지와 `id` 로 짝을 짓는다 —
+   * `media` 노드의 `id` 속성이 ADF `attrs.id` 와 같고, 그 안의 `<img>` 가 첨부 이미지다(실측 2026-10-12).
+   */
+  const sourceById = new Map<string, string>();
+  for (const media of editor.querySelectorAll<HTMLElement>('[data-prosemirror-node-name="media"]')) {
+    const id = media.getAttribute('id');
+    const src = media.querySelector('img')?.src;
+    if (id && src) sourceById.set(id, src);
+  }
+  const { dataUris, total } = await fetchMediaImagesAsDataUris([...sourceById.values()]);
+
   const doc = await readProseMirrorDocument(editor) as AdfDocument;
-  const { markdown, warnings } = adfToMarkdown(doc);
+  const { markdown, warnings } = adfToMarkdown(doc, {
+    resolveMedia: (id) => dataUris.get(sourceById.get(id) ?? ''),
+  });
   if (warnings.length > 0) {
     console.warn('[Inno Extension] Jira 설명 Markdown 복사 안내', warnings);
   }
   if (!markdown) throw new Error('복사할 업무 설명이 비어 있습니다.');
-  return markdown;
+  return { markdown, images: { embedded: dataUris.size, total } };
+}
+
+/** 복사 결과 라벨. 이미지가 있으면 몇 장을 넣었는지 붙인다 */
+export function describeCopyResult(images: { embedded: number; total: number }): string {
+  return images.total > 0 ? `복사됨 · 이미지 ${images.embedded}/${images.total}` : '복사됨';
 }
 
 export function createDescriptionMarkdownCopyRuntime(): FeatureRuntime {
@@ -125,11 +161,14 @@ export function createDescriptionMarkdownCopyRuntime(): FeatureRuntime {
     button.addEventListener('click', async () => {
       button.disabled = true;
       buttonLabel.textContent = '복사 중';
+      let feedbackMs = 1200;
       try {
         // 클릭 시점에 다시 본다. 그 사이 다른 업무로 바뀌었거나 편집을 시작했을 수 있다.
-        const markdown = await buildMarkdown(context.document);
+        const { markdown, images } = await buildMarkdown(context.document);
         await writePlainText(markdown);
-        buttonLabel.textContent = '복사됨';
+        buttonLabel.textContent = describeCopyResult(images);
+        // 이미지 수는 확인할 거리가 있는 결과다. 조금 더 오래 보여준다.
+        feedbackMs = images.total > 0 ? 2500 : 1200;
       } catch (error) {
         console.error('[Inno Extension] Jira 설명 Markdown 복사 실패', error);
         buttonLabel.textContent = '복사 실패';
@@ -141,7 +180,7 @@ export function createDescriptionMarkdownCopyRuntime(): FeatureRuntime {
           buttonLabel.textContent = DEFAULT_LABEL;
         }
         feedbackTimer = null;
-      }, 1200);
+      }, feedbackMs);
     });
 
     anchor.append(nextHost);

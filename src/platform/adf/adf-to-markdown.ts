@@ -107,7 +107,7 @@ function formatAdfDate(timestamp: string): string {
 function renderList(
   node: AdfNode,
   depth: number,
-  warnings: Set<string>,
+  ctx: RenderContext,
   indent = '  '.repeat(depth),
 ): string {
   const ordered = node.type === 'orderedList';
@@ -128,7 +128,7 @@ function renderList(
       : (ordered ? `${index + 1}.` : '-');
     // `listItem` 안은 블록(문단 등)이고 `taskItem` 안은 인라인이다. 같은 함수로 다루면 글자가 사라진다.
     const content = normalizeListItem(
-      item.type === 'taskItem' ? renderInline(own) : renderBlocks(own, depth, warnings),
+      item.type === 'taskItem' ? renderInline(own) : renderBlocks(own, depth, ctx),
     );
     const contentLines = content.split('\n');
     const contentIndent = listContentIndent(indent, marker);
@@ -137,34 +137,37 @@ function renderList(
     for (const continuation of contentLines.slice(1)) {
       lines.push(`${contentIndent}${continuation}`.trimEnd());
     }
-    for (const child of nested) lines.push(renderList(child, depth + 1, warnings, contentIndent));
+    for (const child of nested) lines.push(renderList(child, depth + 1, ctx, contentIndent));
   });
 
   return `\n\n${lines.join('\n')}\n\n`;
 }
 
-function renderTaskList(node: AdfNode, depth: number, warnings: Set<string>): string {
-  return renderList({ ...node, type: 'bulletList' }, depth, warnings);
+function renderTaskList(node: AdfNode, depth: number, ctx: RenderContext): string {
+  return renderList({ ...node, type: 'bulletList' }, depth, ctx);
 }
 
-function renderTable(node: AdfNode, warnings: Set<string>): string {
+function renderTable(node: AdfNode, ctx: RenderContext): string {
   const rows = (node.content ?? []).filter((row) => row.type === 'tableRow');
   const rendered = rows.map((row) => (row.content ?? [])
     .filter((cell) => cell.type === 'tableHeader' || cell.type === 'tableCell')
-    .map((cell) => normalizeTableCell(renderBlocks(cell.content, 0, warnings))));
+    .map((cell) => normalizeTableCell(renderBlocks(cell.content, 0, ctx))));
   return renderMarkdownTable(rendered);
 }
 
-function renderMedia(node: AdfNode): string {
+function renderMedia(node: AdfNode, ctx: RenderContext): string {
   if (stringAttr(node, 'type') === 'external') {
     const url = stringAttr(node, 'url');
     return url ? `![](${url})` : '';
   }
-  // 첨부 파일은 이 문서 밖에서 가리킬 수단이 없다. 쓸 수 없는 참조를 넣지 않는다.
+  // 첨부는 이 문서 밖에서 가리킬 주소가 없다. 호출부가 이미지 데이터를 받아 왔으면 그걸 넣는다.
+  const embedded = ctx.resolveMedia?.(stringAttr(node, 'id'));
+  if (embedded) return `![${escapeMarkdownText(stringAttr(node, 'alt'))}](${embedded})`;
+  // 쓸 수 없는 참조는 넣지 않는다.
   return '(이미지 첨부)';
 }
 
-function renderBlock(node: AdfNode, depth: number, warnings: Set<string>): string {
+function renderBlock(node: AdfNode, depth: number, ctx: RenderContext): string {
   switch (node.type) {
     case 'paragraph': {
       const text = renderInline(node.content);
@@ -182,34 +185,34 @@ function renderBlock(node: AdfNode, depth: number, warnings: Set<string>): strin
     case 'hardBreak':
       return '\n';
     case 'blockquote': {
-      const inner = normalizeMarkdown(renderBlocks(node.content, depth, warnings));
+      const inner = normalizeMarkdown(renderBlocks(node.content, depth, ctx));
       if (!inner) return '';
       return `\n\n${inner.split('\n').map((line) => `> ${line}`.trimEnd()).join('\n')}\n\n`;
     }
     case 'bulletList':
     case 'orderedList':
-      return renderList(node, depth, warnings);
+      return renderList(node, depth, ctx);
     case 'taskList':
-      return renderTaskList(node, depth, warnings);
+      return renderTaskList(node, depth, ctx);
     case 'table':
-      return renderTable(node, warnings);
+      return renderTable(node, ctx);
     case 'mediaSingle':
     case 'mediaGroup':
-      return `\n\n${(node.content ?? []).map(renderMedia).join(' ')}\n\n`;
+      return `\n\n${(node.content ?? []).map((media) => renderMedia(media, ctx)).join(' ')}\n\n`;
     case 'media':
-      return renderMedia(node);
+      return renderMedia(node, ctx);
 
     // 껍데기를 벗기고 내용만 남긴다.
     case 'expand':
     case 'nestedExpand': {
       const title = stringAttr(node, 'title').trim();
-      const inner = renderBlocks(node.content, depth, warnings);
+      const inner = renderBlocks(node.content, depth, ctx);
       return title ? `\n\n**${escapeMarkdownText(title)}**\n${inner}` : inner;
     }
     case 'panel':
     case 'layoutSection':
     case 'layoutColumn':
-      return renderBlocks(node.content, depth, warnings);
+      return renderBlocks(node.content, depth, ctx);
 
     /**
      * 매크로는 버린다.
@@ -220,7 +223,7 @@ function renderBlock(node: AdfNode, depth: number, warnings: Set<string>): strin
     case 'extension':
     case 'bodiedExtension':
     case 'multiBodiedExtension':
-      warnings.add('매크로는 옮기지 않았습니다. 원본 코드블럭만 복사됩니다.');
+      ctx.warnings.add('매크로는 옮기지 않았습니다. 원본 코드블럭만 복사됩니다.');
       return '';
 
     // 블록 자리에 인라인 노드가 오는 ADF 가 있다. 글자를 잃지 않게 인라인으로 처리한다.
@@ -235,7 +238,7 @@ function renderBlock(node: AdfNode, depth: number, warnings: Set<string>): strin
     default: {
       const text = plainText(node.content);
       if (text.trim()) {
-        warnings.add(`Markdown으로 옮길 수 없는 ${node.type} 은 글자만 남겼습니다.`);
+        ctx.warnings.add(`Markdown으로 옮길 수 없는 ${node.type} 은 글자만 남겼습니다.`);
         return `\n\n${escapeMarkdownText(text)}\n\n`;
       }
       return '';
@@ -246,9 +249,22 @@ function renderBlock(node: AdfNode, depth: number, warnings: Set<string>): strin
 function renderBlocks(
   nodes: readonly AdfNode[] | undefined,
   depth: number,
-  warnings: Set<string>,
+  ctx: RenderContext,
 ): string {
-  return (nodes ?? []).map((node) => renderBlock(node, depth, warnings)).join('');
+  return (nodes ?? []).map((node) => renderBlock(node, depth, ctx)).join('');
+}
+
+interface RenderContext {
+  warnings: Set<string>;
+  resolveMedia?: AdfToMarkdownOptions['resolveMedia'];
+}
+
+export interface AdfToMarkdownOptions {
+  /**
+   * 첨부 `media` 노드의 `id` 로 넣을 이미지 주소를 돌려준다. 보통 `data:` URI 다.
+   * 없거나 `null` 이면 `(이미지 첨부)` 로 남긴다.
+   */
+  resolveMedia?: (mediaId: string) => string | null | undefined;
 }
 
 export interface AdfToMarkdownResult {
@@ -256,8 +272,9 @@ export interface AdfToMarkdownResult {
   warnings: string[];
 }
 
-export function adfToMarkdown(doc: AdfDocument): AdfToMarkdownResult {
+export function adfToMarkdown(doc: AdfDocument, options: AdfToMarkdownOptions = {}): AdfToMarkdownResult {
   const warnings = new Set<string>();
-  const markdown = normalizeMarkdown(renderBlocks(doc.content, 0, warnings));
+  const ctx: RenderContext = { warnings, resolveMedia: options.resolveMedia };
+  const markdown = normalizeMarkdown(renderBlocks(doc.content, 0, ctx));
   return { markdown, warnings: [...warnings] };
 }
