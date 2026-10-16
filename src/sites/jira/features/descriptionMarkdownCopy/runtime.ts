@@ -11,14 +11,14 @@ import { adfToMarkdown } from '../../../../platform/adf';
 import type { AdfDocument } from '../../../../platform/adf';
 import { writePlainText } from '../../../../platform/clipboard/writePlainText';
 import { readProseMirrorDocument } from '../../../../platform/editor/bridge-client';
-import { convertRendererToMarkdown } from '../../../../platform/editor/renderer-to-markdown';
 import { EDITOR_PROSEMIRROR } from '../../../../platform/editor/selectors';
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
 import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
 import { BUTTON_CSS } from '../../../../platform/design/parts';
 import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/types';
 import { findDescriptionLabelRow } from '../../descriptionLabel';
-import { fetchMediaImagesAsDataUris, isMediaImageUrl } from '../../api/media';
+import { fetchMediaImagesAsDataUris } from '../../api/media';
+import { describeCopyResult, rendererToMarkdownWithImages, type CopiedMarkdown } from '../../rendererMarkdown';
 import { parseJiraBoardUrl, parseJiraIssueUrl } from '../../routes';
 import {
   DESCRIPTION_EDITOR_CONTAINER_FIELD,
@@ -55,12 +55,6 @@ function findDescriptionEditor(document: Document): HTMLElement | null {
   return container?.querySelector<HTMLElement>(EDITOR_PROSEMIRROR) ?? null;
 }
 
-interface DescriptionMarkdown {
-  markdown: string;
-  /** 첨부 이미지 중 데이터로 넣은 수 / 넣으려 한 수 */
-  images: { embedded: number; total: number };
-}
-
 /**
  * 지금 화면에서 Markdown 을 만든다.
  *
@@ -74,17 +68,12 @@ interface DescriptionMarkdown {
  * docs/plans/adf-to-markdown/spec.md
  * docs/plans/jira-markdown-copy-images/spec.md
  */
-async function buildMarkdown(document: Document): Promise<DescriptionMarkdown> {
+async function buildMarkdown(document: Document): Promise<CopiedMarkdown> {
   const body = findDescriptionBody(document);
   if (body) {
-    const sources = Array.from(body.querySelectorAll<HTMLImageElement>('img'), (image) => image.src);
-    const { dataUris, total } = await fetchMediaImagesAsDataUris(sources);
-    const markdown = convertRendererToMarkdown(body, {
-      // 첨부 이미지만 바꾼다. 못 받았으면 밖에서 열리지 않는 주소 대신 `(이미지 첨부)` 를 넣는다.
-      resolveImage: (src) => (isMediaImageUrl(src) ? dataUris.get(src) ?? null : undefined),
-    });
-    if (!markdown) throw new Error('복사할 업무 설명이 비어 있습니다.');
-    return { markdown, images: { embedded: dataUris.size, total } };
+    const copied = await rendererToMarkdownWithImages(body);
+    if (!copied.markdown) throw new Error('복사할 업무 설명이 비어 있습니다.');
+    return copied;
   }
 
   const editor = findDescriptionEditor(document);
@@ -111,11 +100,6 @@ async function buildMarkdown(document: Document): Promise<DescriptionMarkdown> {
   }
   if (!markdown) throw new Error('복사할 업무 설명이 비어 있습니다.');
   return { markdown, images: { embedded: dataUris.size, total } };
-}
-
-/** 복사 결과 라벨. 이미지가 있으면 몇 장을 넣었는지 붙인다 */
-export function describeCopyResult(images: { embedded: number; total: number }): string {
-  return images.total > 0 ? `복사됨 · 이미지 ${images.embedded}/${images.total}` : '복사됨';
 }
 
 export function createDescriptionMarkdownCopyRuntime(): FeatureRuntime {

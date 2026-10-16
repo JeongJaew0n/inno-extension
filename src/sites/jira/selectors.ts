@@ -95,8 +95,29 @@ export const COMMENT_COMPOSER = '[data-testid="issue.activity.comment"]';
  */
 export const COMMENT_LIST = '[data-testid="issue.activity.comments-list"]';
 
+/**
+ * 댓글 하나의 `data-testid` 접두사. 뒤에 숫자 id 가 붙는다.
+ *
+ * 같은 접두사로 `<id>-header` · `<id>-body` · `<id>-footer` 도 잡힌다. 댓글 루트는 접미사가 없는
+ * 것이다. 본문(`-body`)에 `.ak-renderer-document` 가 하나 있다(실측 2026-10-16, NPT-630).
+ */
+export const COMMENT_ITEM_TESTID_PREFIX = 'issue-comment-base.ui.comment.ak-comment.';
+
+/** 댓글 아래 동작 줄(답글 · 반응 · 편집 · 더보기). `display: flex`, 간격 8px(실측 2026-10-16) */
+export function commentActionsSelector(commentId: string): string {
+  return `[data-testid="issue-comment-base.ui.comment.custom-comment.${commentId}.comment-actions"]`;
+}
+
+/** 댓글 본문 영역 */
+export function commentBodySelector(commentId: string): string {
+  return `[data-testid="${COMMENT_ITEM_TESTID_PREFIX}${commentId}-body"]`;
+}
+
 /** 설명 Markdown 복사 기능. */
 export const DESCRIPTION_MARKDOWN_COPY_ROOT = 'jira-description-markdown-copy';
+
+/** 댓글 Markdown 복사 기능. 댓글마다 하나 */
+export const COMMENT_MARKDOWN_COPY_ROOT = 'jira-comment-markdown-copy';
 
 /**
  * 업무 **설명** 필드. 읽기 화면과 편집 화면을 모두 담는다.

@@ -21,7 +21,8 @@ import { isExtensionContextValid } from '../src/platform/runtime/createSiteRunti
 import { marked } from 'marked';
 import { listContentIndent } from '../src/platform/markdown/format';
 import { bytesToBase64, isMediaImageUrl, toDataUri } from '../src/sites/jira/api/media';
-import { describeCopyResult } from '../src/sites/jira/features/descriptionMarkdownCopy/runtime';
+import { describeCopyResult } from '../src/sites/jira/rendererMarkdown';
+import { parseCommentId } from '../src/sites/jira/features/commentMarkdownCopy/contracts';
 import { createUpdateScheduler } from '../src/platform/runtime/updateScheduler';
 import { createDefaultSettings } from '../src/platform/settings/defaults';
 import { getSettings, saveSettings } from '../src/platform/settings/repository';
@@ -1728,10 +1729,12 @@ test('편집 중에는 ADF 를 읽고 읽기 중에는 렌더러를 옮긴다', 
   assert.match(source, /readProseMirrorDocument\(editor\)/);
   // 두 경로 모두 첨부 이미지 해석기를 함께 넘긴다
   assert.match(source, /adfToMarkdown\(doc, \{/);
-  assert.match(source, /convertRendererToMarkdown\(body, \{/);
+  assert.match(source, /rendererToMarkdownWithImages\(body\)/);
+  const shared = await readFile('src/sites/jira/rendererMarkdown.ts', 'utf8');
+  assert.match(shared, /convertRendererToMarkdown\(body, \{/);
   // 읽기가 먼저다. 렌더러가 있으면 그쪽을 쓴다.
   assert.ok(
-    source.indexOf('convertRendererToMarkdown(body') < source.indexOf('readProseMirrorDocument(editor)'),
+    source.indexOf('rendererToMarkdownWithImages(body)') < source.indexOf('readProseMirrorDocument(editor)'),
   );
 });
 
@@ -1754,13 +1757,15 @@ test('ADF 렌더러 변환기는 Confluence 와 Jira 가 공유한다', async ()
     'src/sites/confluence/features/pageMarkdownCopy/runtime.ts',
     'utf8',
   );
-  const jira = await readFile(
-    'src/sites/jira/features/descriptionMarkdownCopy/runtime.ts',
-    'utf8',
-  );
+  // Jira 는 설명·댓글이 공용 모듈 하나로 부른다
+  const jira = await readFile('src/sites/jira/rendererMarkdown.ts', 'utf8');
   for (const source of [confluence, jira]) {
     assert.match(source, /convertRendererToMarkdown/);
     assert.match(source, /platform\/editor\/renderer-to-markdown/);
+  }
+  for (const feature of ['descriptionMarkdownCopy', 'commentMarkdownCopy']) {
+    const source = await readFile(`src/sites/jira/features/${feature}/runtime.ts`, 'utf8');
+    assert.match(source, /from '\.\.\/\.\.\/rendererMarkdown'/, feature);
   }
 });
 
@@ -3269,7 +3274,35 @@ test('첨부 이미지 요청은 쿠키 없이 GET 만, 허용한 주소로만 �
 
   // 네트워크를 쓰는 기능으로 표시돼 Popup 에 배지가 뜬다
   assert.equal(findFeatureDescriptor('jira', 'descriptionMarkdownCopy').usesNetwork, true);
-  // 복사 버튼에서만 부른다
+  assert.equal(findFeatureDescriptor('jira', 'commentMarkdownCopy').usesNetwork, true);
+  // 복사 버튼에서만 부른다. 읽기 경로는 공용 모듈 하나, 설명 편집 경로가 하나
   const runtime = await readFile('src/sites/jira/features/descriptionMarkdownCopy/runtime.ts', 'utf8');
-  assert.equal(runtime.split('await fetchMediaImagesAsDataUris(').length - 1, 2, '읽기·편집 경로 각각 한 번');
+  const shared = await readFile('src/sites/jira/rendererMarkdown.ts', 'utf8');
+  assert.equal(runtime.split('await fetchMediaImagesAsDataUris(').length - 1, 1, '설명 편집 경로 한 번');
+  assert.equal(shared.split('await fetchMediaImagesAsDataUris(').length - 1, 1, '읽기 경로 한 번');
+  const comment = await readFile('src/sites/jira/features/commentMarkdownCopy/runtime.ts', 'utf8');
+  const reconcile = comment.slice(comment.indexOf('reconcile(context: PageContext)'));
+  assert.doesNotMatch(reconcile, /rendererToMarkdownWithImages|fetchMediaImagesAsDataUris/, '화면을 맞추는 것만으로는 받지 않는다');
+  assert.match(comment.slice(0, comment.indexOf('reconcile(context: PageContext)')), /addEventListener\('click'[\s\S]*await rendererToMarkdownWithImages\(body\)/);
+});
+
+test('댓글 루트만 댓글 id 를 낸다 — 같은 접두사의 머리글·본문·바닥글은 아니다', () => {
+  assert.equal(parseCommentId('issue-comment-base.ui.comment.ak-comment.67103'), '67103');
+  assert.equal(parseCommentId('issue-comment-base.ui.comment.ak-comment.67103-body'), null);
+  assert.equal(parseCommentId('issue-comment-base.ui.comment.ak-comment.67103-header'), null);
+  assert.equal(parseCommentId('issue-comment-base.ui.comment.ak-comment.'), null);
+  assert.equal(parseCommentId('issue.activity.comment'), null);
+});
+
+test('댓글 Markdown 복사는 읽기 상태 댓글마다 동작 줄에 하나씩 붙고, 사라진 댓글 것은 치운다', async () => {
+  const source = await readFile('src/sites/jira/features/commentMarkdownCopy/runtime.ts', 'utf8');
+  // 댓글 목록 안에서만 찾는다. 설명 렌더러를 댓글로 잡지 않는다
+  assert.match(source, /`\$\{COMMENT_LIST\} \[data-testid\^="\$\{COMMENT_ITEM_TESTID_PREFIX\}"\]`/);
+  // 본문 렌더러가 없으면(편집 중) 붙이지 않는다
+  assert.match(source, /if \(!anchor \|\| !findCommentBody\(document, commentId\)\) continue;/);
+  // 멱등: 제자리에 있으면 그대로 둔다
+  assert.match(source, /if \(existing\?\.isConnected && existing\.parentElement === anchor\) continue;/);
+  assert.match(source, /if \(seen\.has\(commentId\)\) continue;\n\s+host\.remove\(\);/);
+  const content = await readFile('src/sites/jira/content.ts', 'utf8');
+  assert.match(content, /createCommentMarkdownCopyRuntime\(\),/);
 });

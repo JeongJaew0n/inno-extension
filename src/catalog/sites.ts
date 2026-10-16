@@ -139,6 +139,16 @@ export const SITES = [
         // 첨부 이미지를 받는다. 누를 때만, GET 만, 쿠키 없이 media-cdn.atlassian.com 에서(2026-10-12 허용).
         usesNetwork: true,
       },
+      {
+        id: 'commentMarkdownCopy',
+        name: '댓글 Markdown 복사',
+        description: '이미 달린 댓글마다 아래 동작 줄에 버튼을 붙여 그 댓글 본문을 Markdown으로 복사합니다. 첨부 이미지는 설명 복사처럼 Markdown 안에 함께 넣습니다.',
+        routeSummary: 'Jira 업무 댓글 읽기 화면',
+        defaultEnabled: true,
+        hasDetails: false,
+        // 설명 복사와 같은 첨부 이미지 요청이다(2026-10-16 범위 확장).
+        usesNetwork: true,
+      },
     ],
   },
   {

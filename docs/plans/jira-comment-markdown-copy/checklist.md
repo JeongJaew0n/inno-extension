@@ -6,16 +6,16 @@
 
 ## 2. 구현
 
-- [ ] 렌더러 → Markdown(+이미지) 공용으로 빼기
-- [ ] 카탈로그 · 설정 기본값
-- [ ] 댓글 런타임
-- [ ] CLAUDE.md 네트워크 예외 범위
+- [x] 렌더러 → Markdown(+이미지) 공용으로 빼기 (`src/sites/jira/rendererMarkdown.ts`)
+- [x] 카탈로그 · 설정 기본값
+- [x] 댓글 런타임
+- [x] CLAUDE.md 네트워크 예외 범위
 
 ## 3. 테스트
 
-- [ ] 단위 테스트
-- [ ] e2e: 댓글마다 버튼 하나, 복사 결과, 편집 중인 댓글엔 없음
-- [ ] `npm run check` · `npm run test:e2e`
+- [x] 단위 테스트
+- [x] e2e: 댓글마다 버튼 하나, 복사 결과, 편집 중인 댓글엔 없음
+- [x] `npm run check` (216) · `npm run test:e2e` (135/135)
 
 ## 4. 실사용
 
@@ -23,4 +23,4 @@
 
 ## 5. 문서
 
-- [ ] spec/features · README · spec/README
+- [x] spec/features · README · spec/README

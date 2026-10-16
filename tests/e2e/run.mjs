@@ -150,6 +150,21 @@ const suites = {
     R.check('Jira 업무', '설명 Markdown 복사 — 첨부 이미지가 data URI 로', md.includes(`![shot.png](data:image/png;base64,${site.MEDIA_IMAGE_PNG})`), md.match(/!\[[^\]]*\]\([^)]{0,60}/)?.[0] ?? '이미지 없음');
     R.check('Jira 업무', '설명 Markdown 복사 — 토큰 붙은 주소는 남지 않는다', !md.includes('media-cdn.atlassian.com'), '');
 
+    // 댓글 Markdown 복사 — 댓글마다 동작 줄 끝에 하나
+    const commentCopy = (id) => `document.querySelector('[data-testid="issue-comment-base.ui.comment.custom-comment.${id}.comment-actions"] [data-inno-extension-feature="jira-comment-markdown-copy"]')`;
+    R.check('Jira 업무', '댓글 Markdown 복사 — 댓글마다 하나', await hosts(p, 'jira-comment-markdown-copy') === 2 && await p.ev(`!!${commentCopy('10001')} && !!${commentCopy('10002')}`), `${await hosts(p, 'jira-comment-markdown-copy')}개`);
+    R.check('Jira 업무', '댓글 Markdown 복사 — 동작 줄 끝', await p.ev(`${commentCopy('10002')}.parentElement.lastElementChild === ${commentCopy('10002')}`), '');
+    await p.clickEl(`${commentCopy('10002')}.shadowRoot.querySelector('button')`);
+    await wait(800);
+    const commentCopyLabel = await p.ev(`${commentCopy('10002')}.shadowRoot.querySelector('[data-copy-label]').textContent`);
+    R.check('Jira 업무', '댓글 Markdown 복사 — 라벨에 넣은 이미지 수', commentCopyLabel === '복사됨 · 이미지 1/1', commentCopyLabel);
+    const cmd = await p.clipboard();
+    R.check('Jira 업무', '댓글 Markdown 복사 — 그 댓글 본문과 이미지만', cmd.includes('스크린샷 첨부') && cmd.includes(`![comment.png](data:image/png;base64,${site.MEDIA_IMAGE_PNG})`) && !cmd.includes('목표') && !cmd.includes('작성자') && !cmd.includes('댓글 목록'), cmd.replace(/\n/g, '⏎').slice(0, 120));
+    await p.clickEl(`${commentCopy('10001')}.shadowRoot.querySelector('button')`);
+    await wait(500);
+    const cmd2 = await p.clipboard();
+    R.check('Jira 업무', '댓글 Markdown 복사 — 목록', cmd2.includes('- 댓글 목록') && !cmd2.includes('스크린샷'), cmd2.replace(/\n/g, '⏎'));
+
     await p.clickEl(`${sroot('jira-issue-link-copy')}.shadowRoot.querySelectorAll('button')[1]`);
     const link = await p.clipboard();
     R.check('Jira 업무', '업무 링크 복사(제목포함)', link.includes('NPT-143') && link.includes('사내 Gitlab CI 연계 분석'), link);
@@ -186,6 +201,7 @@ const suites = {
     await wait(600);
     R.check('Jira 업무', '기존 댓글 편집까지 열림 — 버튼 3개', await hosts(p, 'jira-editor-markdown-to-adf') === 3, `${await hosts(p, 'jira-editor-markdown-to-adf')}개`);
     R.check('Jira 업무', '기존 댓글 버튼은 그 댓글 툴바 안', (await convIn('[data-comment-editor="existing"]')).join() === '1', '');
+    R.check('Jira 업무', '편집 중인 댓글엔 Markdown 복사가 없다', await hosts(p, 'jira-comment-markdown-copy') === 1, `${await hosts(p, 'jira-comment-markdown-copy')}개`);
     const composerConv = `document.querySelector('[data-comment-editor="composer"] [data-inno-extension-feature="jira-editor-markdown-to-adf"]').shadowRoot.querySelector('button')`;
     await p.clickEl(composerConv);
     await wait(400);
@@ -196,6 +212,7 @@ const suites = {
     for (const who of ['composer', 'existing']) await p.clickEl(`document.querySelector('[data-comment-cancel="${who}"]')`);
     await wait(600);
     R.check('Jira 업무', '댓글 편집기를 닫으면 그 버튼만 사라진다', await hosts(p, 'jira-editor-markdown-to-adf') === 1, `${await hosts(p, 'jira-editor-markdown-to-adf')}개`);
+    R.check('Jira 업무', '댓글 편집을 닫으면 Markdown 복사가 돌아온다', await hosts(p, 'jira-comment-markdown-copy') === 2, `${await hosts(p, 'jira-comment-markdown-copy')}개`);
     R.check('Jira 업무', '댓글 취소 중 설명 편집은 그대로', await p.ev(`!!document.querySelector('[data-testid="issue.views.field.rich-text.editor-container"]')`), '');
     await p.shot(`${SP}/jira-edit.png`);
     await p.clickEl(`${sroot('jira-description-edit-actions')}.shadowRoot.querySelector('[data-action="cancel"]')`);

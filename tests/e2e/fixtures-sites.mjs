@@ -32,7 +32,12 @@ const COMMENT_EDITOR = (who) => `<div data-testid="issue.component.editor.defaul
   <div style="display:flex;gap:8px;margin-top:8px"><button data-testid="comment-save-button" data-comment-save="${who}">저장</button><button data-testid="comment-cancel-button" data-comment-cancel="${who}">취소</button></div>
 </div>`;
 const COMMENT_PLACEHOLDER = '<button id="comment-open" style="width:100%;text-align:left">댓글 추가...</button>';
-const EXISTING_COMMENT = '<div class="ak-renderer-document"><p>댓글 본문은 복사되면 안 된다</p></div><button id="comment-edit">편집</button>';
+// 기존 댓글. 실측(2026-10-16, NPT-630) 모양: 루트 안에 `-header` · `-body`(렌더러) · `-footer`(동작 줄)
+const COMMENT_ITEM = (id, body, actions = '') => `<div data-testid="issue-comment-base.ui.comment.ak-comment.${id}-header">작성자 · 1시간 전</div>
+<div data-testid="issue-comment-base.ui.comment.ak-comment.${id}-body"><div class="ak-renderer-document">${body}</div></div>
+<div data-testid="issue-comment-base.ui.comment.ak-comment.${id}-footer"><div data-testid="issue-comment-base.ui.comment.custom-comment.${id}.comment-actions" style="display:flex;gap:8px;align-items:center"><button>답글</button>${actions}<button>…</button></div></div>`;
+const EXISTING_COMMENT = COMMENT_ITEM('10001', '<p>댓글 본문은 설명 복사에 들어가면 안 된다</p><ul><li>댓글 목록</li></ul>', '<button id="comment-edit">편집</button>');
+const IMAGE_COMMENT = COMMENT_ITEM('10002', `<p>스크린샷 첨부</p><div data-testid="media-card-view" role="none"><div data-testid="ImageRendererWrapper"><img src="${MEDIA_IMAGE_URL}" alt="comment.png" width="1" height="1"></div></div>`);
 
 // 실제 Jira 처럼 설명 필드 안에 **화면에 안 보이는 편집 버튼**이 있다. 라벨 끝이 `edit` 다(실측 2026-10-01).
 // 설명이 비면 렌더러 대신 그 버튼과 `설명 편집` 자리표시만 있다.
@@ -52,7 +57,7 @@ const issuePage = (key, read) => doc(`[${key}] Jira`, `
   <div id="desc-slot">${read}</div>
   <section id="comments"><h3>댓글</h3>
     <div data-testid="issue.activity.comment" id="composer-slot">${COMMENT_PLACEHOLDER}</div>
-    <div data-testid="issue.activity.comments-list"><div data-testid="issue-comment-base.ui.comment.ak-comment.10001" id="existing-slot">${EXISTING_COMMENT}</div></div>
+    <div data-testid="issue.activity.comments-list"><div data-testid="issue-comment-base.ui.comment.ak-comment.10001" id="existing-slot">${EXISTING_COMMENT}</div><div data-testid="issue-comment-base.ui.comment.ak-comment.10002">${IMAGE_COMMENT}</div></div>
   </section>
 </main></div>
 <script>

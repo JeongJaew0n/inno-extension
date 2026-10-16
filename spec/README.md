@@ -22,6 +22,7 @@
 | [features/jira-board-sprint-info.md](./features/jira-board-sprint-info.md) | Jira 활성 스프린트 기간·목표 표시의 범위, 상태 출처, 실패 계약 |
 | [features/jira-description-edit-actions.md](./features/jira-description-edit-actions.md) | Jira 설명 편집 취소·저장 버튼의 범위, 댓글 오작동 방지 근거, 리스크 |
 | [features/jira-description-markdown-copy.md](./features/jira-description-markdown-copy.md) | Jira 업무 설명을 Markdown 으로 복사하는 기능의 범위, 댓글 제외 근거, 리스크 |
+| [features/jira-comment-markdown-copy.md](./features/jira-comment-markdown-copy.md) | Jira 댓글 하나를 Markdown 으로 복사하는 기능의 대상 고르기, 보내는 요청, 리스크 |
 | [features/confluence-page-markdown-copy.md](./features/confluence-page-markdown-copy.md) | Confluence 문서 본문 Markdown 복사의 범위, 변환 계약, 리스크, 변경 이력 |
 | [features/confluence-adf-markdown-tools.md](./features/confluence-adf-markdown-tools.md) | 로컬 Markdown -> ADF 변환기의 입력·출력, 지원 범위, 손실·실패 계약 |
 | [features/github-pull-request-title-copy.md](./features/github-pull-request-title-copy.md) | GitHub Enterprise PR 제목 Markdown 링크 복사의 범위, 클립보드 계약, Turbo 대응, 리스크 |
