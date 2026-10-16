@@ -110,6 +110,13 @@ export const DESCRIPTION_FIELD = '[data-testid="issue.views.field.rich-text.desc
 export const DESCRIPTION_RENDERER = '.ak-renderer-document';
 
 /**
+ * 본문 렌더러 안의 첨부 미디어 카드. 이 요소의 `onClick` 이 이미지 뷰어(`media-viewer-popup`)를 연다.
+ * `role="none"` 인 `div` 라 역할로는 조작 요소로 잡히지 않는다.
+ * 실측(2026-10-15, NPT-670): 클릭 편집 방지를 끈 상태에서 눌러도 편집으로 넘어가지 않는다.
+ */
+export const RENDERER_MEDIA_CARD = '[data-testid="media-card-view"]';
+
+/**
  * 읽기 상태 설명 필드 안의 Jira 자체 편집 버튼. 화면에 보이지 않는 접근성용 버튼이다.
  * 라벨은 `설명 편집, edit`(내용 있음) · `설명 추가, edit`(비어 있음) — 끝의 `edit` 로 잡는다.
  * 실측(2026-10-01, NPT-170 · NPT-92): `click()` 한 번으로 두 경우 모두 편집이 열린다.

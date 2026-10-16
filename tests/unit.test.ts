@@ -2754,6 +2754,17 @@ test('클릭 편집 방지 클릭 차단은 preventDefault 없이 capture 에서
   assert.doesNotMatch(runtime, /event\.preventDefault\(\)/);
 });
 
+test('클릭 편집 방지는 본문 이미지 클릭을 통과시켜 뷰어가 열리게 한다', async () => {
+  const runtime = await readFile('src/sites/jira/features/descriptionEditLock/runtime.ts', 'utf8');
+  const selectors = await readFile('src/sites/jira/selectors.ts', 'utf8');
+  // 미디어 카드는 `role="none"` div 라 역할 선택자로는 안 잡힌다. 빠지면 이미지 뷰어가 다시 막힌다.
+  assert.match(selectors, /RENDERER_MEDIA_CARD = '\[data-testid="media-card-view"\]'/);
+  const interactive = runtime.match(/const INTERACTIVE_CONTENT = ([\s\S]*?);\n/)?.[1] ?? '';
+  assert.match(interactive, /RENDERER_MEDIA_CARD/);
+  // 렌더러 안으로 한정하는 판정은 그대로다.
+  assert.match(runtime, /renderer\.contains\(interactive\)/);
+});
+
 test('디자인 조각은 닫히지 않은 주석 없이 이어 붙일 수 있다', async () => {
   // 조각 끝에 다음 구역의 `/* ====` 가 딸려 들어가면, 이어 붙였을 때 뒤 조각이 전부 주석으로
   // 삼켜진다. 지난 스프린트 카드·클릭 편집 방지 스위치가 그렇게 깨져 있었다.

@@ -27,12 +27,14 @@ import {
   DESCRIPTION_MARKDOWN_COPY_ROOT,
   DESCRIPTION_EDIT_BUTTON,
   DESCRIPTION_RENDERER,
+  RENDERER_MEDIA_CARD,
 } from '../../selectors';
 import { normalizeEditLockOptions, shouldBlockDescriptionClick } from './contracts';
 
-/** 본문 안에서 눌러도 편집이 아닌 것들. 링크·펼치기·체크박스 등 */
+/** 본문 안에서 눌러도 편집이 아닌 것들. 링크·펼치기·체크박스·이미지(뷰어 열기) 등 */
 const INTERACTIVE_CONTENT = 'a, button, input, textarea, select, label, summary, '
-  + '[role="button"], [role="link"], [role="checkbox"], [role="menuitem"]';
+  + '[role="button"], [role="link"], [role="checkbox"], [role="menuitem"], '
+  + RENDERER_MEDIA_CARD;
 
 function isEditing(document: Document): boolean {
   const container = document.querySelector(DESCRIPTION_EDITOR_CONTAINER_FIELD);

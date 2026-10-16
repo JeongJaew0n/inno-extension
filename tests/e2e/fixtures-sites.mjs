@@ -15,7 +15,7 @@ const RENDERER = `<div class="ak-renderer-document">
   <p>CD 트리거 배선을 고쳐 형상 태그가 자동 갱신되도록 한다. <a href="https://example.com/doc">설계 문서</a></p>
   <ul><li>파이프라인 수정</li><li>레지스트리 프로필 추가</li></ul>
   <table><tbody><tr><th>이름</th><th>값</th></tr><tr><td>STREAM</td><td>dev-001</td></tr></tbody></table>
-  <div data-testid="ImageRendererWrapper"><img src="${MEDIA_IMAGE_URL}" alt="shot.png" width="1" height="1"></div>
+  <div data-testid="media-card-view" role="none"><div data-testid="ImageRendererWrapper"><img src="${MEDIA_IMAGE_URL}" alt="shot.png" width="1" height="1"></div></div>
 </div>`;
 
 // ---------------------------------------------------------------- Jira 업무 상세
@@ -57,7 +57,7 @@ const issuePage = (key, read) => doc(`[${key}] Jira`, `
 </main></div>
 <script>
   // Jira(React) 흉내: 루트에 위임된 click 이 설명을 편집 상태로 바꾼다
-  window.__editCount = 0; window.__saved = 0; window.__commentSaved = 0;
+  window.__editCount = 0; window.__saved = 0; window.__commentSaved = 0; window.__viewerCount = 0;
   const READ = ${JSON.stringify(read)}, EDITOR = ${JSON.stringify(EDITOR)};
   const COMMENT = { composer: [${JSON.stringify(COMMENT_PLACEHOLDER)}, ${JSON.stringify(COMMENT_EDITOR('composer'))}], existing: [${JSON.stringify(EXISTING_COMMENT)}, ${JSON.stringify(COMMENT_EDITOR('existing'))}] };
   const commentSlot = (who) => document.getElementById(who === 'composer' ? 'composer-slot' : 'existing-slot');
@@ -84,6 +84,8 @@ const issuePage = (key, read) => doc(`[${key}] Jira`, `
     if (e.target.closest('[data-testid="issue.views.field.rich-text.description"] button[aria-label$="edit"]')) {
       window.__editCount++; slot.innerHTML = EDITOR; return;
     }
+    // 첨부 이미지 카드: 이미지 뷰어를 열고 편집으로는 넘어가지 않는다(실측 2026-10-15, NPT-670)
+    if (e.target.closest('[data-testid="media-card-view"]')) { window.__viewerCount++; return; }
     const field = e.target.closest('[data-testid="issue.views.field.rich-text.description"] [data-edit-area]');
     if (!field || e.target.closest('a')) return;
     if (!downInField) return;

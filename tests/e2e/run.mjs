@@ -209,6 +209,9 @@ const suites = {
     R.check('Jira 업무', '방지 켜짐 — 편집 버튼 나타남', shown, '');
     await p.clickEl(`document.querySelector('[data-testid="issue.views.field.rich-text.description"] p')`);
     R.check('Jira 업무', '방지 켜짐 — 본문 클릭해도 편집 안 됨', await p.ev('__editCount') === 1, `editCount=${await p.ev('__editCount')}`);
+    await p.clickEl(`document.querySelector('[data-testid="issue.views.field.rich-text.description"] [data-testid="media-card-view"] img')`);
+    R.check('Jira 업무', '방지 켜짐 — 이미지 클릭은 뷰어를 연다', await p.ev('__viewerCount') === 1, `viewerCount=${await p.ev('__viewerCount')}`);
+    R.check('Jira 업무', '방지 켜짐 — 이미지 클릭으로 편집 안 됨', await p.ev('__editCount') === 1, `editCount=${await p.ev('__editCount')}`);
     await p.clickEl(`${sroot('jira-description-edit-lock')}.shadowRoot.querySelector('[data-edit]')`);
     R.check('Jira 업무', '방지 켜짐 — 편집 버튼으로 진입', await p.ev('__editCount') === 2, `editCount=${await p.ev('__editCount')}`);
     await wait(500);
