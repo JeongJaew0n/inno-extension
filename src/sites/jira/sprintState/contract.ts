@@ -23,5 +23,30 @@ export interface ActiveSprintInfo {
 export interface SprintStateResponse {
   requestId?: unknown;
   sprints?: unknown;
+  sprintsEnabled?: unknown;
   message?: unknown;
+}
+
+/** 보드 하나에 대해 페이지에서 읽은 스프린트 상태 */
+export interface BoardSprintState {
+  sprints: ActiveSprintInfo[];
+  /** 이 보드가 스프린트를 쓰는가. 못 읽었으면 `null` */
+  sprintsEnabled: boolean | null;
+}
+
+/**
+ * `SPA_STATE` 의 보드 결과에서 스프린트를 쓰는 보드인지 읽는다.
+ *
+ * 실측(2026-10-16): Kanban 보드는 `type: 'KANBAN'` · `capabilities.SPRINTS.enabled: false` 이고
+ * `sprints` 키가 없다. 스크럼 보드는 `type: 'SCRUM'` · `enabled: true` 다. 기능 표시가 더 직접적이라
+ * 먼저 보고, 없으면 보드 종류로 판단한다. 둘 다 없으면 모른다(`null`).
+ */
+export function readSprintsEnabled(result: unknown): boolean | null {
+  if (!result || typeof result !== 'object') return null;
+  const board = result as { type?: unknown; capabilities?: { SPRINTS?: { enabled?: unknown } } };
+  const enabled = board.capabilities?.SPRINTS?.enabled;
+  if (typeof enabled === 'boolean') return enabled;
+  if (board.type === 'KANBAN') return false;
+  if (board.type === 'SCRUM') return true;
+  return null;
 }

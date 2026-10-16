@@ -91,6 +91,7 @@ import {
   parseJiraIsoDate,
   summarizeSprint,
 } from '../src/sites/jira/features/boardSprintInfo/format';
+import { readSprintsEnabled } from '../src/sites/jira/sprintState/contract';
 import { resolveCopyTargets } from '../src/sites/gitlab/features/commitShaCopy/runtime';
 import {
   buildMergeRequestMarkdown,
@@ -3040,11 +3041,41 @@ test('지난 스프린트 선택은 보드가 바뀌면 자리를 만들기 전�
   const source = await readFile('src/sites/jira/features/pastSprintView/runtime.ts', 'utf8');
   const reconcile = source.slice(source.indexOf('reconcile(context: PageContext)'));
   assert.ok(
-    reconcile.indexOf('route.boardId !== boardId') < reconcile.indexOf('ensureBoardToolSlot('),
+    reconcile.indexOf('route.boardId !== boardId') < reconcile.indexOf('mount(context)'),
     '보드 전환 정리가 자리 만들기보다 앞서야 한다',
   );
   assert.match(source, /removeEventListener\('click', onOutsideClick\)/);
-  assert.match(source.slice(source.indexOf('function dispose')), /removeOutsideClick\?\.\(\)/);
+  assert.match(source.slice(source.indexOf('function unmount')), /removeOutsideClick\?\.\(\)/);
+  assert.match(source.slice(source.indexOf('function dispose')), /unmount\(\);/);
+});
+
+test('보드가 스프린트를 쓰는지는 SPA_STATE 의 기능 표시를 먼저 보고, 없으면 보드 종류로 판단한다', () => {
+  // 실측(2026-10-16): Kanban 보드 66 · 스크럼 보드 2145
+  assert.equal(readSprintsEnabled({ type: 'KANBAN', capabilities: { SPRINTS: { enabled: false } } }), false);
+  assert.equal(readSprintsEnabled({ type: 'SCRUM', capabilities: { SPRINTS: { enabled: true } }, sprints: [] }), true);
+  assert.equal(readSprintsEnabled({ type: 'KANBAN' }), false);
+  assert.equal(readSprintsEnabled({ type: 'SCRUM' }), true);
+  // 기능 표시가 보드 종류보다 앞선다
+  assert.equal(readSprintsEnabled({ type: 'SCRUM', capabilities: { SPRINTS: { enabled: false } } }), false);
+  // 모르면 모른다고 한다. 선택기를 숨길지는 호출부가 정한다
+  assert.equal(readSprintsEnabled({ sprints: [] }), null);
+  assert.equal(readSprintsEnabled(undefined), null);
+  assert.equal(readSprintsEnabled('KANBAN'), null);
+});
+
+test('지난 스프린트 선택은 Kanban 보드에 만들지 않고, 답을 받기 전에 자리를 만들지 않는다', async () => {
+  const source = await readFile('src/sites/jira/features/pastSprintView/runtime.ts', 'utf8');
+  const reconcile = source.slice(source.indexOf('reconcile(context: PageContext)'));
+  const kanban = reconcile.indexOf('if (sprintSupport === false) return;');
+  const waiting = reconcile.indexOf('if (sprintSupport === undefined) return;');
+  const mount = reconcile.indexOf('mount(context);');
+  assert.ok(kanban > 0 && waiting > kanban && mount > waiting, 'Kanban·대기 판정이 자리 만들기보다 앞서야 한다');
+  // 모르면(null) 예전처럼 보여 준다 — 스크럼 보드에서 선택기가 사라지는 쪽이 더 나쁘다
+  assert.match(reconcile, /if \(sprintSupport !== true\) checkSprintSupport\(context\);/);
+  // 페이지 상태만 읽는다. 보드를 여는 것만으로 API 요청을 보내지 않는다
+  const check = source.slice(source.indexOf('function checkSprintSupport'));
+  assert.match(check.slice(0, check.indexOf('\n  }\n')), /requestBoardSprintState\(/);
+  assert.doesNotMatch(check.slice(0, check.indexOf('\n  }\n')), /fetchBoardSprints|fetchSprintIssues/);
 });
 
 test('편집기 되돌리기는 문서가 실제로 바뀌었을 때만 누른다', async () => {

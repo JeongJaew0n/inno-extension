@@ -274,6 +274,17 @@ const suites = {
     R.check('Jira 보드', '모달 속 업무 링크 복사', lc === 1, `${lc}개`);
   },
 
+  async jiraKanbanBoard() {
+    const p = await b.newPage('jira-kanban', (url) => (/\/boards\/2147$/.test(new URL(url).pathname) ? site.jiraKanbanBoard : null));
+    await p.goto('https://pms-innogrid.atlassian.net/jira/software/c/projects/OPS/boards/2147', 3000);
+    const picker = await hosts(p, 'jira-past-sprint-view');
+    R.check('Jira Kanban 보드', '지난 스프린트 선택을 만들지 않는다', picker === 0, `${picker}개`);
+    R.check('Jira Kanban 보드', '빈 도구 줄을 남기지 않는다', !(await p.ev(`!!document.querySelector('[data-inno-extension-feature="jira-board-tool-row"]')`)), '');
+    // 만들었다 지우기를 반복하면 그 DOM 변화가 다시 reconcile 을 불러 끝없이 돈다(재현 2026-10-02)
+    const mutations = await p.ev(`new Promise((resolve) => { let n = 0; const o = new MutationObserver((list) => { n += list.length; }); o.observe(document.body, { childList: true, subtree: true, attributes: true }); setTimeout(() => { o.disconnect(); resolve(n); }, 2000); })`);
+    R.check('Jira Kanban 보드', '2초 동안 DOM 이 조용하다(reconcile 반복 없음)', mutations === 0, `변화 ${mutations}건`);
+  },
+
   async jiraBacklog() {
     const p = await b.newPage('jira-backlog', (url) => (/\/backlog$/.test(new URL(url).pathname) ? site.jiraBacklog : null));
     await p.goto('https://pms-innogrid.atlassian.net/jira/software/c/projects/NPT/boards/2146/backlog', 2500);

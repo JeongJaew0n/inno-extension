@@ -31,7 +31,7 @@ import {
 } from '../../api/sprints';
 import { BOARD_TOOL_ORDER, ensureBoardToolSlot, releaseBoardToolSlot } from '../../boardToolRow';
 import { isJiraBoardRoute, parseJiraBoardUrl } from '../../routes';
-import { requestActiveSprints } from '../../sprintState/client';
+import { requestBoardSprintState } from '../../sprintState/client';
 import {
   BOARD_CONTENT,
   PAST_SPRINT_PANEL_ROOT,
@@ -77,6 +77,15 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
   let activeDocument: Document | null = null;
   /** 바깥을 누르면 메뉴를 닫는 리스너를 뗀다. host 를 새로 만들 때마다 갈아 끼운다 */
   let removeOutsideClick: (() => void) | null = null;
+  /**
+   * 이 보드가 스프린트를 쓰는가. `undefined` 는 아직 안 읽었고 `null` 은 읽었지만 모른다.
+   * Kanban 보드(`false`)에는 선택기를 만들지 않는다 — 고를 스프린트가 없다.
+   */
+  let sprintSupport: boolean | null | undefined;
+  let activeSprintName = '';
+  let checkingSprintSupport = false;
+  /** 보드를 떠난 뒤 늦게 온 응답을 버린다 */
+  let checkSeq = 0;
 
   function closePanel(): void {
     panel?.remove();
@@ -84,7 +93,8 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     shownIssues = [];
   }
 
-  function dispose(): void {
+  /** 그린 것을 치운다. 보드에 대해 읽은 상태는 남긴다 */
+  function unmount(): void {
     closePanel();
     removeOutsideClick?.();
     removeOutsideClick = null;
@@ -93,7 +103,15 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     sprints = null;
     loadingSprints = false;
     if (activeDocument) releaseBoardToolSlot(activeDocument, SLOT_NAME);
+  }
+
+  function dispose(): void {
+    unmount();
     activeDocument = null;
+    sprintSupport = undefined;
+    activeSprintName = '';
+    checkingSprintSupport = false;
+    checkSeq += 1;
   }
 
   function panelShadow(): ShadowRoot | null {
@@ -366,12 +384,50 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
     return next;
   }
 
-  /** 활성 스프린트 이름을 요청 없이 채운다. 페이지가 이미 들고 있는 값을 읽는다. */
-  function fillActiveName(context: PageContext): void {
-    void requestActiveSprints(context.document, boardId).then((active) => {
-      if (!host?.isConnected || active.length === 0) return;
-      const label = host.shadowRoot?.querySelector<HTMLElement>('[data-trigger-label]');
-      if (label && label.textContent === '스프린트') label.textContent = active[0].name;
+  /** 활성 스프린트 이름을 선택기에 채운다. 사용자가 고른 이름은 덮지 않는다 */
+  function fillActiveName(): void {
+    if (!host?.isConnected || !activeSprintName) return;
+    const label = host.shadowRoot?.querySelector<HTMLElement>('[data-trigger-label]');
+    if (label && label.textContent === '스프린트') label.textContent = activeSprintName;
+  }
+
+  /** 선택기를 자리에 둔다. 이미 제자리면 아무것도 바꾸지 않는다 */
+  function mount(context: PageContext): void {
+    const anchor = ensureBoardToolSlot(context.document, SLOT_NAME, BOARD_TOOL_ORDER.sprintPicker);
+    if (!anchor) {
+      unmount();
+      return;
+    }
+
+    if (host?.isConnected && host.parentElement === anchor) return;
+
+    host?.remove();
+    host = createHost(context, anchor);
+    fillActiveName();
+  }
+
+  /**
+   * 보드가 스프린트를 쓰는지 페이지 상태(`SPA_STATE`)에서 읽는다. **요청은 보내지 않는다.**
+   *
+   * 답이 오기 전에는 자리를 만들지 않는다. 만들었다 지우면 그 DOM 변화가 다시 reconcile 을 불러
+   * 끝없이 돈다(`boardSprintInfo` 재현 2026-10-02). 모르면(`null`) 예전처럼 보여 주고 다음
+   * reconcile 에서 다시 읽는다 — 다른 보드에서 넘어온 직후엔 아직 상태가 없을 수 있다.
+   */
+  function checkSprintSupport(context: PageContext): void {
+    if (checkingSprintSupport) return;
+    checkingSprintSupport = true;
+    const seq = checkSeq;
+    const id = boardId;
+    void requestBoardSprintState(context.document, id).then((state) => {
+      if (seq !== checkSeq || id !== boardId) return;
+      checkingSprintSupport = false;
+      sprintSupport = state.sprintsEnabled;
+      activeSprintName = state.sprints[0]?.name ?? activeSprintName;
+      if (sprintSupport === false) {
+        unmount();
+        return;
+      }
+      mount(context);
     });
   }
 
@@ -393,17 +449,12 @@ export function createPastSprintViewRuntime(): FeatureRuntime {
       }
 
       activeDocument = context.document;
-      const anchor = ensureBoardToolSlot(context.document, SLOT_NAME, BOARD_TOOL_ORDER.sprintPicker);
-      if (!anchor) {
-        dispose();
-        return;
-      }
-
-      if (host?.isConnected && host.parentElement === anchor) return;
-
-      host?.remove();
-      host = createHost(context, anchor);
-      if (host) fillActiveName(context);
+      // Kanban: 아무것도 만들지 않는다. DOM 을 건드리지 않아야 이 reconcile 이 다시 불리지 않는다.
+      if (sprintSupport === false) return;
+      if (sprintSupport !== true) checkSprintSupport(context);
+      // 첫 답을 기다린다. 답이 오면 `checkSprintSupport` 가 직접 자리를 만든다.
+      if (sprintSupport === undefined) return;
+      mount(context);
     },
 
     dispose,

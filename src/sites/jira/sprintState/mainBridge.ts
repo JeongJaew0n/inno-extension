@@ -9,6 +9,7 @@
  */
 
 import {
+  readSprintsEnabled,
   SPRINT_STATE_REQUEST_EVENT,
   SPRINT_STATE_RESPONSE_EVENT,
   type ActiveSprintInfo,
@@ -45,14 +46,18 @@ function toActiveSprint(raw: RawSprint): ActiveSprintInfo | null {
   };
 }
 
-function readActiveSprints(boardId: string): ActiveSprintInfo[] {
+function readBoardResult(boardId: string): { sprints?: unknown } | undefined {
   const state = (window as BridgeWindow).SPA_STATE;
   const boards = state?.UIF_BOARD as Record<string, unknown> | undefined;
-  if (!boards) return [];
+  if (!boards) return undefined;
 
   const entry = boards[`uif-board::rapidboard-board::${boardId}`] as
     { data?: { result?: { sprints?: unknown } } } | undefined;
-  const sprints = entry?.data?.result?.sprints;
+  return entry?.data?.result;
+}
+
+function readActiveSprints(result: { sprints?: unknown } | undefined): ActiveSprintInfo[] {
+  const sprints = result?.sprints;
   if (!Array.isArray(sprints)) return [];
 
   return sprints
@@ -81,10 +86,14 @@ export function installSprintStateBridge(): void {
     if (!requestId || !boardId) return;
 
     let sprints: ActiveSprintInfo[] = [];
+    let sprintsEnabled: boolean | null = null;
     let message: string | undefined;
     try {
-      sprints = readActiveSprints(boardId);
-      if (sprints.length === 0 && !warned) {
+      const result = readBoardResult(boardId);
+      sprints = readActiveSprints(result);
+      sprintsEnabled = readSprintsEnabled(result);
+      // Kanban 보드엔 원래 스프린트가 없다. 고장이 아니니 남기지 않는다.
+      if (sprints.length === 0 && sprintsEnabled !== false && !warned) {
         warned = true;
         message = 'SPA_STATE에서 활성 스프린트를 찾지 못했습니다.';
       }
@@ -93,7 +102,7 @@ export function installSprintStateBridge(): void {
     }
 
     document.dispatchEvent(new CustomEvent(SPRINT_STATE_RESPONSE_EVENT, {
-      detail: JSON.stringify({ requestId, sprints, message }),
+      detail: JSON.stringify({ requestId, sprints, sprintsEnabled, message }),
     }));
   });
 }

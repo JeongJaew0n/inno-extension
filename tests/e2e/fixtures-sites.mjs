@@ -101,10 +101,14 @@ export const jiraIssueEmpty = issuePage('NPT-170', READ_EMPTY);
 const today = new Date();
 const iso = (d) => d.toISOString();
 const addDays = (n) => new Date(today.getTime() + n * 86400000);
+// 실측(2026-10-16) 모양: 스크럼은 `type: 'SCRUM'` · `SPRINTS.enabled: true`, Kanban 은 `KANBAN` · `false` 에 `sprints` 가 없다
 export const SPA_STATE = {
-  UIF_BOARD: { 'uif-board::rapidboard-board::2146': { data: { result: { sprints: [
+  UIF_BOARD: { 'uif-board::rapidboard-board::2146': { data: { result: { type: 'SCRUM', capabilities: { SPRINTS: { name: 'SPRINTS', enabled: true } }, sprints: [
     { id: 301, name: 'Jazz-v1.0-Sprint2', state: 'ACTIVE', goal: 'SSO 연동 마무리', isoStartDate: iso(addDays(-3)), isoEndDate: iso(addDays(9)), daysRemaining: 9 },
   ] } } } },
+};
+const KANBAN_SPA_STATE = {
+  UIF_BOARD: { 'uif-board::rapidboard-board::2147': { data: { result: { type: 'KANBAN', capabilities: { SPRINTS: { name: 'SPRINTS', enabled: false } } } } } },
 };
 const DIALOG = `<div data-testid="issue.views.issue-details.issue-modal.modal-dialog--positioner" style="position:fixed;inset:40px 120px;background:#fff;border:1px solid #ccc;padding:16px">
  <div role="dialog" data-testid="issue.views.issue-details.issue-modal.modal-dialog">
@@ -114,15 +118,19 @@ const DIALOG = `<div data-testid="issue.views.issue-details.issue-modal.modal-di
   </div>
   <h1 data-testid="issue.views.issue-base.foundation.summary.heading">모달 속 업무</h1>
  </div></div>`;
-export const jiraBoard = (withDialog) => doc('보드 2146', `
+const BOARD_BODY = `
 <header style="border-bottom:1px solid #ddd;padding:8px">Jira</header>
 <div data-testid="software-board.header.controls-bar" style="display:flex;gap:8px;padding:8px;border-bottom:1px solid #eee"><input placeholder="보드 검색"><button>빠른 필터</button></div>
 <div data-testid="software-board.board-area" style="position:relative;min-height:420px;display:flex;gap:12px;padding:12px">
   <div style="width:240px;background:#f4f5f7;padding:8px">할 일<div style="background:#fff;margin-top:8px;padding:8px">NPT-150 카드</div></div>
   <div style="width:240px;background:#f4f5f7;padding:8px">진행 중</div>
 </div>
+`;
+export const jiraBoard = (withDialog) => doc('보드 2146', `${BOARD_BODY}
 ${withDialog ? DIALOG : ''}
 <script>window.SPA_STATE = ${JSON.stringify(SPA_STATE)};</script>`);
+export const jiraKanbanBoard = doc('보드 2147', `${BOARD_BODY}
+<script>window.SPA_STATE = ${JSON.stringify(KANBAN_SPA_STATE)};</script>`);
 
 export const jiraApi = (url) => {
   const u = new URL(url);
