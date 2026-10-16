@@ -1,4 +1,4 @@
-import { MARKDOWN_IGNORED_ELEMENTS } from './selectors';
+import { MARKDOWN_IGNORED_ELEMENTS, RENDERER_MENTION } from './selectors';
 import {
   escapeMarkdownText,
   listContentIndent,
@@ -256,11 +256,30 @@ export interface RendererToMarkdownOptions {
   resolveImage?: (src: string) => string | null | undefined;
 }
 
+/**
+ * 멘션을 `@이름` 글자로 바꾼다.
+ *
+ * 멘션은 프로필 카드를 여는 `<button>` 안에 그려진다. 조작 UI 를 지우는 단계가 `button` 을 통째로
+ * 지우므로, 그 전에 버튼째 글자로 갈아 끼운다. 버튼에 멘션 말고 다른 글자가 있으면 멘션만 바꾼다.
+ */
+function keepMentionsAsText(clone: HTMLElement): void {
+  for (const mention of Array.from(clone.querySelectorAll(RENDERER_MENTION))) {
+    const text = (mention.textContent ?? '').trim();
+    if (!text) continue;
+    const trigger = mention.closest('button');
+    const target = trigger && clone.contains(trigger) && (trigger.textContent ?? '').trim() === text
+      ? trigger
+      : mention;
+    target.replaceWith(clone.ownerDocument.createTextNode(text));
+  }
+}
+
 export function convertRendererToMarkdown(
   body: HTMLElement,
   options: RendererToMarkdownOptions = {},
 ): string {
   const clone = body.cloneNode(true) as HTMLElement;
+  keepMentionsAsText(clone);
   clone.querySelectorAll(MARKDOWN_IGNORED_ELEMENTS).forEach((element) => element.remove());
   removeRedundantHeaderOnlyTables(clone);
   if (options.resolveImage) {

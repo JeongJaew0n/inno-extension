@@ -30,4 +30,13 @@ export const MARKDOWN_IGNORED_ELEMENTS = [
   '[data-testid*="copy-button"]',
   '[data-testid*="line-number"]',
   '.react-syntax-highlighter-line-number',
+  // 스마트 링크 앞의 사이트 아이콘(favicon). 남기면 링크 글자 안에 `![](…/favicon.ico)` 가 섞인다
+  // (실측 2026-10-16, NPT-669 댓글)
+  '[data-testid="inline-card-icon-and-title-image"]',
 ].join(',');
+
+/**
+ * 렌더러의 사용자 멘션(`@이름`). 프로필 카드를 여는 `<button>` 안에 그려진다(실측 2026-10-16,
+ * NPT-669 댓글). 버튼은 위에서 지우므로 그 전에 글자로 바꿔야 한다.
+ */
+export const RENDERER_MENTION = '[data-mention-id]';
