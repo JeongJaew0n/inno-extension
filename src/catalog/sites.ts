@@ -116,10 +116,12 @@ export const SITES = [
       {
         id: 'boardSprintInfo',
         name: '활성 스프린트 정보',
-        description: '보드 상단 `빠른 필터` 옆에 활성 스프린트의 기간·남은 일수·목표를 보여줍니다.',
+        description: '보드 상단에 활성 스프린트의 기간·남은 일수·목표를 보여줍니다. 페이지에 값이 없으면 칩을 누를 때 Jira API로 읽습니다.',
         routeSummary: 'Jira 활성 스프린트 보드',
         defaultEnabled: true,
         hasDetails: false,
+        // 새 보드(2026-11)는 페이지에 날짜가 없다. 칩을 누를 때만, GET 만(2026-11-03 사용자 결정).
+        usesNetwork: true,
       },
       {
         id: 'descriptionEditActions',

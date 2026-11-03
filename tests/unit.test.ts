@@ -89,9 +89,11 @@ import {
   isMermaidCodeBlockSource,
 } from '../src/sites/confluence/features/editorMarkdownToAdf/mermaid';
 import {
+  describeSprintChip,
   parseJiraIsoDate,
   summarizeSprint,
 } from '../src/sites/jira/features/boardSprintInfo/format';
+import { fetchActiveSprint, fetchSprintRemainingDays } from '../src/sites/jira/api/sprints';
 import { readSprintsEnabled } from '../src/sites/jira/sprintState/contract';
 import {
   findRelaySource,
@@ -1599,13 +1601,87 @@ test('날짜를 읽지 못하면 아무것도 보여주지 않는다', () => {
   );
 });
 
-test('활성 스프린트 정보는 SPA_STATE 만 읽고 네트워크를 쓰지 않는다', async () => {
+test('활성 스프린트 정보는 페이지 상태를 먼저 읽고, API 는 칩을 누를 때만 부른다', async () => {
   const bridge = await readFile('src/sites/jira/sprintState/mainBridge.ts', 'utf8');
+  const relay = await readFile('src/sites/jira/sprintState/relay.ts', 'utf8');
   const runtime = await readFile('src/sites/jira/features/boardSprintInfo/runtime.ts', 'utf8');
 
+  // 브리지는 페이지가 들고 있는 것만 읽는다.
   assert.match(bridge, /SPA_STATE/);
-  for (const source of [bridge, runtime]) {
+  for (const source of [bridge, relay, runtime]) {
     assert.doesNotMatch(source, /\bfetch\(|XMLHttpRequest|axios/);
+  }
+
+  // API 는 load() 안에서만, load() 는 칩 클릭에서만 부른다(2026-11-03 사용자 결정: 칩을 눌렀을 때만).
+  const loadBody = runtime.slice(runtime.indexOf('async function load()'), runtime.indexOf('function createHost('));
+  assert.match(loadBody, /await fetchActiveSprint\(id\)/);
+  assert.match(loadBody, /await fetchSprintRemainingDays\(id, sprint\.id\)/);
+  const outsideLoad = runtime.replace(loadBody, '');
+  assert.doesNotMatch(outsideLoad, /fetchActiveSprint\(|fetchSprintRemainingDays\(/);
+  assert.equal(runtime.split('void load()').length - 1, 1, 'load() 를 부르는 곳은 한 곳');
+  assert.match(runtime, /button\.addEventListener\('click', \(\) => void load\(\)\)/);
+
+  // 네트워크를 쓰는 기능으로 표시돼 Popup 에 배지가 뜬다
+  assert.equal(findFeatureDescriptor('jira', 'boardSprintInfo').usesNetwork, true);
+});
+
+test('활성 스프린트 칩은 상태마다 문구와 hover 를 바꾼다', () => {
+  const idle = describeSprintChip({ kind: 'idle' });
+  assert.deepEqual(idle.labels, ['스프린트 정보', '']);
+  assert.equal(idle.busy, false);
+  assert.match(idle.title, /누르면/);
+
+  assert.equal(describeSprintChip({ kind: 'loading' }).busy, true);
+
+  const summary = summarizeSprint({
+    id: 1, name: 'S1', goal: '', daysRemaining: 3,
+    isoStartDate: '2026-10-25T15:00:40.828Z', isoEndDate: '2026-11-08T15:00:00.000Z',
+  });
+  assert.ok(summary);
+  const shown = describeSprintChip({ kind: 'shown', summary });
+  assert.deepEqual(shown.labels, summary.labels);
+  assert.ok(shown.title.startsWith(summary.title));
+
+  assert.deepEqual(describeSprintChip({ kind: 'empty' }).labels, ['활성 스프린트 없음', '']);
+  const error = describeSprintChip({ kind: 'error', message: '이 보드를 볼 권한이 없습니다.' });
+  assert.deepEqual(error.labels, ['다시 시도', '']);
+  assert.match(error.title, /권한이 없습니다/);
+});
+
+test('활성 스프린트 API 는 상대 경로 GET 으로 읽고 남은 일수는 Jira 가 센 값을 쓴다', async () => {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  const original = globalThis.fetch;
+  let responses: unknown[] = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    calls.push({ url, init });
+    return new Response(JSON.stringify(responses.shift()), { status: 200 });
+  }) as typeof fetch;
+  try {
+    // 실측(2026-11-03) 응답 모양: values[].id · state · name · startDate · endDate · goal
+    responses = [{ isLast: true, values: [
+      { id: 2250, state: 'active', name: 'S6', startDate: '2026-10-25T15:00:40.828Z', endDate: '2026-11-08T15:00:00.000Z', goal: '시연' },
+    ] }];
+    const sprint = await fetchActiveSprint('2064');
+    assert.equal(sprint?.id, 2250);
+    assert.equal(sprint?.endDate, '2026-11-08T15:00:00.000Z');
+    assert.equal(calls[0].url, '/rest/agile/1.0/board/2064/sprint?state=active&maxResults=10');
+    assert.equal(calls[0].init?.method, 'GET');
+    assert.equal(calls[0].init?.credentials, 'include');
+
+    responses = [{ isLast: true, values: [] }];
+    assert.equal(await fetchActiveSprint('2064'), null);
+
+    responses = [{ days: 3 }, { days: 0 }, { days: -1 }, { days: '3' }, {}];
+    assert.equal(await fetchSprintRemainingDays('2064', 2250), 3);
+    assert.equal(calls[2].url, '/rest/greenhopper/1.0/gadgets/sprints/remainingdays?rapidViewId=2064&sprintId=2250');
+    assert.equal(calls[2].init?.method, 'GET');
+    assert.equal(await fetchSprintRemainingDays('2064', 2250), 0);
+    // 모양이 다르면 지어내지 않는다
+    assert.equal(await fetchSprintRemainingDays('2064', 2250), null);
+    assert.equal(await fetchSprintRemainingDays('2064', 2250), null);
+    assert.equal(await fetchSprintRemainingDays('2064', 2250), null);
+  } finally {
+    globalThis.fetch = original;
   }
 });
 
@@ -3064,18 +3140,25 @@ test('렌더러 경로도 목록 들여쓰기를 공용 규칙으로 정한다',
   assert.doesNotMatch(source, /'  '\.repeat\(depth\)/);
 });
 
-test('활성 스프린트를 못 읽은 보드에서는 자리를 만들었다 지우며 돌지 않는다', async () => {
+test('활성 스프린트 칩은 Kanban 보드에서 자리를 만들지 않고, 답을 받기 전에도 만들지 않는다', async () => {
   const source = await readFile('src/sites/jira/features/boardSprintInfo/runtime.ts', 'utf8');
   const reconcile = source.slice(source.indexOf('reconcile(context: PageContext)'));
-  const beforeRequest = reconcile.slice(0, reconcile.indexOf('requestActiveSprints('));
-  // 요청 전에 자리를 만드는 건 이미 그려 둔 칩의 자리를 확인할 때뿐이다
+  // 만들었다 지우면 그 DOM 변화가 다시 reconcile 을 불러 끝없이 돈다(재현 2026-10-02)
   assert.ok(
-    beforeRequest.indexOf('renderedKey.startsWith') < beforeRequest.indexOf('ensureBoardToolSlot('),
-    '요청 전 ensureBoardToolSlot 은 이미 그린 경우 안에만 있어야 한다',
+    reconcile.indexOf('route.boardId !== boardId') < reconcile.indexOf('mount(context)'),
+    '보드 전환 정리가 자리 만들기보다 앞서야 한다',
   );
-  const failure = reconcile.slice(reconcile.indexOf('if (!summary)'), reconcile.indexOf('const key ='));
-  assert.match(failure, /clearRendered\(\)/);
-  assert.doesNotMatch(failure, /dispose\(\)/);
+  assert.ok(
+    reconcile.indexOf("if (sprintSupport === false) return;") < reconcile.indexOf('mount(context)'),
+    'Kanban 이면 mount 전에 돌아간다',
+  );
+  assert.ok(
+    reconcile.indexOf('if (sprintSupport === undefined) return;') < reconcile.indexOf('mount(context)'),
+    '첫 답 전에는 mount 하지 않는다',
+  );
+  // 늦게 온 답은 버린다
+  const check = source.slice(source.indexOf('function checkSprintSupport'), source.indexOf('return {'));
+  assert.match(check, /if \(mySeq !== seq \|\| id !== boardId\) return;/);
 });
 
 test('지난 스프린트 선택은 보드가 바뀌면 자리를 만들기 전에 정리하고 리스너를 쌓지 않는다', async () => {

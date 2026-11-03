@@ -14,6 +14,9 @@
  * | 오리진 | 상대 경로만 쓴다. 다른 호스트로 나갈 수 없다 |
  * | 인증 | 브라우저 세션 쿠키. **토큰을 저장하지 않는다** |
  *
+ * 쓰는 기능: 지난 스프린트 보기(`fetchBoardSprints` · `fetchSprintIssues`), 활성 스프린트 정보
+ * (`fetchActiveSprint` · `fetchSprintRemainingDays`).
+ *
  * docs/plans/jira-past-sprint-view/spec.md
  */
 
@@ -118,6 +121,42 @@ export async function fetchBoardSprints(boardId: string): Promise<JiraSprint[]> 
   }
 
   return sprints;
+}
+
+/**
+ * 보드의 활성 스프린트. 여럿이면 첫 번째, 없으면 `null`.
+ *
+ * Kanban 보드는 400(`보드는 스프린트를 지원하지 않습니다.`)으로 답한다(실측 2026-11-03).
+ */
+export async function fetchActiveSprint(boardId: string): Promise<JiraSprint | null> {
+  const body = await getJson(
+    `/rest/agile/1.0/board/${encodeURIComponent(boardId)}/sprint?state=active&maxResults=10`,
+  ) as { values?: unknown };
+
+  const values = Array.isArray(body.values) ? body.values : [];
+  return values.map(toSprint).find((sprint) => sprint?.state === 'active') ?? null;
+}
+
+/**
+ * Jira 가 센 활성 스프린트의 **남은 작업일**. 보드의 `스프린트 세부 정보` 에 나오는 `N일 남음` 과 같다.
+ *
+ * Agile REST 에는 이 값이 없다. 공개 문서에 없는 Jira Software API(`greenhopper` — 대시보드의 '스프린트
+ * 남은 일수' 가젯이 쓰는 것)다. 남은 일수는 보드의 근무일 설정을 따르므로 우리가 주말만 빼서 세면
+ * 휴일이 어긋난다. Jira 가 센 값을 받는다.
+ *
+ * 실측(2026-11-03): 진행 중 스프린트 `{"days":3}` = 화면 `3일 남음` = Relay `activeWorkingDaysRemaining`
+ * 3, 끝난 날이 지난 스프린트 `{"days":0}`.
+ *
+ * 모양이 다르면 `null`. 호출부는 남은 일수만 빼고 기간·목표는 그대로 보여준다.
+ */
+export async function fetchSprintRemainingDays(boardId: string, sprintId: number): Promise<number | null> {
+  const body = await getJson(
+    `/rest/greenhopper/1.0/gadgets/sprints/remainingdays`
+    + `?rapidViewId=${encodeURIComponent(boardId)}&sprintId=${sprintId}`,
+  ) as { days?: unknown } | null;
+
+  const days = body?.days;
+  return typeof days === 'number' && Number.isInteger(days) && days >= 0 ? days : null;
 }
 
 function toIssue(raw: unknown): JiraBoardIssue | null {

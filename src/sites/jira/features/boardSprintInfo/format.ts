@@ -89,3 +89,57 @@ export function summarizeSprint(sprint: ActiveSprintInfo): SprintSummary | null 
     hasGoal: Boolean(goal),
   };
 }
+
+/**
+ * 칩이 지금 무엇을 보여주나.
+ *
+ * | 상태 | 언제 |
+ * | --- | --- |
+ * | `idle` | 페이지가 날짜를 들고 있지 않다(새 보드). 누르면 읽는다 |
+ * | `loading` | 누른 뒤 답을 기다린다 |
+ * | `shown` | 기간 · 남은 일수 · 목표를 보여준다 |
+ * | `empty` | 읽었더니 진행 중인 스프린트가 없다 |
+ * | `error` | 읽지 못했다. 누르면 다시 읽는다 |
+ */
+export type SprintChipState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'shown'; summary: SprintSummary }
+  | { kind: 'empty' }
+  | { kind: 'error'; message: string };
+
+export interface SprintChipView {
+  /** 자세한 것부터 짧은 것 순서의 문구 후보. 마지막은 빈 문자열(아이콘만)이다 */
+  labels: string[];
+  /** hover 문구 */
+  title: string;
+  /** 읽는 중이라 누를 수 없다 */
+  busy: boolean;
+}
+
+export function describeSprintChip(state: SprintChipState): SprintChipView {
+  switch (state.kind) {
+    case 'idle':
+      return {
+        labels: ['스프린트 정보', ''],
+        title: '누르면 Jira에서 활성 스프린트의 기간 · 남은 일수 · 목표를 읽어 옵니다.',
+        busy: false,
+      };
+    case 'loading':
+      return { labels: ['읽는 중…', ''], title: '활성 스프린트를 읽는 중입니다.', busy: true };
+    case 'shown':
+      return {
+        labels: state.summary.labels,
+        title: `${state.summary.title}\n\n누르면 Jira에서 다시 읽습니다.`,
+        busy: false,
+      };
+    case 'empty':
+      return {
+        labels: ['활성 스프린트 없음', ''],
+        title: '이 보드에 진행 중인 스프린트가 없습니다. 누르면 다시 확인합니다.',
+        busy: false,
+      };
+    case 'error':
+      return { labels: ['다시 시도', ''], title: `${state.message}\n누르면 다시 읽습니다.`, busy: false };
+  }
+}

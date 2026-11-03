@@ -48,10 +48,3 @@ export function requestBoardSprintState(
     }));
   });
 }
-
-export function requestActiveSprints(
-  document: Document,
-  boardId: string,
-): Promise<ActiveSprintInfo[]> {
-  return requestBoardSprintState(document, boardId).then((state) => state.sprints);
-}

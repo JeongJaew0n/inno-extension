@@ -154,7 +154,7 @@
 
 /* ============================================================
  * @part chip
- * 칩 — 읽기 전용 정보 한 줄
+ * 칩 — 정보 한 줄. 누르면 읽어 오는 것은 `--action`
  * 쓰임 — 활성 스프린트 기간·남은 일수
  * ============================================================ */
 
@@ -181,6 +181,22 @@
 
 /* 폭이 좁아 글자가 하나도 안 들어가면 아이콘만 남기고 여백을 줄인다 */
 .inno-chip--icon-only { padding: 0 var(--inno-space-1); gap: 0; }
+
+/*
+ * 누르면 값을 읽어 오는 칩 — `<button class="inno-chip inno-chip--action">`.
+ * 버튼의 기본 테두리·글꼴을 걷어 읽기 칩과 같은 모양으로 두고, 눌러지는 것임은 hover 와 커서로 알린다.
+ * 쓰임 — 활성 스프린트 정보(누를 때만 Jira 에 묻는다)
+ */
+.inno-chip--action {
+  appearance: none;
+  margin: 0;
+  border: 0;
+  font-family: var(--inno-font);
+  cursor: pointer;
+}
+.inno-chip--action:hover { background: var(--inno-surface-container-high); color: var(--inno-on-surface); }
+.inno-chip--action:focus-visible { outline: 2px solid var(--inno-primary); outline-offset: 2px; }
+.inno-chip--action:disabled { cursor: progress; }
 
 /* ============================================================
  * @part badge

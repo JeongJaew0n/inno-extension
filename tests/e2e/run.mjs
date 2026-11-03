@@ -307,9 +307,22 @@ const suites = {
   // 새 보드(2026-11): 주소에 `c/` 가 없고 컨트롤 바 · board-area 가 없다
   async jiraNewBoard() {
     const map = (url) => (/\/boards\/2148/.test(new URL(url).pathname) ? site.jiraNewBoard(new URL(url).searchParams.has('selectedIssue')) : null);
-    map.api = site.jiraApi;
+    const calls = [];
+    // 브라우저가 스스로 여는 /favicon.ico 는 빼고 API 만 센다
+    map.api = (url) => { const u = new URL(url); if (u.pathname.startsWith('/rest/')) calls.push(u.pathname + u.search); return site.jiraApi(url); };
     const p = await b.newPage('jira-new-board', map);
     await p.goto('https://pms-innogrid.atlassian.net/jira/software/projects/NPT/boards/2148', 3500);
+    // 새 보드는 페이지에 날짜가 없다. 칩으로 시작하고, 보드를 연 것만으로는 요청하지 않는다(2026-11-03 사용자 결정)
+    const idle = await p.ev(`${sroot('jira-board-sprint-info')}?.shadowRoot.querySelector('[data-sprint-text]')?.textContent ?? null`);
+    R.check('Jira 새 보드', '활성 스프린트 칩이 `스프린트 정보` 로 시작', idle === '스프린트 정보', idle);
+    R.check('Jira 새 보드', '보드를 연 것만으로는 API 요청 없음', calls.length === 0, calls.join(' | ') || '0건');
+    await p.clickEl(`${sroot('jira-board-sprint-info')}.shadowRoot.querySelector('[data-sprint-chip]')`);
+    await wait(1200);
+    const shown = await p.ev(`${sroot('jira-board-sprint-info')}?.shadowRoot.querySelector('[data-sprint-text]')?.textContent ?? null`);
+    R.check('Jira 새 보드', '칩을 누르면 기간 · 남은 일수를 채운다', /~/.test(shown ?? '') && /9일 남음/.test(shown ?? ''), shown);
+    R.check('Jira 새 보드', '누를 때 요청 — 활성 스프린트 + 남은 작업일, GET 2번',
+      calls.length === 2 && /\/board\/2148\/sprint\?state=active&/.test(calls[0]) && /remainingdays\?rapidViewId=2148&sprintId=301$/.test(calls[1]), calls.join(' | '));
+    calls.length = 0;
     const place = await p.ev(`(() => {
       const row = document.querySelector('[data-inno-extension-feature="jira-board-tool-row"]');
       const search = document.querySelector('[data-testid="filter-refinement.ui.search-field-container"]');

@@ -192,6 +192,10 @@ export const jiraApi = (url) => {
       { id: 290, name: 'Jazz-v1.0-Sprint1', state: 'closed', startDate: iso(addDays(-17)), endDate: iso(addDays(-4)) },
     ] };
   }
+  // Jira 가 센 남은 작업일(실측 2026-11-03 모양: {"days":3})
+  if (u.pathname === '/rest/greenhopper/1.0/gadgets/sprints/remainingdays' && u.searchParams.get('sprintId') === '301') {
+    return { days: 9 };
+  }
   if (/\/rest\/agile\/1\.0\/sprint\/290\/issue$/.test(u.pathname)) {
     const issue = (key, summary, status, cat, who) => ({ key, fields: { summary,
       status: { name: status, statusCategory: { key: cat } }, issuetype: { name: '작업', iconUrl: '' },

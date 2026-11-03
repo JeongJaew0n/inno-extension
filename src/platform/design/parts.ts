@@ -47,11 +47,15 @@ export const BUTTON_CSS = `.inno-btn{position:relative;isolation:isolate;display
 .inno-btn--outlined{border-color:var(--inno-outline);color:var(--inno-on-surface);}
 .inno-btn--error{color:var(--inno-error);--inno-state-on:var(--inno-error);}`;
 
-/** 568자 */
+/** 907자 */
 export const CHIP_CSS = `.inno-chip{display:inline-flex;align-items:center;gap:var(--inno-space-1);box-sizing:border-box;min-width:0;max-width:320px;min-height:var(--inno-control-sm);padding:0 var(--inno-space-2);border-radius:var(--inno-shape-xs);background:var(--inno-surface-container);color:var(--inno-on-surface-variant);font-size:var(--inno-label-md);line-height:1;align-self:center;}
 .inno-chip svg{width:14px;height:14px;flex:0 0 auto;}
 .inno-chip__text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.inno-chip--icon-only{padding:0 var(--inno-space-1);gap:0;}`;
+.inno-chip--icon-only{padding:0 var(--inno-space-1);gap:0;}
+.inno-chip--action{appearance:none;margin:0;border:0;font-family:var(--inno-font);cursor:pointer;}
+.inno-chip--action:hover{background:var(--inno-surface-container-high);color:var(--inno-on-surface);}
+.inno-chip--action:focus-visible{outline:2px solid var(--inno-primary);outline-offset:2px;}
+.inno-chip--action:disabled{cursor:progress;}`;
 
 /** 688자 */
 export const BADGE_CSS = `.inno-badge{display:inline-flex;align-items:center;padding:1px var(--inno-space-1);border-radius:var(--inno-shape-full);background:var(--inno-surface-container-highest);color:var(--inno-on-surface-variant);font-size:var(--inno-label-sm);font-weight:700;white-space:nowrap;}
@@ -139,4 +143,4 @@ export const INPUT_CSS = `.inno-field{display:grid;gap:var(--inno-space-1);}
 .inno-input--mono{font-family:var(--inno-font-mono);}
 .inno-help{color:var(--inno-on-surface-variant);font-size:var(--inno-body-sm);line-height:var(--inno-body-sm-lh);}`;
 
-// 조각 12개 · CSS 합계 12,532자
+// 조각 12개 · CSS 합계 12,871자
