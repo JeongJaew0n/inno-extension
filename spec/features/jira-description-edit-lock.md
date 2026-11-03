@@ -58,6 +58,8 @@ Jira 설명은 본문 아무 데나 클릭하면 곧바로 편집 상태가 된�
   클릭을 편집으로 받지 않는다. 설명이 비어 렌더러가 없으면 필드 자체를 누른다.
 - 스위치 묶음은 `margin-left: auto` 를 갖는다. 라벨 줄이 `justify-content: space-between` 이라
   아이템이 셋이 되면 이 묶음이 줄 가운데로 떠서 Markdown 복사와 떨어진다(실측).
+  2026-11 구조의 줄(`…description.heading-with-draft`)은 `justify-content: flex-start` 에 폭이 내용만큼이라
+  `margin-left: auto` 가 남는 공간을 갖지 않는다. 간격은 줄의 gap 8px 이다(실측 2026-11-03).
 - 네트워크를 쓰지 않는다.
 
 ## 비목표

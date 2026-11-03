@@ -52,6 +52,7 @@ Jira 보드에서 선택한 업무 번호 옆에 복사 버튼을 제공해, 업
 
 ```text
 /jira/software/c/projects/{projectKey}/boards/{boardId}?selectedIssue={issueKey}
+/jira/software/projects/{projectKey}/boards/{boardId}?selectedIssue={issueKey}        ← 새 보드(2026-11)
 /jira/software/c/projects/{projectKey}/boards/{boardId}/backlog?selectedIssue={issueKey}
 ```
 

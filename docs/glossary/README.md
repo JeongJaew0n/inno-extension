@@ -34,6 +34,8 @@
 | **MAIN world 브리지** | content script(ISOLATED)가 닿을 수 없는 페이지 내부 객체를 다루려고 MAIN world에 심는 스크립트. `CustomEvent`로 주고받는다 | Confluence·Jira의 ProseMirror 조작에 쓴다. 대상 노드는 우리가 붙이는 **임시 표식 속성**으로 지정한다 |
 | **ADF** | Atlassian Document Format. Confluence·Jira 편집기가 공유하는 문서 표현 | Markdown과 상호 변환 대상. 변환기는 `src/platform/adf/` 에 있다 |
 | **미변환 Markdown** | Confluence 본문에 Markdown 문법이 문단 텍스트로 남아 있는 상태 | 변환되면 문법 문자가 소비돼 사라진다. 그 차이로 판정한다 |
+| **새 보드 · 예전 보드** | Jira 활성 스프린트 보드의 두 구현. **새 보드**(2026-11~)는 주소에 `c/` 가 없고(`/jira/software/projects/…/boards/<id>`) 컨트롤 바 · `SPA_STATE` 가 없으며 보드 데이터를 Relay 저장소에 둔다. **예전 보드**는 `/jira/software/c/projects/…` 에 컨트롤 바와 `SPA_STATE.UIF_BOARD` 가 있다 | 둘 다 받는다. 백로그는 아직 `c/` 주소다(2026-11-03). [기록](../troubleshootings/project-specific/2026-11-03-new-jira-board-features-missing.md) |
+| **도구 줄 (board tool row)** | 보드 필터 아래에 우리가 따로 만드는 한 줄. 지난 스프린트 선택기와 활성 스프린트 정보가 들어간다. `ensureBoardToolSlot` | Jira 필터 줄에 끼우지 않는다 — 좁아지면 밀려 안 보인다 |
 | **압축해제 확장** | Chrome 웹 스토어가 아니라 폴더에서 직접 로드한 확장 | `manifest.json`에 `key`가 없어 **확장 ID가 폴더 경로에서 파생된다.** 경로가 바뀌면 저장한 설정을 잃는다 |
 
 ## 규칙
