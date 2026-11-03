@@ -146,6 +146,7 @@ import './adf.test';
 import {
   addDays,
   calendarCellPattern,
+  showsCalendarDate,
   parseVisibleMonth,
   planFromToday,
 } from '../src/sites/jira/features/createQuickDates/contracts';
@@ -2709,6 +2710,23 @@ test('오늘부터 시작은 시작일과 기한 두 날짜를 만든다', () =>
   const plan = planFromToday(new Date(2026, 8, 21));
   assert.deepEqual(plan.start, { year: 2026, month: 9, day: 21 });
   assert.deepEqual(plan.due, { year: 2026, month: 9, day: 24 });
+});
+
+test('날짜를 넣은 뒤 필드에 그 날짜가 보이는지로 성공을 가린다', async () => {
+  const target = { year: 2026, month: 11, day: 3 };
+  // 2026-11 pill 은 0 을 채우고, 예전 모달은 채우지 않았다
+  assert.equal(showsCalendarDate('2026년 11월 03일', target), true);
+  assert.equal(showsCalendarDate('기한 2026년 11월 3일', target), true);
+  // 필드 안에 남는 달력 글자는 걸리지 않는다
+  assert.equal(showsCalendarDate('시작 날짜Previous month, 10월 2026Next month, 12월 2026일월화1 2 3', target), false);
+  assert.equal(showsCalendarDate('2026년 11월 13일', target), false);
+  assert.equal(showsCalendarDate('2026년 12월 03일', target), false);
+
+  // 셀을 누른 것만으로 성공이라 하지 않는다
+  const source = await readFile('src/sites/jira/features/createQuickDates/runtime.ts', 'utf8');
+  const setDate = source.slice(source.indexOf('async function setDate'), source.indexOf('export function createQuickDatesRuntime'));
+  assert.match(setDate, /cell\.click\(\);[\s\S]*showsCalendarDate\(field\.textContent \?\? '', target\)/);
+  assert.doesNotMatch(setDate, /cell\.click\(\);\s*return true;/);
 });
 
 test('달력 셀은 일·월·연으로 고르고 요일은 맞추지 않는다', () => {

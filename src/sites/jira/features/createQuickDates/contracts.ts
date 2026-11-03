@@ -51,6 +51,22 @@ export function calendarCellPattern(date: CalendarDate): RegExp {
   return new RegExp(`^${date.day},\\s.*${date.month}월\\s${date.year}$`);
 }
 
+/**
+ * 필드에 보이는 글자에 그 날짜가 들어 있는지. 셀을 누른 뒤 값이 **실제로** 들어갔는지 확인한다.
+ *
+ * 값을 넣으면 필드가 `2026년 11월 03일`(2026-11 pill) · `2026년 9월 24일`(예전)로 보인다. 0 을 채우는지가
+ * 달라서 숫자로 비교한다. 필드 안에 남는 달력 글자(`Next month, 12월 2026`, 날짜 숫자)는 연이 뒤에 오거나
+ * `년` · `일` 이 없어서 걸리지 않는다.
+ */
+export function showsCalendarDate(text: string, date: CalendarDate): boolean {
+  for (const match of text.matchAll(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/g)) {
+    if (Number(match[1]) === date.year && Number(match[2]) === date.month && Number(match[3]) === date.day) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** 두 날짜가 같은 달인지. 달력을 옮겨야 하는지 판단한다 */
 export function isSameMonth(a: CalendarDate, b: CalendarDate): boolean {
   return a.year === b.year && a.month === b.month;

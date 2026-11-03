@@ -79,7 +79,7 @@ export interface CreateFieldRef {
 }
 
 /**
- * 필드를 라벨로 찾고, 못 찾으면 필드 ID 로 찾는다.
+ * **날짜** 필드를 라벨로 찾고, 못 찾으면 필드 ID 로 찾는다.
  *
  * 2026-11 모달의 날짜 pill 은 값을 넣으면 라벨 자리에 날짜가 들어간다(`시작 날짜` → `2026년 11월 03일`).
  * 라벨로만 찾으면 **두 번째 누를 때부터** 필드를 못 찾는다.
@@ -88,8 +88,9 @@ export function findField(modal: HTMLElement, ref: CreateFieldRef): HTMLElement 
   const byLabel = findFieldByLabel(modal, ref.label);
   if (byLabel) return byLabel;
   const byId = modal.querySelector<HTMLElement>(`[data-testid="${CREATE_MODAL_FIELD_PREFIX}${ref.fieldId}"]`);
-  // 속이 빈 껍데기는 아직 마운트되지 않은 것이다.
-  return byId && byId.childElementCount > 0 ? byId : null;
+  // 접힌 모달의 자리는 속이 빈 껍데기다(innerHTML 29자 — 빈 요소 하나쯤은 들어 있을 수 있다). 자식이
+  // 있는지로 보면 펼치기를 건너뛰고 실패한다. **날짜를 고를 트리거가 있어야** 마운트된 것으로 본다.
+  return byId?.querySelector(`${CREATE_MODAL_DATE_TRIGGER}, [role="button"]`) ? byId : null;
 }
 
 /**

@@ -25,6 +25,7 @@ import {
   monthDistance,
   parseVisibleMonth,
   planFromToday,
+  showsCalendarDate,
   type CalendarDate,
 } from './contracts';
 
@@ -98,7 +99,10 @@ async function setDate(modal: HTMLElement, ref: CreateFieldRef, target: Calendar
   const cell = await waitFor(() => findButtonByLabelPattern(field, calendarCellPattern(target)), 1500);
   if (!cell) return false;
   cell.click();
-  return true;
+
+  // 눌렀다고 들어갔다고 하지 않는다. 2026-11 모달은 고른 뒤에도 달력 내용이 필드 안에 남아서, 다시 열리며
+  // 바뀌기 전의 칸을 누르면 아무 일 없이 끝날 수 있다. 필드에 그 날짜가 보여야 성공이다.
+  return (await waitFor(() => (showsCalendarDate(field.textContent ?? '', target) ? field : null), 1500)) !== null;
 }
 
 export function createQuickDatesRuntime(): FeatureRuntime {

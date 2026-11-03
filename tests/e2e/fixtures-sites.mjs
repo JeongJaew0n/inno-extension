@@ -261,9 +261,10 @@ function renderCalendar(field, y, m) {
 document.getElementById('open-create').onclick = () => {
   const slot = document.getElementById('modal-slot');
   slot.innerHTML = modal();
-  // 접힌 상태에서는 날짜 필드가 빈 껍데기다(실측: innerHTML 29자)
+  // 접힌 상태에서는 날짜 필드가 빈 껍데기다(실측: innerHTML 29자). 빈 요소 하나가 들어 있는 모양으로 둔다 —
+  // 자식이 있다는 것만으로 마운트됐다고 보면 안 된다
   const shells = { customfield_10015: '시작 날짜', duedate: '기한' };
-  for (const id of Object.keys(shells)) slot.querySelector('[data-testid$="field.' + id + '"]').innerHTML = '';
+  for (const id of Object.keys(shells)) slot.querySelector('[data-testid$="field.' + id + '"]').innerHTML = '<div class="_1e0c1txw"></div>';
   document.getElementById('expand').onclick = () => {
     document.getElementById('more').innerHTML = '<button data-testid="issue-create.ui.modal.create-form.layout-renderer.fields-container.collapsible-area-header.collapsible-area-header" id="acc">추가 필드(6개)</button>';
     document.getElementById('acc').onclick = () => {
