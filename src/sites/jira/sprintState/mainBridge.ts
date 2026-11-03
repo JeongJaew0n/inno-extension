@@ -1,5 +1,8 @@
 /**
- * MAIN world 에서 `window.SPA_STATE` 의 활성 스프린트를 읽어 돌려준다.
+ * MAIN world 에서 보드의 활성 스프린트와 스프린트 사용 여부를 읽어 돌려준다.
+ *
+ * 예전 보드는 `window.SPA_STATE` 에, 새 보드(2026-11)는 Relay 저장소에 있다. 앞의 것이 있으면
+ * 그것을, 없으면 뒤의 것을 읽는다.
  *
  * **Jira 내부 상태 모양에 기댄다.** 빌드가 바뀌면 경로가 사라질 수 있다. 그때는 빈 배열을
  * 돌려주고 기능이 조용히 빠진다 — 보드를 망가뜨리지 않는 쪽을 택한다. 원인을 못 찾는 일이
@@ -8,12 +11,15 @@
  * docs/plans/jira-board-sprint-info/context.md
  */
 
+import { PAGE_LAYOUT_MAIN } from '../selectors';
 import {
   readSprintsEnabled,
   SPRINT_STATE_REQUEST_EVENT,
   SPRINT_STATE_RESPONSE_EVENT,
   type ActiveSprintInfo,
+  type BoardSprintState,
 } from './contract';
+import { findRelaySource, readRelayBoardState } from './relay';
 
 const BRIDGE_FLAG = '__innoExtensionJiraSprintStateBridgeInstalled';
 
@@ -65,6 +71,17 @@ function readActiveSprints(result: { sprints?: unknown } | undefined): ActiveSpr
     .filter((sprint): sprint is ActiveSprintInfo => sprint !== null);
 }
 
+/** 예전 보드는 `SPA_STATE`, 새 보드는 Relay 저장소. 둘 다 없으면 모른다 */
+function readBoardState(boardId: string): BoardSprintState {
+  const result = readBoardResult(boardId);
+  if (result) {
+    return { sprints: readActiveSprints(result), sprintsEnabled: readSprintsEnabled(result) };
+  }
+
+  const source = findRelaySource(document.querySelector(PAGE_LAYOUT_MAIN));
+  return (source && readRelayBoardState(source, boardId)) ?? { sprints: [], sprintsEnabled: null };
+}
+
 export function installSprintStateBridge(): void {
   const bridgeWindow = window as BridgeWindow;
   if (bridgeWindow[BRIDGE_FLAG]) return;
@@ -89,13 +106,11 @@ export function installSprintStateBridge(): void {
     let sprintsEnabled: boolean | null = null;
     let message: string | undefined;
     try {
-      const result = readBoardResult(boardId);
-      sprints = readActiveSprints(result);
-      sprintsEnabled = readSprintsEnabled(result);
+      ({ sprints, sprintsEnabled } = readBoardState(boardId));
       // Kanban 보드엔 원래 스프린트가 없다. 고장이 아니니 남기지 않는다.
       if (sprints.length === 0 && sprintsEnabled !== false && !warned) {
         warned = true;
-        message = 'SPA_STATE에서 활성 스프린트를 찾지 못했습니다.';
+        message = '보드 상태(SPA_STATE · Relay)에서 활성 스프린트를 찾지 못했습니다.';
       }
     } catch (error) {
       message = error instanceof Error ? error.message : '스프린트 상태를 읽지 못했습니다.';

@@ -12,7 +12,8 @@ import type { ActiveSprintInfo } from '../../sprintState/contract';
  * ES 명세의 `Date.parse` 는 `+09:00` 을 요구한다. V8 은 관대해서 그대로도 파싱되지만 명세에
  * 기대지 않고 콜론을 넣어 정규화한다.
  */
-export function parseJiraIsoDate(value: string): Date | null {
+export function parseJiraIsoDate(value: string | null): Date | null {
+  if (!value) return null;
   const normalized = value.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
   const date = new Date(normalized);
   return Number.isNaN(date.getTime()) ? null : date;

@@ -163,8 +163,26 @@ const NEW_BOARD_BODY = `
  </div>
 </div>
 `;
+// 새 보드는 SPA_STATE 대신 Relay 저장소를 들고 있다. React fiber 를 따라 올라가 environment 를 찾는다(실측 2026-11-03).
+// 모양: JiraBoardView → board(JiraBoard: boardId · boardType) · sprints(연결 → edges → node: JiraSprint id(ARI) · name)
+const relayScript = (boardId, boardType) => `<script>(() => {
+  const records = {
+    'client:view': { __typename: 'JiraBoardView', board: { __ref: 'ari:board' }, sprints: ${boardType === 'SCRUM' ? "{ __ref: 'client:conn' }" : 'null'} },
+    'ari:board': { __typename: 'JiraBoard', boardId: ${boardId}, boardType: '${boardType}' },
+    'client:conn': { __typename: 'JiraSprintConnection', edges: { __refs: ['client:edge'] }, totalCount: 1 },
+    'client:edge': { __typename: 'JiraSprintEdge', node: { __ref: 'ari:sprint' } },
+    'ari:sprint': { __typename: 'JiraSprint', id: 'ari:cloud:jira:site:sprint/activation/x/301', name: 'Jazz-v1.0-Sprint2' },
+  };
+  const source = { getRecordIDs: () => Object.keys(records), get: (id) => records[id] };
+  const environment = { getStore() { return { getSource: () => source }; } };
+  document.querySelector('[data-testid="page-layout.main"]')['__reactFiber$e2e'] =
+    { memoizedProps: {}, return: { memoizedProps: {}, return: { memoizedProps: { environment }, return: null } } };
+})();</script>`;
 export const jiraNewBoard = (withDialog) => doc('보드 2148', `${NEW_BOARD_BODY}
-${withDialog ? DIALOG : ''}`);
+${withDialog ? DIALOG : ''}
+${relayScript(2148, 'SCRUM')}`);
+export const jiraNewKanbanBoard = doc('보드 2149', `${NEW_BOARD_BODY}
+${relayScript(2149, 'KANBAN')}`);
 
 export const jiraApi = (url) => {
   const u = new URL(url);

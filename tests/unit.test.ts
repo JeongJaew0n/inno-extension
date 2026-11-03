@@ -93,6 +93,12 @@ import {
   summarizeSprint,
 } from '../src/sites/jira/features/boardSprintInfo/format';
 import { readSprintsEnabled } from '../src/sites/jira/sprintState/contract';
+import {
+  findRelaySource,
+  readRelayBoardState,
+  sprintNumberFromAri,
+  type RelayRecord,
+} from '../src/sites/jira/sprintState/relay';
 import { resolveCopyTargets } from '../src/sites/gitlab/features/commitShaCopy/runtime';
 import {
   buildMergeRequestMarkdown,
@@ -3082,6 +3088,69 @@ test('지난 스프린트 선택은 보드가 바뀌면 자리를 만들기 전�
   assert.match(source, /removeEventListener\('click', onOutsideClick\)/);
   assert.match(source.slice(source.indexOf('function unmount')), /removeOutsideClick\?\.\(\)/);
   assert.match(source.slice(source.indexOf('function dispose')), /unmount\(\);/);
+});
+
+/** 실측(2026-11-03)한 새 보드 Relay 저장소 모양을 흉내 낸다 */
+function fakeRelaySource(records: Record<string, RelayRecord>) {
+  return { getRecordIDs: () => Object.keys(records), get: (id: string) => records[id] };
+}
+
+function scrumBoardRecords(sprint: RelayRecord): Record<string, RelayRecord> {
+  return {
+    'client:view': { __typename: 'JiraBoardView', board: { __ref: 'ari:board' }, sprints: { __ref: 'client:conn' } },
+    'ari:board': { __typename: 'JiraBoard', boardId: 2064, boardType: 'SCRUM' },
+    'client:conn': { __typename: 'JiraSprintConnection', edges: { __refs: ['client:edge'] }, totalCount: 1 },
+    'client:edge': { __typename: 'JiraSprintEdge', node: { __ref: 'ari:sprint' } },
+    'ari:sprint': { __typename: 'JiraSprint', ...sprint },
+  };
+}
+
+test('새 보드는 Relay 저장소에서 활성 스프린트와 스프린트 사용 여부를 읽는다', () => {
+  const ari = 'ari:cloud:jira:site:sprint/activation/00000000-0000-0000-0000-000000000000/2250';
+  // `스프린트 세부 정보` 를 열기 전: 이름만 있다
+  const before = readRelayBoardState(fakeRelaySource(scrumBoardRecords({ id: ari, name: 'S6' })), '2064');
+  assert.deepEqual(before, {
+    sprintsEnabled: true,
+    sprints: [{ id: 2250, name: 'S6', goal: '', isoStartDate: null, isoEndDate: null, daysRemaining: null }],
+  });
+
+  // 연 뒤: 날짜 · 목표 · 남은 작업일이 생긴다(실측 값 모양 그대로)
+  const after = readRelayBoardState(fakeRelaySource(scrumBoardRecords({
+    id: ari, name: 'S6', goal: '시연 준비',
+    startDate: '2026-10-25T15:00:40.828Z', endDate: '2026-11-08T15:00:00Z', activeWorkingDaysRemaining: 3,
+  })), '2064');
+  assert.equal(after?.sprints[0]?.isoEndDate, '2026-11-08T15:00:00Z');
+  assert.equal(after?.sprints[0]?.daysRemaining, 3);
+  assert.equal(after?.sprints[0]?.goal, '시연 준비');
+
+  // 다른 보드의 화면이면 모른다(null). 지금 보드를 아직 안 그렸을 수 있다
+  assert.equal(readRelayBoardState(fakeRelaySource(scrumBoardRecords({ id: ari, name: 'S6' })), '2147'), null);
+});
+
+test('새 Kanban 보드는 스프린트를 쓰지 않는다고 읽는다', () => {
+  // 실측(2026-11-03, 보드 106): boardType KANBAN, 보드 화면의 sprints 가 null
+  const state = readRelayBoardState(fakeRelaySource({
+    'client:view': { __typename: 'JiraBoardView', board: { __ref: 'ari:board' }, sprints: null },
+    'ari:board': { __typename: 'JiraBoard', boardId: 106, boardType: 'KANBAN' },
+  }), '106');
+  assert.deepEqual(state, { sprintsEnabled: false, sprints: [] });
+});
+
+test('Relay 저장소는 fiber 를 따라 올라가 environment 를 가진 곳에서 찾는다', () => {
+  const source = fakeRelaySource({});
+  const environment = { getStore() { return { getSource: () => source }; } };
+  const element = { ['__reactFiber$abc']: { memoizedProps: {}, return: { memoizedProps: { environment }, return: null } } };
+  assert.equal(findRelaySource(element as unknown as Element), source);
+  // fiber 가 없거나 끝까지 없으면 null
+  assert.equal(findRelaySource({} as Element), null);
+  assert.equal(findRelaySource({ ['__reactFiber$x']: { memoizedProps: {}, return: null } } as unknown as Element), null);
+  assert.equal(findRelaySource(null), null);
+});
+
+test('스프린트 ARI 끝의 번호를 읽는다', () => {
+  assert.equal(sprintNumberFromAri('ari:cloud:jira:site:sprint/activation/abc/2250'), 2250);
+  assert.equal(sprintNumberFromAri('ari:cloud:jira:site:sprint/x'), null);
+  assert.equal(sprintNumberFromAri(2250), null);
 });
 
 test('보드가 스프린트를 쓰는지는 SPA_STATE 의 기능 표시를 먼저 보고, 없으면 보드 종류로 판단한다', () => {

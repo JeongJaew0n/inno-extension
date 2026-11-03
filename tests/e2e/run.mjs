@@ -321,6 +321,8 @@ const suites = {
     R.check('Jira 새 보드', '우리 도구 줄이 머리 영역 맨 끝, 필터 아래 새 줄', place && place.inHeader && place.last && place.below && place.full, JSON.stringify(place));
     const trig = await hosts(p, 'jira-past-sprint-view');
     R.check('Jira 새 보드', '지난 스프린트 선택 주입', trig === 1, `${trig}개`);
+    const label = await p.ev(`${sroot('jira-past-sprint-view')}?.shadowRoot.querySelector('[data-trigger-label]')?.textContent ?? null`);
+    R.check('Jira 새 보드', '선택기에 활성 스프린트 이름 (Relay 저장소 → MAIN 브리지)', label === 'Jazz-v1.0-Sprint2', label);
     await p.clickEl(`${sroot('jira-past-sprint-view')}.shadowRoot.querySelector('[data-trigger]')`);
     await wait(900);
     const rows = await p.ev(`[...${sroot('jira-past-sprint-view')}.shadowRoot.querySelectorAll('[data-sprint-id]')].length`);
@@ -338,6 +340,16 @@ const suites = {
     await p.goto('https://pms-innogrid.atlassian.net/jira/software/projects/NPT/boards/2148?selectedIssue=NPT-150', 3000);
     const lc = await hosts(p, 'jira-issue-link-copy');
     R.check('Jira 새 보드', '모달 속 업무 링크 복사', lc === 1, `${lc}개`);
+  },
+
+  async jiraNewKanbanBoard() {
+    const p = await b.newPage('jira-new-kanban', (url) => (/\/boards\/2149$/.test(new URL(url).pathname) ? site.jiraNewKanbanBoard : null));
+    await p.goto('https://pms-innogrid.atlassian.net/jira/software/projects/OPS/boards/2149', 3000);
+    const picker = await hosts(p, 'jira-past-sprint-view');
+    R.check('Jira 새 Kanban 보드', '지난 스프린트 선택을 만들지 않는다 (Relay boardType KANBAN)', picker === 0, `${picker}개`);
+    R.check('Jira 새 Kanban 보드', '빈 도구 줄을 남기지 않는다', !(await p.ev(`!!document.querySelector('[data-inno-extension-feature="jira-board-tool-row"]')`)), '');
+    const mutations = await p.ev(`new Promise((resolve) => { let n = 0; const o = new MutationObserver((list) => { n += list.length; }); o.observe(document.body, { childList: true, subtree: true, attributes: true }); setTimeout(() => { o.disconnect(); resolve(n); }, 2000); })`);
+    R.check('Jira 새 Kanban 보드', '2초 동안 DOM 이 조용하다(reconcile 반복 없음)', mutations === 0, `변화 ${mutations}건`);
   },
 
   async jiraBacklog() {

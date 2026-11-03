@@ -184,6 +184,13 @@ export const DESCRIPTION_EDITOR_SAVE_BUTTON = '[data-testid="comment-save-button
 /** 보드 활성 스프린트 정보 기능. */
 export const BOARD_SPRINT_INFO_ROOT = 'jira-board-sprint-info';
 
+/**
+ * 페이지 본문 칸. 새 보드의 Relay 저장소를 이 요소의 React fiber 에서 찾아 올라간다.
+ *
+ * sprintState/relay.ts
+ */
+export const PAGE_LAYOUT_MAIN = '[data-testid="page-layout.main"]';
+
 
 /** 지난 스프린트 보기 기능. */
 export const PAST_SPRINT_VIEW_ROOT = 'jira-past-sprint-view';
