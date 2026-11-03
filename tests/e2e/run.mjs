@@ -134,6 +134,8 @@ const suites = {
       const c = await hosts(p, root);
       R.check('Jira 업무', `${root} 주입`, c === n, `${c}개`);
     }
+    const row = await p.ev(`(() => { const h = ${sroot('jira-description-markdown-copy')}; return { row: h.parentElement.getAttribute('data-testid'), inHeading: !!h.parentElement.closest('h2') }; })()`);
+    R.check('Jira 업무', '설명 버튼이 제목(h2) 밖, 제목 줄(heading-with-draft)에', row.row === 'issue-view-base.common.description.heading-with-draft' && !row.inHeading, JSON.stringify(row));
     const order = await p.ev(`[...${sroot('jira-description-edit-lock')}.parentElement.children].map(c => c.getAttribute('data-inno-extension-feature') || c.tagName).join(' > ')`);
     R.check('Jira 업무', '클릭 편집 방지가 Markdown 복사 왼쪽', /edit-lock > jira-description-markdown-copy/.test(order), order);
     const gapPx = await p.ev(`(() => { const a = ${sroot('jira-description-edit-lock')}.getBoundingClientRect(); const b = ${sroot('jira-description-markdown-copy')}.getBoundingClientRect(); return Math.round(b.left - a.right); })()`);

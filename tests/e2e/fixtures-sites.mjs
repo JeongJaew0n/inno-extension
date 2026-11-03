@@ -50,11 +50,12 @@ const readField = (body, label) => `<div data-testid="issue.views.field.rich-tex
 const READ = readField(RENDERER, '설명 편집');
 const READ_EMPTY = readField('<div role="presentation" style="color:#6b778c">설명 편집</div>', '설명 추가');
 
+// 설명 제목 줄은 실측(2026-11-03) 구조다: 라벨이 글자뿐인 h2, 부모 heading-with-draft 가 flex 줄(gap 8px)
 const issuePage = (key, read) => doc(`[${key}] Jira`, `
 <div id="jira-root"><main>
   <nav><a data-testid="issue.views.issue-base.foundation.breadcrumbs.current-issue.item" href="/browse/${key}">${key}</a></nav>
   <h1 data-testid="issue.views.issue-base.foundation.summary.heading">[공통] 사내 Gitlab CI 연계 분석</h1>
-  <div data-testid="issue.views.issue-base.common.description.label"><div style="display:flex;align-items:center;gap:8px;justify-content:space-between"><h2 style="margin:0">설명</h2></div></div>
+  <div><div data-testid="issue-view-base.common.description.heading-wrapper" style="display:flex;align-items:center"><div data-testid="issue-view-base.common.description.heading-with-draft" style="display:flex;gap:8px;align-items:center"><h2 data-testid="issue.views.issue-base.common.description.label" style="margin:0;font-size:14px">설명</h2></div></div></div>
   <div id="desc-slot">${read}</div>
   <section id="comments"><h3>댓글</h3>
     <div data-testid="issue.activity.comment" id="composer-slot">${COMMENT_PLACEHOLDER}</div>

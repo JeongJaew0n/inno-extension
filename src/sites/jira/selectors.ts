@@ -149,6 +149,9 @@ export const DESCRIPTION_EDIT_BUTTON = 'button[aria-label$="edit"]';
  *
  * 라벨 자신은 `display: block` 이고, 그 첫 자식이 `display: flex` 줄이다. 실측에서 라벨 텍스트가
  * x 261 에서 끝나고 706 까지 445px 가 비어 있었다.
+ *
+ * 2026-11 구조에서는 라벨이 글자뿐인 `h2` 이고 부모(`…description.heading-with-draft`)가 flex 줄이다.
+ * 줄 고르기는 `descriptionLabel.ts` 가 한다.
  */
 export const DESCRIPTION_LABEL = '[data-testid="issue.views.issue-base.common.description.label"]';
 
