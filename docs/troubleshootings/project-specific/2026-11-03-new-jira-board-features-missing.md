@@ -147,9 +147,20 @@ ego 브라우저는 확장 설치(`Extensions.loadUnpacked`)를 막는다. **확
 | ④ 업무 화면 설명 제목 줄 | `설명` → 클릭 편집 방지 → `Markdown 복사`. 편집에 들어가면 끝에 `저장`·`취소`, 우리 `취소` 로 읽기 상태 복귀 |
 | ⑤ 생성 모달 `오늘부터 시작` | 시작 날짜 오늘, 기한 +3일이 pill 에 들어갔다. 커밋 안 한 리뷰 수정(트리거로 마운트 판정 · 값 확인)을 포함한 소스로 봤다. 모달은 `닫기` → `버리기` 로 닫았다 |
 
+같은 방법으로 나머지 셋도 봤다. 셋 다 고칠 것이 없었다.
+
+| 항목 | 결과 |
+| --- | --- |
+| 백로그 `/` prefix | 백로그 주소는 여전히 `c/` 다. 인라인 `만들기` 의 입력칸이 그대로 `input[aria-label="Work item summary"]` 이고, `/` 에 내장 태그 9개가 뜬다. 입력은 지우고 Escape 로 닫았다(Enter 는 누르지 않았다) |
+| 생성 모달 `$` 템플릿 | 설명 편집기(`issue-create.common.ui.fields.description-field.wrapper`)에서 `$` 에 템플릿 5개, `작업` 을 고르면 제목 4 · 목록 2 가 서식으로 들어가고 `$` 와 Markdown 기호가 남지 않는다. 모달은 `버리기` 로 닫았다 |
+| 편집기 Markdown 변환(새 댓글) | 표 3줄을 문단으로 쳐 두고 누르면 2×2 표가 된다. `취소` 로 닫았고, 새로고침 뒤 초안 · 새 댓글이 남지 않았다 |
+
+새 댓글 칸의 자리표시 버튼은 초안이 있을 때와 없을 때 `data-testid` 가 다르다
+(`issue-view-activity-comment.comment-add-editor.textarea` · `canned-comments.common.ui.comment-text-area-placeholder.textarea`).
+기능은 열린 편집기만 보므로 상관없다.
+
 ## 남은 것
 
 - 패키지된 확장으로 실제 Jira 에서 보는 것 — 위 확인은 소스 주입이다
-- 이번에 직접 보지 않은 기능: 백로그 `/` prefix, 생성 모달 `$` 템플릿, 편집기 Markdown 변환
 - 활성 스프린트가 여럿인 보드에서 Relay 연결 모양 `[미정]`
 - 남은 일수 API 는 공개 문서에 없다. 사라지면 남은 일수만 빠진다
