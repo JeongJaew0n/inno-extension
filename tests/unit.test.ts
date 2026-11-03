@@ -797,6 +797,31 @@ test('Jira board URL과 selectedIssue를 파싱한다', () => {
   assert.equal(parseJiraBoardUrl('https://example.com/jira/software/c/projects/NPT/boards/2146'), null);
 });
 
+test('새 보드 주소(c/ 없음)도 보드로 알아본다', () => {
+  // 실측(2026-11-03): 새 보드는 `c/` 없이 열린다. 백로그는 여전히 `c/` 가 있다.
+  const board = parseJiraBoardUrl(
+    'https://pms-innogrid.atlassian.net/jira/software/projects/NPT/boards/2147?filter=&groupBy=subtask&selectedIssue=npt-216',
+  );
+  assert.equal(board?.boardId, '2147');
+  assert.equal(board?.projectKey, 'NPT');
+  assert.equal(board?.selectedIssueKey, 'NPT-216');
+  assert.equal(board?.viewPath, '');
+  assert.equal(isJiraBoardRoute(board), true);
+
+  const backlog = parseJiraBoardUrl(
+    'https://pms-innogrid.atlassian.net/jira/software/projects/NPT/boards/2147/backlog',
+  );
+  assert.equal(backlog?.viewPath, '/backlog');
+  assert.equal(isJiraBoardRoute(backlog), true);
+  assert.equal(
+    isJiraBoardRoute(parseJiraBoardUrl('https://pms-innogrid.atlassian.net/jira/software/projects/NPT/boards/2147/timeline')),
+    false,
+  );
+  // 비슷하게 생긴 다른 경로는 받지 않는다.
+  assert.equal(parseJiraBoardUrl('https://pms-innogrid.atlassian.net/jira/software/x/projects/NPT/boards/2147'), null);
+  assert.equal(parseJiraBoardUrl('https://pms-innogrid.atlassian.net/jira/software/projects/NPT/board/2147'), null);
+});
+
 test('Jira issue 링크에서 업무 번호를 추출한다', () => {
   assert.equal(extractIssueKeyFromHref('/browse/NPT-25'), 'NPT-25');
   assert.equal(extractIssueKeyFromHref('https://example.com/browse/NPT-25'), null);
