@@ -151,6 +151,7 @@ const suites = {
     R.check('Jira 업무', '설명 Markdown 복사 — 댓글 제외', !md.includes('댓글 본문'), '');
     R.check('Jira 업무', '설명 Markdown 복사 — 멘션은 @이름 으로 남는다', md.includes('담당 @홍길동 확인 요청'), md.match(/담당[^\n]*/)?.[0] ?? '없음');
     R.check('Jira 업무', '설명 Markdown 복사 — 스마트 링크에 아이콘이 섞이지 않는다', md.includes('참고 [설계 위키](https://example.com/wiki)') && !md.includes('favicon'), md.match(/참고[^\n]*/)?.[0] ?? '없음');
+    R.check('Jira 업무', '설명 Markdown 복사 — 스마트 링크 옆 숨은 `미리 보기` 는 빠진다', !md.includes('미리 보기'), md.match(/참고[^\n]*/)?.[0] ?? '없음');
     R.check('Jira 업무', '설명 Markdown 복사 — 첨부 이미지가 data URI 로', md.includes(`![shot.png](data:image/png;base64,${site.MEDIA_IMAGE_PNG})`), md.match(/!\[[^\]]*\]\([^)]{0,60}/)?.[0] ?? '이미지 없음');
     R.check('Jira 업무', '설명 Markdown 복사 — 토큰 붙은 주소는 남지 않는다', !md.includes('media-cdn.atlassian.com'), '');
 
@@ -486,7 +487,7 @@ const suites = {
     await p.clickEl(`${sroot('confluence-page-markdown-copy')}.shadowRoot.querySelector('button')`);
     const md = await p.clipboard();
     R.check('Confluence', '본문 Markdown — 제목·목록·표', md.includes('## 목표') && md.includes('- 파이프라인 수정') && md.includes('| STREAM | dev-001 |'), md.replace(/\n/g, '⏎').slice(0, 120));
-    R.check('Confluence', '본문 Markdown — 멘션·스마트 링크', md.includes('담당 @홍길동 확인 요청') && md.includes('[설계 위키](https://example.com/wiki)') && !md.includes('favicon'), md.match(/담당[^\n]*/)?.[0] ?? '없음');
+    R.check('Confluence', '본문 Markdown — 멘션·스마트 링크', md.includes('담당 @홍길동 확인 요청') && md.includes('[설계 위키](https://example.com/wiki)') && !md.includes('favicon') && !md.includes('미리 보기'), md.match(/담당[^\n]*/)?.[0] ?? '없음');
     await p.shot(`${SP}/confluence-page.png`);
     await p.goto('https://pms-innogrid.atlassian.net/wiki/spaces/PAAS/pages/edit-v2/2177630217', 3000);
     const e = await hosts(p, 'confluence-editor-markdown-to-adf');

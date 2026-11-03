@@ -33,6 +33,9 @@ export const MARKDOWN_IGNORED_ELEMENTS = [
   // 스마트 링크 앞의 사이트 아이콘(favicon). 남기면 링크 글자 안에 `![](…/favicon.ico)` 가 섞인다
   // (실측 2026-10-16, NPT-669 댓글)
   '[data-testid="inline-card-icon-and-title-image"]',
+  // 스마트 링크를 감싼 `smart-link-draggable-inline` 안에 화면에 안 보이는 `미리 보기` 글자가 있다
+  // (`aria-hidden`, `visibility: hidden`). 남기면 `[제목](주소)미리 보기` 가 된다(실측 2026-11-03, NPT-669 설명)
+  '[data-testid="smart-link-draggable-inline"] [aria-hidden="true"]',
 ].join(',');
 
 /**

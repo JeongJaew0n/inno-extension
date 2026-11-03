@@ -14,7 +14,7 @@ const RENDERER = `<div class="ak-renderer-document">
   <h2>목표</h2>
   <p>CD 트리거 배선을 고쳐 형상 태그가 자동 갱신되도록 한다. <a href="https://example.com/doc">설계 문서</a></p>
   <ul><li>파이프라인 수정</li><li>레지스트리 프로필 추가</li></ul>
-  <p>담당 <button aria-label="More information about 홍길동" data-testid="user-profile-card-trigger-wrapper"><span data-mention-id="u-1"><span data-testid="mention-u-1">@홍길동</span></span></button> 확인 요청. 참고 <span data-inline-card="true"><a href="https://example.com/wiki" data-testid="inline-card-resolved-view"><span data-testid="inline-card-icon-and-title"><span data-testid="icon-wrapper"><img src="https://example.com/favicon.ico" data-testid="inline-card-icon-and-title-image" alt=""></span><span>설계 위키</span></span></a></span></p>
+  <p>담당 <button aria-label="More information about 홍길동" data-testid="user-profile-card-trigger-wrapper"><span data-mention-id="u-1"><span data-testid="mention-u-1">@홍길동</span></span></button> 확인 요청. 참고 <span data-testid="smart-link-draggable-inline"><span><span data-inline-card="true"><span data-testid="hover-card-trigger-wrapper" role="none"><a href="https://example.com/wiki" data-testid="inline-card-resolved-view"><span data-testid="inline-card-icon-and-title"><span data-testid="icon-wrapper"><img src="https://example.com/favicon.ico" data-testid="inline-card-icon-and-title-image" alt=""></span><span>설계 위키</span></span></a></span></span><span aria-hidden="true" style="visibility: hidden"><span>미리 보기</span></span></span></span></p>
   <table><tbody><tr><th>이름</th><th>값</th></tr><tr><td>STREAM</td><td>dev-001</td></tr></tbody></table>
   <div data-testid="media-card-view" role="none"><div data-testid="ImageRendererWrapper"><img src="${MEDIA_IMAGE_URL}" alt="shot.png" width="1" height="1"></div></div>
 </div>`;
