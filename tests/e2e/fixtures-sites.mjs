@@ -142,16 +142,19 @@ export const jiraKanbanBoard = doc('보드 2147', `${BOARD_BODY}
 // 새 보드(2026-11). 주소에 `c/` 가 없고 컨트롤 바 · board-area · SPA_STATE 가 없다.
 // 실측(2026-11-03) 모양: 보드 grid(`header` · `content` · `sidebar` 칸)의 header 칸이 `flex-wrap: wrap`,
 // 그 안 왼쪽 묶음에 검색칸(`filter-refinement.ui.search-field-container`)이 있다. 본문은 `board.content.board-wrapper`.
+// header 칸은 `::before { position: absolute; inset: 0 }` 를 깔고, Jira 자기 자식들은 `relative` 로 그 위에 둔다.
+// 위치 지정이 없는 우리 줄은 그 아래에 깔려 클릭이 header 로 갔다(실측 2026-11-03, NPT 보드 2145).
 const NEW_BOARD_BODY = `
+<style>.e2e-board-header{position:relative}.e2e-board-header::before{content:" ";position:absolute;inset:0}</style>
 <div data-testid="page-layout.root" style="display:grid;grid-template-areas:'main'">
  <div data-testid="page-layout.main" style="grid-area:main">
   <div style="display:grid;grid-template-areas:'header sidebar' 'content sidebar';grid-template-columns:1fr auto">
-   <div style="grid-area:header;display:flex;flex-wrap:wrap;justify-content:space-between;padding:8px 0">
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+   <div class="e2e-board-header" style="grid-area:header;display:flex;flex-wrap:wrap;justify-content:space-between;padding:8px 0">
+    <div style="position:relative;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
      <div data-testid="filter-refinement.ui.search-field-container" style="display:flex"><input placeholder="보드 검색"></div>
      <button>필터</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center"><button aria-label="스프린트 세부 정보">i</button><button>스프린트 완료</button></div>
+    <div style="position:relative;display:flex;gap:8px;align-items:center"><button aria-label="스프린트 세부 정보">i</button><button>스프린트 완료</button></div>
    </div>
    <div style="grid-area:content">
     <div data-testid="board.content.board-wrapper" style="position:relative;min-height:420px;display:flex;gap:12px;padding:12px">

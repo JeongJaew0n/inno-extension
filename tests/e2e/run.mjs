@@ -318,6 +318,9 @@ const suites = {
     const idle = await p.ev(`${sroot('jira-board-sprint-info')}?.shadowRoot.querySelector('[data-sprint-text]')?.textContent ?? null`);
     R.check('Jira 새 보드', '활성 스프린트 칩이 `스프린트 정보` 로 시작', idle === '스프린트 정보', idle);
     R.check('Jira 새 보드', '보드를 연 것만으로는 API 요청 없음', calls.length === 0, calls.join(' | ') || '0건');
+    // header 칸의 ::before 가 덮지 않아야 누를 수 있다
+    const onTop = await p.ev(`(() => { const out = {}; for (const f of ['jira-board-sprint-info', 'jira-past-sprint-view']) { const h = document.querySelector('[data-inno-extension-feature="' + f + '"]'); const b = h.getBoundingClientRect(); out[f] = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2) === h; } return out; })()`);
+    R.check('Jira 새 보드', '칩·선택기가 header 칸의 ::before 위에 있어 누를 수 있다', onTop['jira-board-sprint-info'] && onTop['jira-past-sprint-view'], JSON.stringify(onTop));
     await p.clickEl(`${sroot('jira-board-sprint-info')}.shadowRoot.querySelector('[data-sprint-chip]')`);
     await wait(1200);
     const shown = await p.ev(`${sroot('jira-board-sprint-info')}?.shadowRoot.querySelector('[data-sprint-text]')?.textContent ?? null`);

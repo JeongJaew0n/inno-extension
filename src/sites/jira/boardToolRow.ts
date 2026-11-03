@@ -59,6 +59,13 @@ function createRow(document: Document): HTMLElement {
   row.style.flexWrap = 'wrap';
   row.style.gap = '8px';
   row.style.padding = '2px 0 6px';
+  /*
+   * **위치 지정 요소로 둔다.** 새 보드의 header 칸은 `::before { position: absolute; inset: 0 }` 를
+   * 깔아 둔다. 그리기 순서에서 위치 지정 요소가 일반 흐름 위에 오므로, `static` 인 줄은 그 아래에
+   * 깔려 클릭이 header 로 간다. Jira 자기 자식들은 `relative` 라 그 위에 있다(실측 2026-11-03,
+   * NPT 보드 2145: 칩 클릭이 먹지 않았다).
+   */
+  row.style.position = 'relative';
   return row;
 }
 
