@@ -248,6 +248,13 @@ export const CREATE_MODAL = '[data-testid="minimizable-modal.ui.modal-container.
 /** 필드 컨테이너의 testid 접두사. 뒤에 필드 ID 가 붙는다 */
 export const CREATE_MODAL_FIELD_PREFIX = 'issue-create-modernised.field-renderer.field.';
 
+/**
+ * 날짜 필드의 pill 버튼. 2026-11 생성 모달은 날짜 필드를 `<label>` 없이 이 버튼 하나로 그린다.
+ * 버튼 글자가 라벨(`시작 날짜` · `기한`)이고, 값을 넣으면 그 자리에 날짜(`2026년 11월 03일`)가 들어간다
+ * (실측 2026-11-03).
+ */
+export const CREATE_MODAL_DATE_TRIGGER = '[data-testid="issue-create-commons.ui.pill-date-field.date-trigger"]';
+
 /** 헤더의 `더 보기`. 사용자가 말하는 '더보기'가 이것이다 */
 export const CREATE_MODAL_EXPAND_BUTTON = '[data-testid="issue-create-modernised.ui.header.toggle-expand-button"]';
 

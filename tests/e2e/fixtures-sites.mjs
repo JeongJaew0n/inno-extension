@@ -284,6 +284,60 @@ document.getElementById('open-create').onclick = () => {
 };
 </script>`);
 
+// 2026-11 업무 생성 모달. 실측(2026-11-03): 날짜 필드가 처음부터 pill 버튼으로 보인다(펼칠 것이 없다).
+// `<label>` 이 없고 버튼 글자가 라벨이다. 날짜를 고르면 그 글자가 `2026년 11월 03일` 로 바뀌고, 달력은 닫히지만
+// 그 내용은 DOM 에 남는다. 달력 버튼 글자 · 날짜 칸 aria-label 은 예전과 같다.
+export const jiraCreatePill = doc('업무 생성(pill)', `
+<button id="open-create">만들기</button>
+<div id="modal-slot"></div>
+<script>
+window.__expandClicks = 0;
+const KO = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+const pad = (n) => String(n).padStart(2, '0');
+const FIELD = (id, inner) => '<div data-testid="issue-create-modernised.field-renderer.field.' + id + '" id="' + id + '-container" role="presentation">' + inner + '</div>';
+const pill = (id, label) => FIELD(id, '<div><div><button type="button" data-testid="issue-create-commons.ui.pill-date-field.date-trigger" style="padding:2px 8px;border:1px solid #ccc;border-radius:4px"><span><span data-pill-text>' + label + '</span></span></button>'
+  + '<div data-testid="issue-create-commons.ui.pill-date-field.date-menu-panel" data-panel style="display:none"></div></div></div>');
+function renderCalendar(field, y, m) {
+  const panel = field.querySelector('[data-panel]');
+  const last = new Date(y, m + 1, 0);
+  const prev = new Date(y, m - 1, 1), next = new Date(y, m + 1, 1);
+  let html = '<button type="button" data-prev>Previous month, ' + (prev.getMonth()+1) + '월 ' + prev.getFullYear() + '</button>'
+    + '<button type="button" data-next>Next month, ' + (next.getMonth()+1) + '월 ' + next.getFullYear() + '</button><div>';
+  for (let d = 1; d <= last.getDate(); d++) {
+    const dt = new Date(y, m, d);
+    html += '<div role="gridcell"><button type="button" aria-label="' + d + ', ' + KO[dt.getDay()] + ' ' + (m+1) + '월 ' + y + '" data-d="' + d + '">' + d + '</button></div>';
+  }
+  panel.innerHTML = html + '</div>';
+  panel.querySelector('[data-prev]').onclick = () => renderCalendar(field, prev.getFullYear(), prev.getMonth());
+  panel.querySelector('[data-next]').onclick = () => renderCalendar(field, next.getFullYear(), next.getMonth());
+  panel.querySelectorAll('[data-d]').forEach((b) => b.onclick = () => {
+    field.querySelector('[data-pill-text]').textContent = y + '년 ' + pad(m+1) + '월 ' + pad(b.dataset.d) + '일';
+    field.dataset.value = y + '-' + (m+1) + '-' + b.dataset.d;
+    // 닫히지만 내용은 남는다
+    panel.style.display = 'none';
+  });
+}
+document.getElementById('open-create').onclick = () => {
+  const slot = document.getElementById('modal-slot');
+  slot.innerHTML = '<div data-testid="minimizable-modal.ui.modal-container.modal" role="dialog" style="border:1px solid #ccc;padding:16px;width:760px">'
+   + '<div style="display:flex;justify-content:space-between"><span>NPT | 작업</span>'
+   + '<button data-testid="issue-create-modernised.ui.header.toggle-expand-button" id="expand">더 보기</button></div>'
+   + FIELD('summary', '<textarea placeholder="요약" style="width:95%"></textarea>')
+   + FIELD('description', '<div class="ProseMirror" contenteditable="true" role="textbox" style="min-height:60px;border:1px solid #ddd;padding:6px"></div>')
+   + '<div style="display:flex;gap:6px;align-items:center">필수 ' + pill('duedate', '기한') + pill('customfield_10015', '시작 날짜') + '</div></div>';
+  document.getElementById('expand').onclick = () => { window.__expandClicks += 1; };
+  slot.querySelectorAll('[data-testid$="pill-date-field.date-trigger"]').forEach((t) => t.onclick = () => {
+    const f = t.closest('[data-testid^="issue-create-modernised.field-renderer.field."]');
+    const panel = f.querySelector('[data-panel]');
+    if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+    const v = f.dataset.value ? f.dataset.value.split('-').map(Number) : null;
+    const now = new Date();
+    renderCalendar(f, v ? v[0] : now.getFullYear(), v ? v[1] - 1 : now.getMonth());
+    panel.style.display = 'block';
+  });
+};
+</script>`);
+
 // ---------------------------------------------------------------- Confluence
 export const confluencePage = doc('DevOpsit CCP - Confluence', `
 <div data-testid="page-content-header"><div style="display:flex;gap:8px;align-items:center"><button>편집</button><button aria-label="링크 복사">링크 복사</button><button>공유</button></div></div>

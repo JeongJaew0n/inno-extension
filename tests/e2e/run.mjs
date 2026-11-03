@@ -434,6 +434,37 @@ const suites = {
     await p.shot(`${SP}/jira-create.png`);
   },
 
+  // 2026-11 생성 모달: 날짜 필드가 처음부터 pill 버튼이고, 값을 넣으면 라벨 자리가 날짜로 바뀐다
+  async jiraCreatePill() {
+    const p = await b.newPage('jira-create-pill', (url) => (/\/jira\/create/.test(new URL(url).pathname) ? site.jiraCreatePill : null));
+    await p.goto('https://pms-innogrid.atlassian.net/jira/create', 2000);
+    await p.clickEl(`document.getElementById('open-create')`);
+    await wait(900);
+    const btn = await hosts(p, 'jira-create-quick-dates');
+    R.check('Jira 업무 생성(pill)', '오늘부터 시작 버튼 주입', btn === 1, `${btn}개`);
+    const expect = await p.ev(`(() => { const t = new Date(); const d = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 3);
+      const pad = (n) => String(n).padStart(2, '0');
+      const f = (x) => x.getFullYear() + '년 ' + pad(x.getMonth()+1) + '월 ' + pad(x.getDate()) + '일'; return [f(t), f(d)]; })()`);
+    const read = `['customfield_10015','duedate'].map(id => document.querySelector('[data-testid="issue-create-modernised.field-renderer.field.' + id + '"] [data-pill-text]')?.textContent)`;
+    await p.clickEl(`${sroot('jira-create-quick-dates')}.shadowRoot.querySelector('button')`);
+    await wait(3000);
+    const got = await p.ev(read);
+    R.check('Jira 업무 생성(pill)', 'pill 에서 시작=오늘', got[0] === expect[0], `${got[0]} (기대 ${expect[0]})`);
+    R.check('Jira 업무 생성(pill)', '기한=오늘+3일 (달 넘김 포함)', got[1] === expect[1], `${got[1]} (기대 ${expect[1]})`);
+    R.check('Jira 업무 생성(pill)', '펼칠 것이 없으니 더 보기를 누르지 않는다', await p.ev('window.__expandClicks') === 0, `${await p.ev('window.__expandClicks')}번`);
+    // 라벨이 날짜로 바뀐 뒤에도 다시 누르면 같은 결과 — 필드 ID 로 찾는다
+    // 사용자가 두 달 전 날짜로 바꿔 둔 상태를 만든다. 달력은 그 달에서 열린다
+    await p.ev(`(() => { const t = new Date(); const d = new Date(t.getFullYear(), t.getMonth() - 2, 15);
+      for (const id of ['customfield_10015','duedate']) { const f = document.querySelector('[data-testid="issue-create-modernised.field-renderer.field.' + id + '"]');
+        f.querySelector('[data-pill-text]').textContent = d.getFullYear() + '년 ' + String(d.getMonth()+1).padStart(2,'0') + '월 15일'; f.dataset.value = d.getFullYear() + '-' + (d.getMonth()+1) + '-15'; } })()`);
+    await wait(1800);
+    await p.clickEl(`${sroot('jira-create-quick-dates')}.shadowRoot.querySelector('button')`);
+    await wait(4500);
+    const got2 = await p.ev(read);
+    R.check('Jira 업무 생성(pill)', '라벨이 날짜로 바뀐 뒤에도 다시 넣는다(ID 로 찾기, 달 이동)', got2.join() === expect.join(), got2.join(' / '));
+    await p.shot(`${SP}/jira-create-pill.png`);
+  },
+
   async confluence() {
     const map = (url) => {
       const u = new URL(url);

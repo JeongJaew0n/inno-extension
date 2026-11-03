@@ -17,8 +17,8 @@ import type { FeatureRuntime, PageContext } from '../../../../platform/runtime/t
 import { FEATURE_ROOT_ATTRIBUTE } from '../../../../platform/runtime/featureRoot';
 import { DESIGN_TOKENS } from '../../../../platform/design/tokens';
 import { BUTTON_CSS } from '../../../../platform/design/parts';
-import { CREATE_MODAL_SUMMARY_FIELD, CREATE_QUICK_DATES_ROOT } from '../../selectors';
-import { expandAllFields, findCreateModal, findFieldByLabel, waitFor } from '../../createModal';
+import { CREATE_MODAL_DATE_TRIGGER, CREATE_MODAL_SUMMARY_FIELD, CREATE_QUICK_DATES_ROOT } from '../../selectors';
+import { expandAllFields, findCreateModal, findField, waitFor, type CreateFieldRef } from '../../createModal';
 import {
   calendarCellPattern,
   isSameMonth,
@@ -28,8 +28,9 @@ import {
   type CalendarDate,
 } from './contracts';
 
-const START_DATE_LABEL = '시작 날짜';
-const DUE_DATE_LABEL = '기한';
+/** 필드 ID 는 이 인스턴스의 실측값이다(2026-09-21 · 2026-11-03). 라벨로 못 찾을 때만 쓴다 */
+const START_DATE: CreateFieldRef = { label: '시작 날짜', fieldId: 'customfield_10015' };
+const DUE_DATE: CreateFieldRef = { label: '기한', fieldId: 'duedate' };
 const FEEDBACK_MS = 1600;
 
 /** 달력을 옮기는 횟수 상한. 무한 반복을 막는다 */
@@ -59,12 +60,14 @@ function readVisibleMonth(field: HTMLElement): CalendarDate | null {
  *
  * @returns 값이 들어갔으면 `true`
  */
-async function setDate(modal: HTMLElement, label: string, target: CalendarDate): Promise<boolean> {
-  const field = findFieldByLabel(modal, label);
+async function setDate(modal: HTMLElement, ref: CreateFieldRef, target: CalendarDate): Promise<boolean> {
+  const field = findField(modal, ref);
   if (!field) return false;
 
   // 트리거를 눌러야 달력이 생긴다. 필드 자체는 아직 버튼일 뿐이다.
-  const trigger = field.querySelector<HTMLElement>('[role="button"]');
+  // 2026-11 모달은 `<button>` pill, 예전 모달은 `role="button"` 이다.
+  const trigger = field.querySelector<HTMLElement>(CREATE_MODAL_DATE_TRIGGER)
+    ?? field.querySelector<HTMLElement>('[role="button"]');
   if (!trigger) return false;
   trigger.click();
 
@@ -119,11 +122,11 @@ export function createQuickDatesRuntime(): FeatureRuntime {
 
     try {
       const plan = planFromToday(new Date());
-      const expanded = await expandAllFields(modal, DUE_DATE_LABEL);
+      const expanded = await expandAllFields(modal, DUE_DATE);
       if (!expanded) throw new Error('추가 필드를 펼치지 못했습니다.');
 
-      const startOk = await setDate(modal, START_DATE_LABEL, plan.start);
-      const dueOk = await setDate(modal, DUE_DATE_LABEL, plan.due);
+      const startOk = await setDate(modal, START_DATE, plan.start);
+      const dueOk = await setDate(modal, DUE_DATE, plan.due);
       if (!startOk || !dueOk) throw new Error('날짜를 넣지 못했습니다.');
 
       label.textContent = '넣었음';
