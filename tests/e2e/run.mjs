@@ -304,6 +304,42 @@ const suites = {
     R.check('Jira Kanban 보드', '2초 동안 DOM 이 조용하다(reconcile 반복 없음)', mutations === 0, `변화 ${mutations}건`);
   },
 
+  // 새 보드(2026-11): 주소에 `c/` 가 없고 컨트롤 바 · board-area 가 없다
+  async jiraNewBoard() {
+    const map = (url) => (/\/boards\/2148/.test(new URL(url).pathname) ? site.jiraNewBoard(new URL(url).searchParams.has('selectedIssue')) : null);
+    map.api = site.jiraApi;
+    const p = await b.newPage('jira-new-board', map);
+    await p.goto('https://pms-innogrid.atlassian.net/jira/software/projects/NPT/boards/2148', 3500);
+    const place = await p.ev(`(() => {
+      const row = document.querySelector('[data-inno-extension-feature="jira-board-tool-row"]');
+      const search = document.querySelector('[data-testid="filter-refinement.ui.search-field-container"]');
+      if (!row || !search) return null;
+      const header = search.parentElement.parentElement;
+      const r = row.getBoundingClientRect(), s = search.getBoundingClientRect(), h = header.getBoundingClientRect();
+      return { inHeader: row.parentElement === header, last: row === header.lastElementChild, below: r.top >= s.bottom, full: Math.round(r.width) === Math.round(h.width) };
+    })()`);
+    R.check('Jira 새 보드', '우리 도구 줄이 머리 영역 맨 끝, 필터 아래 새 줄', place && place.inHeader && place.last && place.below && place.full, JSON.stringify(place));
+    const trig = await hosts(p, 'jira-past-sprint-view');
+    R.check('Jira 새 보드', '지난 스프린트 선택 주입', trig === 1, `${trig}개`);
+    await p.clickEl(`${sroot('jira-past-sprint-view')}.shadowRoot.querySelector('[data-trigger]')`);
+    await wait(900);
+    const rows = await p.ev(`[...${sroot('jira-past-sprint-view')}.shadowRoot.querySelectorAll('[data-sprint-id]')].length`);
+    R.check('Jira 새 보드', '스프린트 목록 (GET /rest/agile/1.0/board/2148/sprint)', rows === 2, `${rows}개`);
+    await p.clickEl(`${sroot('jira-past-sprint-view')}.shadowRoot.querySelector('[data-sprint-id="290"]')`);
+    await wait(1200);
+    const panel = await p.ev(`(() => { const h = ${sroot('jira-past-sprint-panel')}; return h ? { inWrapper: document.querySelector('[data-testid="board.content.board-wrapper"]').contains(h), cards: h.shadowRoot.querySelectorAll('[data-issue-key]').length } : null; })()`);
+    R.check('Jira 새 보드', '지난 스프린트 패널이 board-wrapper 위에 — 카드 3장', panel?.inWrapper && panel.cards === 3, JSON.stringify(panel));
+    await cssIntegrity(p, 'Jira 새 보드');
+    await p.shot(`${SP}/jira-new-board.png`);
+    await p.clickEl(`${sroot('jira-past-sprint-panel')}.shadowRoot.querySelector('[data-panel-close]')`);
+    await wait(400);
+
+    // 보드에서 업무를 열면 제목·링크 복사가 붙는다 — 사용자가 처음 알린 증상
+    await p.goto('https://pms-innogrid.atlassian.net/jira/software/projects/NPT/boards/2148?selectedIssue=NPT-150', 3000);
+    const lc = await hosts(p, 'jira-issue-link-copy');
+    R.check('Jira 새 보드', '모달 속 업무 링크 복사', lc === 1, `${lc}개`);
+  },
+
   async jiraBacklog() {
     const p = await b.newPage('jira-backlog', (url) => (/\/backlog$/.test(new URL(url).pathname) ? site.jiraBacklog : null));
     await p.goto('https://pms-innogrid.atlassian.net/jira/software/c/projects/NPT/boards/2146/backlog', 2500);

@@ -138,9 +138,37 @@ ${withDialog ? DIALOG : ''}
 export const jiraKanbanBoard = doc('보드 2147', `${BOARD_BODY}
 <script>window.SPA_STATE = ${JSON.stringify(KANBAN_SPA_STATE)};</script>`);
 
+// 새 보드(2026-11). 주소에 `c/` 가 없고 컨트롤 바 · board-area · SPA_STATE 가 없다.
+// 실측(2026-11-03) 모양: 보드 grid(`header` · `content` · `sidebar` 칸)의 header 칸이 `flex-wrap: wrap`,
+// 그 안 왼쪽 묶음에 검색칸(`filter-refinement.ui.search-field-container`)이 있다. 본문은 `board.content.board-wrapper`.
+const NEW_BOARD_BODY = `
+<div data-testid="page-layout.root" style="display:grid;grid-template-areas:'main'">
+ <div data-testid="page-layout.main" style="grid-area:main">
+  <div style="display:grid;grid-template-areas:'header sidebar' 'content sidebar';grid-template-columns:1fr auto">
+   <div style="grid-area:header;display:flex;flex-wrap:wrap;justify-content:space-between;padding:8px 0">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+     <div data-testid="filter-refinement.ui.search-field-container" style="display:flex"><input placeholder="보드 검색"></div>
+     <button>필터</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center"><button aria-label="스프린트 세부 정보">i</button><button>스프린트 완료</button></div>
+   </div>
+   <div style="grid-area:content">
+    <div data-testid="board.content.board-wrapper" style="position:relative;min-height:420px;display:flex;gap:12px;padding:12px">
+     <div style="width:240px;background:#f4f5f7;padding:8px">할 일<div style="background:#fff;margin-top:8px;padding:8px">NPT-150 카드</div></div>
+     <div style="width:240px;background:#f4f5f7;padding:8px">진행 중</div>
+    </div>
+   </div>
+   <div style="grid-area:sidebar"></div>
+  </div>
+ </div>
+</div>
+`;
+export const jiraNewBoard = (withDialog) => doc('보드 2148', `${NEW_BOARD_BODY}
+${withDialog ? DIALOG : ''}`);
+
 export const jiraApi = (url) => {
   const u = new URL(url);
-  if (/\/rest\/agile\/1\.0\/board\/2146\/sprint$/.test(u.pathname)) {
+  if (/\/rest\/agile\/1\.0\/board\/(?:2146|2148)\/sprint$/.test(u.pathname)) {
     return { isLast: true, values: [
       { id: 301, name: 'Jazz-v1.0-Sprint2', state: 'active', startDate: iso(addDays(-3)), endDate: iso(addDays(9)) },
       { id: 290, name: 'Jazz-v1.0-Sprint1', state: 'closed', startDate: iso(addDays(-17)), endDate: iso(addDays(-4)) },

@@ -1554,6 +1554,11 @@ test('보드 UI 는 Jira 필터 줄이 아니라 우리 줄에 붙는다', async
   }
   // 컨트롤 바 바로 뒤에 새 줄을 만든다.
   assert.match(row, /bar\.insertAdjacentElement\('afterend', row\)/);
+  // 새 보드(2026-11)엔 컨트롤 바가 없다. 머리 영역 맨 끝에 한 줄을 다 차지하게 넣는다 —
+  // 필터와 같은 줄에 남으면 밀려서 안 보인다.
+  assert.match(row, /header\.append\(row\)/);
+  assert.match(row, /row\.style\.flexBasis = '100%'/);
+  assert.match(row, /style\.flexWrap === 'wrap'/);
   // DOM 순서는 reconcile 순서에 달려 있어 들쭉날쭉하다. order 로 고정한다.
   assert.match(row, /slot\.style\.order = String\(order\)/);
   // 우리가 만든 것을 남기지 않는다.

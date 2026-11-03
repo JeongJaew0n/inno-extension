@@ -199,12 +199,24 @@ export const PAST_SPRINT_PANEL_ROOT = 'jira-past-sprint-panel';
  * **보드 DOM 을 건드리지 않는다.** 카드를 지우면 React 의 가상 DOM 과 실제 화면이 어긋난 채
  * 남아서, 나중에 드래그나 `스프린트 완료` 가 보이는 것과 다른 대상에 걸린다.
  *
+ * **새 보드(2026-11)에는 둘 다 없다.** 그 자리는 `board.content.board-wrapper` 다 — 역시
+ * `position: relative` 이고 보드 칸 전체(실측 1272×618)를 덮는다. 둘 중 있는 것을 쓴다.
+ *
  * docs/plans/jira-past-sprint-view/spec.md
  */
-export const BOARD_CONTENT = '[data-testid="software-board.board-area"]';
+export const BOARD_CONTENT =
+  '[data-testid="software-board.board-area"], [data-testid="board.content.board-wrapper"]';
 
-/** 보드 상단 컨트롤 바. 우리 UI 줄을 이 바로 뒤에 넣는다. */
+/** 보드 상단 컨트롤 바. 우리 UI 줄을 이 바로 뒤에 넣는다. 새 보드(2026-11)에는 없다. */
 export const BOARD_CONTROLS_BAR = '[data-testid="software-board.header.controls-bar"]';
+
+/**
+ * 새 보드의 검색칸. 컨트롤 바가 없는 새 보드에서 머리 영역을 찾는 실마리로 쓴다.
+ *
+ * 실측(2026-11-03): 검색칸에서 위로 올라가면 보드 grid(`header` · `content` · `sidebar` 칸)의
+ * `header` 칸 요소가 나온다. 그 요소는 `display: flex; flex-wrap: wrap` 이다.
+ */
+export const BOARD_SEARCH_FIELD = '[data-testid="filter-refinement.ui.search-field-container"]';
 
 /**
  * 우리 UI 전용 줄.
