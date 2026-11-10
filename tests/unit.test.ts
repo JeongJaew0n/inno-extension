@@ -1050,6 +1050,59 @@ test('Mermaid 선언으로 시작하는 코드블럭만 변환 대상으로 판�
   assert.equal(isMermaidCodeBlockSource(''), false);
 });
 
+// 기대값은 Mermaid 11.16.1 `mermaid.parse()` 결과다. 앱이 이 버전을 쓴다(실측 2026-11-10).
+test('Mermaid 가 받는 frontmatter · 방향 없는 flowchart · 추가 다이어그램도 변환 대상이다', () => {
+  const accepted = [
+    '---\ntitle: 배포 흐름\n---\nflowchart LR\nA-->B',
+    '---\nconfig:\n  theme: dark\n---\nsequenceDiagram\nA->>B: hi',
+    '\n---\ntitle: x\n---\n\n%%{init: {"theme":"dark"}}%%\nflowchart LR\nA-->B',
+    '﻿---\r\ntitle: x\r\n---\r\ngantt\r\ntitle t',
+    'flowchart\nA-->B',
+    'graph\nA-->B',
+    'flowchart-elk TD\nA-->B',
+    'flowchart-elk\nA-->B',
+    'block\ncolumns 3',
+    'block-beta\ncolumns 3',
+    'packet\n0-15: "Source"',
+    'packet-beta\n0-15: "Source"',
+    'xychart horizontal\nx-axis [a, b]',
+    'xychart-beta\ntitle "x"',
+    'sankey\n\na,b,1',
+    'radar-beta\naxis a, b, c',
+    'treemap\n"A"',
+    'treemap-beta\n"A"',
+    'ishikawa\nProblem',
+    'ishikawa-beta\nProblem',
+    'venn-beta\nset A',
+  ];
+  for (const source of accepted) {
+    assert.equal(isMermaidCodeBlockSource(source), true, JSON.stringify(source));
+  }
+});
+
+test('Mermaid 가 거부하는 선언과 Mermaid 가 아닌 frontmatter 문서는 변환 대상이 아니다', () => {
+  const rejected = [
+    // YAML 문서. frontmatter 를 걷어도 선언이 없다
+    '---\nkey: value\n---\nfoo: bar',
+    // Markdown 문서의 frontmatter
+    '---\ntitle: 회의록\n---\n# 안건',
+    // 닫히지 않은 frontmatter
+    '---\ntitle: x\nflowchart LR',
+    // Mermaid 는 대소문자를 구분하고, -beta 를 뗀 radar · venn 은 거부한다
+    'Block\ncolumns 3',
+    'radar\naxis a',
+    'venn\nset A',
+    'flowchart;\nA-->B',
+    // 새 선언 이름으로 시작하는 다른 글
+    'block: true',
+    'packets: 3',
+    'sankeyData = []',
+  ];
+  for (const source of rejected) {
+    assert.equal(isMermaidCodeBlockSource(source), false, JSON.stringify(source));
+  }
+});
+
 test('Mermaid 코드블럭 순번을 참조하는 Confluence extension paste HTML을 만든다', () => {
   const html = buildConfluenceMermaidExtensionHtml(8, 'local-id-&-1');
 

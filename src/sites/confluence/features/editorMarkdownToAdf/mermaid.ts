@@ -9,15 +9,35 @@ export const CONFLUENCE_MERMAID_SOURCE_TITLE = 'Mermaid 원본';
 
 const MERMAID_DECLARATION = /^(?:(?:graph|flowchart)\s+(?:tb|td|bt|rl|lr)\b|sequenceDiagram\b|classDiagram(?:-v2)?\b|stateDiagram(?:-v2)?\b|erDiagram\b|journey\b|gantt\b|pie\b|quadrantChart\b|requirementDiagram\b|gitGraph\b|C4(?:Context|Container|Component|Dynamic|Deployment)\b|mindmap\b|timeline\b|zenuml\b|sankey-beta\b|xychart-beta\b|block-beta\b|packet-beta\b|architecture-beta\b|kanban\b)/i;
 
+/**
+ * 위 목록에 없던 선언. Mermaid 11.16.1(사내 Confluence Mermaid 앱 실측 버전, 2026-11-10)의 `mermaid.parse()` 가
+ * 받는 것만 넣었다. **대소문자를 구분한다** — Mermaid 가 구분한다(`Block`, `FLOWCHART LR` 은 오류).
+ *
+ * - 방향 없는 `flowchart` · `graph` 는 기본 방향(TB)으로 그려진다. 그 단어만 있는 줄일 때만 받는다.
+ *   `graph data without direction` 같은 산문 줄은 Mermaid 도 거부한다.
+ * - `radar` · `venn` 은 `-beta` 를 떼면 Mermaid 가 거부한다.
+ */
+const MERMAID_DECLARATION_EXACT = /^(?:(?:graph|flowchart)$|flowchart-elk\b|(?:block|packet|xychart|sankey|treemap|ishikawa)(?:-beta)?(?:\s|$)|(?:radar|venn)-beta(?:\s|$))/;
+
+/**
+ * 맨 앞의 YAML frontmatter(`---` 로 감싼 title · config). Mermaid 도 판정 전에 이것을 지운다
+ * (`detectType` 의 `frontMatterRegex`). 앞의 빈 줄은 11.x 는 받고 12.x 는 거부하지만, 앱이 11.x
+ * 라 받는 쪽을 택한다.
+ */
+const MERMAID_FRONTMATTER = /^\s*-{3}[ \t]*\n[\s\S]*?\n-{3}[ \t]*(?:\n|$)/;
+
 export function isMermaidCodeBlockSource(source: string): boolean {
   const declaration = source
     .replace(/^\uFEFF/, '')
     .replace(/\r\n?/g, '\n')
+    .replace(MERMAID_FRONTMATTER, '')
     .split('\n')
     .map((line) => line.trim())
     .find((line) => line.length > 0 && !line.startsWith('%%'));
 
-  return declaration ? MERMAID_DECLARATION.test(declaration) : false;
+  return declaration
+    ? MERMAID_DECLARATION.test(declaration) || MERMAID_DECLARATION_EXACT.test(declaration)
+    : false;
 }
 
 export function buildConfluenceMermaidExtensionHtml(

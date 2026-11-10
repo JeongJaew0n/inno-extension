@@ -1,7 +1,7 @@
 # Confluence Markdown -> ADF 변환기
 
 - 상태: Active
-- 최종 갱신일: 2026-08-12
+- 최종 갱신일: 2026-11-10
 - 대상 버전: 0.2.x
 
 ## 한 줄 요약
@@ -138,7 +138,8 @@ Markdown 문서 판정은 ATX 제목, 표 구분선, 코드 펜스, 목록, 인�
 
 짝을 찾지 못한 기존 Mermaid 컴포넌트 검사는 **1단계보다 먼저** 수행한다. 1단계가 문서를 바꾼 뒤에 중단하면 되돌리기 곤란하기 때문이다.
 
-- 빈 줄과 `%%` 주석·초기화 지시문을 건너뛴 첫 줄이 `flowchart LR`, `sequenceDiagram`, `stateDiagram-v2` 등 지원 Mermaid 선언과 일치해야 한다.
+- 맨 앞의 YAML frontmatter(`---` 로 감싼 title·config), 빈 줄, `%%` 주석·초기화 지시문을 건너뛴 첫 줄이 `flowchart LR`, `sequenceDiagram`, `stateDiagram-v2` 등 지원 Mermaid 선언과 일치해야 한다.
+- 지원 선언의 기준은 사내 Mermaid 앱이 쓰는 Mermaid 11.16.1(2026-11-10 실측, 8월에는 11.15.0)의 `mermaid.parse()` 가 받는 것이다. 실험 페이지에서 frontmatter 제목, 방향 없는 `flowchart`, `flowchart-elk`, `radar-beta`, `treemap-beta`, `packet` 이 실제로 그려지는 것을 확인했다. 방향 없는 `flowchart`·`graph`, `flowchart-elk`, `block`·`packet`·`xychart`·`sankey`·`treemap`·`ishikawa`(각각 `-beta` 포함), `radar-beta`·`venn-beta` 도 받는다. 새로 넣은 선언은 Mermaid 처럼 대소문자를 구분한다.
 - 일반 JavaScript, shell, JSON 같은 코드 블록은 변경하지 않는다.
 - MAIN world bridge가 해당 codeBlock의 ProseMirror document position에 실제 `NodeSelection` transaction을 적용한 뒤, 한 번의 paste transaction으로 사내 Confluence의 `Mermaid diagram` ADF `extension`과 접힌 source로 교체한다.
 - 매크로의 `guestParams.index`에는 변환 직전 본문 전체 코드 블록에서 해당 원본이 차지하는 0부터 시작하는 순번을 넣는다.
@@ -263,6 +264,7 @@ Mermaid 매크로 콘텐츠는 ADF schema의 DOM 표현을 사용한다. 원위�
 - 2026-09-04: 편집기 toolbar의 버튼 2개(`Mermaid -> ADF`, `코드블럭 -> ADF`)를 `Markdown 변환` 하나로 합쳤다. 두 동작은 순서가 고정된 1단계·2단계인데 UI가 나뉘어 있어 사용자가 순서를 알아야 했다. 코드블럭 벗기기는 **대상이 전부 Markdown 문서로 보일 때만** 실행하도록 조건을 걸었다. 종전에는 실제 소스 코드까지 산문으로 풀어버렸다.
 - 2026-09-04: 변환되지 않고 문단으로 남은 Markdown을 진단하고 변환한다. 문법 신호와 대응 노드를 짝지어 판정하되, 신호는 CommonMark·GFM 문법을 실제로 만족하는 줄만 세고, 노드가 0이어도 표 헤더·구분선의 칸 수 일치, 규칙대로 닫힌 펜스, 3회 이상 반복 중 하나가 있어야 확정한다. 변환은 구간을 평문으로 다시 붙여넣어 Confluence 자체 파서에 맡긴다. 우리 변환기는 취소선 구분자로 물결표 1개도 인정해 `1~3` 같은 범위 표기를 깨뜨리므로 이 경로에서는 쓰지 않는다.
 - 2026-09-04: Popup의 Markdown -> ADF JSON 변환기를 제거했다. 결과가 읽기 전용 JSON이라 문서에 넣을 방법이 없었고 편집기 버튼과 역할이 겹쳤다. 게다가 Popup은 `marked`, 편집기 문단 변환은 Confluence 파서를 쓰는데 취소선 구분자 규칙이 서로 달라 미리보기가 실제 결과와 어긋났다. 기능 상세에는 편집기 안내만 남긴다.
+- 2026-11-10: Mermaid 판정이 Mermaid 가 받는 선언 일부를 놓치던 문제를 고쳤다. 맨 앞 YAML frontmatter 가 붙은 다이어그램, 방향 없는 `flowchart`·`graph`, `flowchart-elk`, `radar-beta`·`treemap-beta` 등이 조용히 코드블럭으로 남았고, 남은 블록이 이후 코드블럭 벗기기까지 막았다. 기대값은 Mermaid 11.16.1 `mermaid.parse()` 로 대조하고 실험 페이지에서 렌더링을 확인했다.
 
 ## 관련 문서
 
